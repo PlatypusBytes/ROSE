@@ -25,7 +25,7 @@ class Rail():
         self.material = Material()
         self.section = Section()
         self.__n_sleepers = n_sleepers
-        self.level = np.zeros(1, n_sleepers)
+        self.level = np.zeros((1, self.__n_sleepers))
 
         self.length_rail = None
         self.mass = None
@@ -56,9 +56,13 @@ class Rail():
         self.ndof = self.section.n_rail_per_sleeper * (self.__n_sleepers - 1) + 1
 
     def calculate_mass_matrix(self):
-        self.mass_matrix = np.array([self.mass * self.length_rail/2,
-                       self.mass*self.length_rail * np.ones(1, self.ndof-2),
-                       self.mass*self.length_rail/2])
+
+        self.mass_matrix = np.zeros((1, self.ndof))
+        self.mass_matrix[0,0] = self.mass * self.length_rail/2
+        self.mass_matrix[0, 1:self.ndof-1] = self.mass*self.length_rail
+        self.mass_matrix[0, -1] = self.mass * self.length_rail / 2
+
+        print('test')
 
 
 class Sleeper:
@@ -154,7 +158,7 @@ class UTrack:
 
         self.mass_matrix_track = np.zeros(self.__n_dof_track, self.__n_dof_track)
 
-        self.mass_matrix_track = sparse.csr_matrix([rail_mass, 0],([range(self.rail.ndof), self.__n_dof_track - 1],
+        self.mass_matrix_track = sparse.csr_matrix([rail_mass, 0], ([range(self.rail.ndof), self.__n_dof_track - 1],
                                                                     [range(self.rail.ndof), self.__n_dof_track - 1]))
 
 
