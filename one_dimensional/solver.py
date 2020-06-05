@@ -74,12 +74,11 @@ def init(m_global, c_global, k_global, force_ini, u, v):
 
 class Solver:
     def __init__(self, number_equations):
-        import numpy as np
-
+        # define initial conditions
         self.u0 = np.zeros(number_equations)
         self.v0 = np.zeros(number_equations)
-        self.a0 = np.zeros(number_equations)
 
+        # define variables
         self.u = []
         self.v = []
         self.a = []
@@ -87,39 +86,48 @@ class Solver:
 
         return
 
-    def newmark(self, settings, M, C, K, F, t_step, t_end, t_start=0, alpha=0):
+    def newmark(self, settings, M, C, K, F, t_step, t_total):
 
         # constants for the Newmark
         a1, a2, a3, a4, a5, a6 = const(settings["beta"], settings["gamma"], t_step)
 
-        # initial conditions
+        # initial force conditions
+        F_ini = F[:, 0]
+
+        # initial conditions u, v, a
         u = self.u0
         v = self.v0
-        a = self.a0
-        F_ini = F[:, 0]  # np.array([float(i) for i in F.getcol(0).todense()])
-
-        # initial conditions
         a = init(M, C, K, F_ini, u, v)
+        # add to results initial conditions
+        self.u.append(u)
+        self.v.append(v)
+        self.a.append(a)
 
-        K_till = K.dot(1+alpha) + C.dot(a4).dot(1+alpha) + M.dot(a1)
+        # time
+        self.time = np.linspace(0, t_total, int(np.ceil(t_total / t_step)))
 
-        self.time = np.linspace(t_start, t_end, int(np.ceil((t_end - t_start) / t_step)))
+        # combined stiffness matrix
+        K_till = K + C.dot(a4) + M.dot(a1)
 
         # define progress bar
         pbar = tqdm(total=len(self.time), unit_scale=True, unit_divisor=1000, unit="steps")
 
-        for t in range(len(self.time)):
+        # iterate for each time step
+        for t in range(1, len(self.time)):
             # update progress bar
             pbar.update(1)
 
+            # updated mass
             m_part = u.dot(a1) + v.dot(a2) + a.dot(a3)
-            c_part = u.dot(a4) + v.dot(a5) + a.dot(a6)
             m_part = M.dot(m_part)
-            c_part = C.dot(c_part).dot(1+alpha)
+            # updated damping
+            c_part = u.dot(a4) + v.dot(a5) + a.dot(a6)
+            c_part = C.dot(c_part)
 
             # external force
-            force = F[:, t]  # np.array([float(i) for i in F.getcol(t).todense()])
+            force = F[:, t]
             force_ext = force + m_part + c_part
+
             # solve
             uu = solve(K_till, force_ext)
 
@@ -128,6 +136,7 @@ class Solver:
             # acceleration calculated through Newmark relation
             aa = (uu - u).dot(a1) - v.dot(a2) - a.dot(a3)
 
+            # add to results
             self.u.append(uu)
             self.v.append(vv)
             self.a.append(aa)
@@ -142,27 +151,41 @@ class Solver:
         self.v = np.array(self.v)
         self.a = np.array(self.a)
 
-        # close the progress bas
+        # close the progress bar
         pbar.close()
         return
 
-    def static(self, settings, K, F, t_step, t_total):
+    def static(self, K, F, t_step, t_total):
 
-        # initial conditions
+        # initial conditions u
         u = self.u0
-        self.time = np.linspace(0, t_total, np.ceil(t_total / t_step))
+        # add to results initial conditions
+        self.u.append(u)
+
+        # time
+        self.time = np.linspace(0, t_total, int(np.ceil(t_total / t_step)))
+
+        # define progress bar
+        pbar = tqdm(total=len(self.time), unit_scale=True, unit_divisor=1000, unit="steps")
 
         for t in range(len(self.time)):
+            # update progress bar
+            pbar.update(1)
+
             # external force
-            force = np.array([float(i) for i in F.getcol(t).todense()])
+            force = F[:, t]
 
             # solve
-            uu = spsolve(K.tocsr(), force)
+            uu = solve(K, force)
 
+            # add to results
             self.u.append(uu)
 
+        # convert to numpy arrays
         self.u = np.array(self.u)
 
+        # close the progress bar
+        pbar.close()
         return
 
     def save_data(self):
