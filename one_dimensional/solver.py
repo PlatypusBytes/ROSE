@@ -87,7 +87,7 @@ class Solver:
 
         return
 
-    def newmark(self, settings, M, C, K, F, t_step, t_total):
+    def newmark(self, settings, M, C, K, F, t_step, t_end, t_start=0, alpha=0):
 
         # constants for the Newmark
         a1, a2, a3, a4, a5, a6 = const(settings["beta"], settings["gamma"], t_step)
@@ -96,14 +96,14 @@ class Solver:
         u = self.u0
         v = self.v0
         a = self.a0
-        F_ini = F[:, 0] #np.array([float(i) for i in F.getcol(0).todense()])
+        F_ini = F[:, 0]  # np.array([float(i) for i in F.getcol(0).todense()])
 
         # initial conditions
         a = init(M, C, K, F_ini, u, v)
 
-        K_till = K + C.dot(a4) + M.dot(a1)
+        K_till = K.dot(1+alpha) + C.dot(a4).dot(1+alpha) + M.dot(a1)
 
-        self.time = np.linspace(0, t_total, int(np.ceil(t_total / t_step)))
+        self.time = np.linspace(t_start, t_end, int(np.ceil((t_end - t_start) / t_step)))
 
         # define progress bar
         pbar = tqdm(total=len(self.time), unit_scale=True, unit_divisor=1000, unit="steps")
@@ -115,10 +115,10 @@ class Solver:
             m_part = u.dot(a1) + v.dot(a2) + a.dot(a3)
             c_part = u.dot(a4) + v.dot(a5) + a.dot(a6)
             m_part = M.dot(m_part)
-            c_part = C.dot(c_part)
+            c_part = C.dot(c_part).dot(1+alpha)
 
             # external force
-            force = F[:, t] #np.array([float(i) for i in F.getcol(t).todense()])
+            force = F[:, t]  # np.array([float(i) for i in F.getcol(t).todense()])
             force_ext = force + m_part + c_part
             # solve
             uu = solve(K_till, force_ext)
