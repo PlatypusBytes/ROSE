@@ -7,18 +7,20 @@ class Material():
     def __init__(self):
         self.youngs_modulus = None
         self.poisson_ratio = None
-        self.density= None
+        self.density = None
 
     @property
     def shear_modulus(self):
-        return self.youngs_modulus/(2*(1+self.poisson_ratio))
+        return self.youngs_modulus / (2 * (1 + self.poisson_ratio))
+
 
 class Section():
     def __init__(self):
-        self.area = None # [m^2]
-        self.sec_moment_of_inertia = None # [m^4]
-        self.shear_factor = 0 #shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
+        self.area = None  # [m^2]
+        self.sec_moment_of_inertia = None  # [m^4]
+        self.shear_factor = 0  # shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
         self.n_rail_per_sleeper = None
+
 
 class Rail():
     def __init__(self, n_sleepers):
@@ -30,18 +32,21 @@ class Rail():
         self.length_rail = None
         self.mass = None
 
-        self.timoshenko_factor = 0 # ???
+        self.timoshenko_factor = 0  # ???
+        self.n_nodes = None
         self.ndof = None
 
         self.mass_matrix = None
+        self.aux_stiffness_matrix = None
+        self.global_stiffness_matrix = None
 
-
+        self.ndof_per_node = 3
 
     def set_top_level_to_zero(self):
         self.level = self.level - np.max(self.level)
 
-    def calculate_length_rail(self,distance_between_sleepers):
-        self.length_rail = distance_between_sleepers/self.section.n_rail_per_sleeper
+    def calculate_length_rail(self, distance_between_sleepers):
+        self.length_rail = distance_between_sleepers / self.section.n_rail_per_sleeper
 
     def calculate_mass(self):
         self.mass = self.section.area * self.material.density
@@ -49,35 +54,72 @@ class Rail():
     def calculate_timoshenko_factor(self):
         if self.section.shear_factor > 0:
             self.timoshenko_factor = 12 * self.material.youngs_modulus * self.section.sec_moment_of_inertia / (
-                                     self.length_rail**2 * self.material.shear_modulus *
-                                     self.section.area * self.section.shear_factor)
+                    self.length_rail ** 2 * self.material.shear_modulus *
+                    self.section.area * self.section.shear_factor)
 
     def calculate_n_dof(self):
-        self.ndof = self.section.n_rail_per_sleeper * (self.__n_sleepers - 1) + 1
+        self.n_nodes = self.section.n_rail_per_sleeper * (self.__n_sleepers - 1) + 1
+        self.ndof = self.n_nodes * self.ndof_per_node
 
     def calculate_mass_matrix(self):
-
         self.mass_matrix = np.zeros((1, self.ndof))
-        self.mass_matrix[0,0] = self.mass * self.length_rail/2
-        self.mass_matrix[0, 1:self.ndof-1] = self.mass*self.length_rail
+        self.mass_matrix[0, 0] = self.mass * self.length_rail / 2
+        self.mass_matrix[0, 1:self.ndof - 1] = self.mass * self.length_rail
         self.mass_matrix[0, -1] = self.mass * self.length_rail / 2
 
-        print('test')
+    def set_aux_stiffness_matrix(self):
+        """
+        timoshenko straight beam auxiliar matrix
+        :return:
+        """
+        EI = self.material.youngs_modulus * self.section.sec_moment_of_inertia
+        constant = EI / ((1 + self.timoshenko_factor) * self.length_rail ** 3)
+
+        if self.ndof_per_node ==3:
+            self.aux_stiffness_matrix = np.zeros((6, 6))
+            self.aux_stiffness_matrix[[0, 3], [0, 3]] = self.section.area / self.section.sec_moment_of_inertia * \
+                                                        (1 + self.timoshenko_factor)
+            self.aux_stiffness_matrix[[3, 0], [0, 3]] = -self.section.area / self.section.sec_moment_of_inertia * \
+                                                        (1 + self.timoshenko_factor)
+
+            self.aux_stiffness_matrix[[1, 4], [1, 4]] = 12
+            self.aux_stiffness_matrix[[1, 4], [4, 1]] = -12
+
+            self.aux_stiffness_matrix[[1, 1, 2, 5], [2, 5, 1, 1]] = 6 * self.length_rail
+            self.aux_stiffness_matrix[[2, 4, 4, 5], [4, 2, 5, 4]] = -6 * self.length_rail
+
+            self.aux_stiffness_matrix[[2, 5], [2, 5]] = (4 + self.timoshenko_factor) * self.length_rail ** 2
+            self.aux_stiffness_matrix[[2, 5], [5, 2]] = (2 - self.timoshenko_factor) * self.length_rail ** 2
+
+            self.aux_stiffness_matrix = self.aux_stiffness_matrix.dot(constant)
+
+
+
 
 
 class Sleeper:
     def __init__(self):
-        self.ms=None
-        self.distance_between_sleepers =None
+        self.mass = None
+        self.distance_between_sleepers = None
         self.damping_ratio = None
         self.radial_frequency_one = None
         self.radial_frequency_two = None
+
 
 class RailPad:
     def __init__(self):
         self.mass = None
         self.stiffness = None
         self.damping = None
+        self.aux_stiffness_matrix = None
+
+    def set_aux_stiffness_matrix(self):
+        self.aux_stiffness_matrix = np.zeros((2, 2))
+        self.aux_stiffness_matrix[0, 0] = self.stiffness
+        self.aux_stiffness_matrix[1, 0] = -self.stiffness
+        self.aux_stiffness_matrix[0, 1] = -self.stiffness
+        self.aux_stiffness_matrix[1, 1] = self.stiffness
+
 
 class ContactRailWheel:
     def __init__(self):
@@ -85,10 +127,12 @@ class ContactRailWheel:
         self.damping = None
         self.exponent = None
 
+
 class ContactSleeperBallast:
     def __init__(self):
         self.stiffness = None
         self.damping = None
+
 
 class Support:
     def __init__(self, n_sleepers):
@@ -114,6 +158,7 @@ class Support:
         self.initial_voids_matrix = np.ones((1, self.__n_sleepers)) * self.initial_voids
         self.tensile_stiffness_ballast_matrix = np.ones((1, self.__n_sleepers)) * self.tensile_stiffness_ballast
         self.damping_ratio_matrix = np.ones((1, self.__n_sleepers)) * self.damping_ratio
+
 
 class Ballast:
     def __init__(self, n_sleepers):
@@ -145,41 +190,93 @@ class UTrack:
         self.contact_rail_wheel = ContactRailWheel()
 
         self.mass_matrix_track = None
-
+        self.global_stiffness_matrix = None
 
         self.__total_length = None
         self.__n_dof_rail = None
         self.__n_dof_track = None
 
+    def set_global_stiffness_matrix(self):
+        """
+        sparse.csr_matrix((self.ndof, self.ndof))
+
+        :return:
+        """
+        self.global_stiffness_matrix = sparse.csr_matrix((self.__n_dof_track, self.__n_dof_track))
+
+        self.rail.set_aux_stiffness_matrix()
+        self.__add_rail_to_global_stiffness_matrix()
+
+        self.rail_pads.set_aux_stiffness_matrix()
+        self.__add_rail_pads_to_global_stiffness_matrix()
+
+    def __add_rail_to_global_stiffness_matrix(self):
+        """
+        Set rail stiffness to global stifness matrix, dofs => normal direction, perpendicular direction, bending
+        :return:
+        """
+
+        stiffness_matrix = sparse.csr_matrix((self.rail.ndof, self.rail.ndof))
+
+        ndof_node = self.rail.ndof_per_node
+        for i in range(self.rail.n_nodes - 1):
+            stiffness_matrix[i * ndof_node:i * ndof_node + ndof_node * 2, i * ndof_node:i * ndof_node + ndof_node * 2] \
+                += self.rail.aux_stiffness_matrix
+
+        self.global_stiffness_matrix[0:self.rail.ndof, 0:self.rail.ndof] \
+            = self.global_stiffness_matrix[0:self.rail.ndof, 0:self.rail.ndof] + stiffness_matrix
+
+    def __add_rail_pads_to_global_stiffness_matrix(self):
+        """
+        Set rail pad stiffness to global stiffness matrix, dofs => perpendicular direction
+        :return:
+        """
+        n_dof_between_rail_pads = self.rail.ndof_per_node * self.rail.section.n_rail_per_sleeper
+
+        for i in range(self.__n_sleepers):
+            self.global_stiffness_matrix[i*n_dof_between_rail_pads + 1, i*n_dof_between_rail_pads + 1] \
+                = self.rail_pads.aux_stiffness_matrix[0, 0]
+            self.global_stiffness_matrix[i + self.rail.ndof, i * n_dof_between_rail_pads + 1] \
+                = self.rail_pads.aux_stiffness_matrix[1, 0]
+            self.global_stiffness_matrix[i*n_dof_between_rail_pads + 1, i + self.rail.ndof] \
+                = self.rail_pads.aux_stiffness_matrix[0, 1]
+            self.global_stiffness_matrix[i + self.rail.ndof, i + self.rail.ndof] \
+                = self.rail_pads.aux_stiffness_matrix[1, 1]
 
     def calculate_mass_matrix(self):
+        """
+        Calculates diagonal of the mass matrix
+        :return:
+        """
         self.rail.calculate_mass_matrix()
         rail_mass = self.rail.mass_matrix
 
-        self.mass_matrix_track = np.zeros(self.__n_dof_track, self.__n_dof_track)
+        mass_sleeper = self.sleeper.mass
+        mass_rail_pad = self.rail_pads.mass
 
-        self.mass_matrix_track = sparse.csr_matrix([rail_mass, 0], ([range(self.rail.ndof), self.__n_dof_track - 1],
-                                                                    [range(self.rail.ndof), self.__n_dof_track - 1]))
+        self.mass_matrix_track = np.zeros((1, self.__n_dof_track))
+        self.mass_matrix_track[0, :len(rail_mass[0])] = rail_mass[0, :]
+        self.mass_matrix_track[0, len(rail_mass[0]):] = mass_sleeper + mass_rail_pad
 
+        print('test')
 
+    # self.mass_matrix_track = np.zeros(self.__n_dof_track, self.__n_dof_track)
 
-        # for i in range(self.rail.ndof):
-        #     self.mass_matrix_track[i,i]
-        #
-        #
-        # self.mass_matrix_track = sparse.csr_matrix([rail_mass, 0],())
+    # self.mass_matrix_track = sparse.csr_matrix([rail_mass, 0], ([range(self.rail.ndof), self.__n_dof_track - 1],
+    # [range(self.rail.ndof), self.__n_dof_track - 1]))
 
-
+    # for i in range(self.rail.ndof):
+    #     self.mass_matrix_track[i,i]
+    #
+    #
+    # self.mass_matrix_track = sparse.csr_matrix([rail_mass, 0],())
 
     def calculate_n_dofs(self):
         self.rail.calculate_n_dof()
-        self.n_dof_track = self.rail.ndof + self.__n_sleepers
+        self.__n_dof_track = self.rail.ndof + self.__n_sleepers
 
     def calculate_length_track(self):
         self.__total_length = (self.__n_sleepers - 1) * self.sleeper.distance_between_sleepers
-
-
-
 
         # self.mass_matrix = None
         # self.damping_matrix = None
@@ -189,14 +286,13 @@ class UTrack:
         # self.radial_frequency_one = None
         # self.radial_frequency_two = None
 
-
     def calculate_damping_factors(self):
         """
         Calculate rayleigh damping coefficients
         :return:
         """
-        contant = 2*self.damping_ratio/(self.radial_frequency_one + self.radial_frequency_two)
-        damping_factors = self.radial_frequency_one*self.radial_frequency_two * contant, contant
+        contant = 2 * self.damping_ratio / (self.radial_frequency_one + self.radial_frequency_two)
+        damping_factors = self.radial_frequency_one * self.radial_frequency_two * contant, contant
         return damping_factors
 
     def calculate_damping_matrix(self, damping_factors):
@@ -208,22 +304,36 @@ class UTrack:
         self.damping_matrix = damping_factors[0].dot(self.mass_matrix) + \
                               damping_factors[1].dot(self.stiffness_matrix + self.support_stiffness_matrix)
 
+    def temp(self):
+        # import packages
+        import numpy as np
+        f1 = damp[0]
+        d1 = damp[1]
+        f2 = damp[2]
+        d2 = damp[3]
+        if f1 == f2:
+            raise SystemExit('Frequencies for the Rayleigh damping are the same.')
+        # damping matrix
+        damp_mat = 1 / 2 * np.array([[1 / (2 * np.pi * f1), 2 * np.pi * f1],
+                                     [1 / (2 * np.pi * f2), 2 * np.pi * f2]])
+        damp_qsi = np.array([d1, d2])
+        # solution
+        coefs = np.linalg.solve(damp_mat, damp_qsi)
+        self.C = self.M.tocsr().dot(coefs[0]) + self.K.tocsr().dot(coefs[1])
 
     # def calculate_damping_matrix(self):
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
 
     # do stuff
 
-
     sleeper = Sleeper()
     sleeper.ms = 0.1625
-    sleeper.d=0.6
+    sleeper.d = 0.6
     sleeper.damping_ratio = 0.04
-    sleeper.radial_frequency_one=2
-    sleeper.radial_frequency_two=500
-
-
+    sleeper.radial_frequency_one = 2
+    sleeper.radial_frequency_two = 500
 
     support = Support()
     support.linear_stiffness = 999
@@ -253,7 +363,3 @@ if __name__=="__main__":
     #     track.calculate_damping_factors()
     # elapsed1 = time.time() - t
     # print(elapsed1)
-
-
-
-
