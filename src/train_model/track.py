@@ -40,6 +40,8 @@ class Rail():
         self.aux_stiffness_matrix = None
         self.global_stiffness_matrix = None
 
+        self.aux_damping_matrix = None
+
         self.ndof_per_node = 3
 
     def set_top_level_to_zero(self):
@@ -157,6 +159,27 @@ class Rail():
 
             self.aux_stiffness_matrix = self.aux_stiffness_matrix.dot(constant)
 
+
+    def __calculate_rayleigh_damping_factors(self, damping_ratio, radial_frequency_one, radial_frequency_two):
+        """
+        Calculate rayleigh damping coefficients
+        :return:
+        """
+        contant = 2 * damping_ratio / (radial_frequency_one + radial_frequency_two)
+        a0 = radial_frequency_one * radial_frequency_two * contant
+        a1 = contant
+        return a0, a1
+
+    def calculate_rayleigh_damping_matrix(self, damping_ratio, radial_frequency_one, radial_frequency_two):
+        """
+        Damping matrix is calculated with the assumption of Rayleigh damping
+        :return:
+        """
+        a0, a1 = self.__calculate_rayleigh_damping_factors(damping_ratio, radial_frequency_one, radial_frequency_two)
+        self.aux_damping_matrix = a0*self.aux_mass_matrix + a1*self.aux_stiffness_matrix
+
+
+
 class Sleeper:
     def __init__(self):
         self.mass = None
@@ -183,6 +206,7 @@ class RailPad:
         self.damping = None
         self.aux_stiffness_matrix = None
         self.aux_mass_matrix = None
+        self.aux_damping_matrix = None
 
     def set_aux_stiffness_matrix(self):
         self.aux_stiffness_matrix = np.zeros((2, 2))
@@ -199,6 +223,13 @@ class RailPad:
         self.aux_mass_matrix[1, 1] = 2
 
         self.aux_mass_matrix = self.aux_mass_matrix.dot(self.mass / 6)
+
+    def set_aux_damping_matrix(self):
+        self.aux_damping_matrix = np.zeros((2, 2))
+        self.aux_damping_matrix[0, 0] = self.damping
+        self.aux_damping_matrix[1, 0] = -self.damping
+        self.aux_damping_matrix[0, 1] = -self.damping
+        self.aux_damping_matrix[1, 1] = self.damping
 
 
 class ContactRailWheel:
@@ -374,6 +405,9 @@ class UTrack:
         self.__add_rail_to_global_stiffness_matrix()
         self.__add_sleeper_to_global_mass_matrix()
         self.__add_rail_pad_to_global_mass_matrix()
+
+    def set_global_damping_matrix(self):
+        pass
 
     def calculate_n_dofs(self):
         self.rail.calculate_n_dof()
