@@ -19,8 +19,6 @@ class Section():
         self.area = None  # [m^2]
         self.sec_moment_of_inertia = None  # [m^4]
         self.shear_factor = 0  # shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
-        self.n_rail_per_sleeper = 1
-
 
 class Rail():
     def __init__(self, n_sleepers):
@@ -48,7 +46,7 @@ class Rail():
         self.level = self.level - np.max(self.level)
 
     def calculate_length_rail(self, distance_between_sleepers):
-        self.length_rail = distance_between_sleepers / self.section.n_rail_per_sleeper
+        self.length_rail = distance_between_sleepers
 
     def calculate_mass(self):
         self.mass = self.section.area * self.material.density
@@ -60,7 +58,7 @@ class Rail():
                     self.section.area * self.section.shear_factor)
 
     def calculate_n_dof(self):
-        self.n_nodes = self.section.n_rail_per_sleeper * (self.__n_sleepers - 1) + 1
+        self.n_nodes = self.__n_sleepers
         self.ndof = self.n_nodes * self.ndof_per_node
 
     # def calculate_mass_matrix(self):
@@ -313,7 +311,7 @@ class UTrack:
         Set rail pad stiffness to global stiffness matrix, dofs => perpendicular direction
         :return:
         """
-        n_dof_between_rail_pads = self.rail.ndof_per_node * self.rail.section.n_rail_per_sleeper
+        n_dof_between_rail_pads = self.rail.ndof_per_node
 
         for i in range(self.__n_sleepers):
             self.global_stiffness_matrix[i*n_dof_between_rail_pads + 1, i*n_dof_between_rail_pads + 1] \
@@ -337,7 +335,7 @@ class UTrack:
             = self.global_mass_matrix[0:self.rail.ndof, 0:self.rail.ndof] + mass_matrix
 
     def __add_sleeper_to_global_mass_matrix(self):
-        n_dof_between_sleepers = self.rail.ndof_per_node * self.rail.section.n_rail_per_sleeper
+        n_dof_between_sleepers = self.rail.ndof_per_node
 
         for i in range(self.__n_sleepers):
             self.global_mass_matrix[i * n_dof_between_sleepers + 1, i * n_dof_between_sleepers + 1] \
@@ -350,7 +348,7 @@ class UTrack:
                 = self.sleeper.aux_mass_matrix[1, 1]
 
     def __add_rail_pad_to_global_mass_matrix(self):
-        n_dof_between_rail_pads = self.rail.ndof_per_node * self.rail.section.n_rail_per_sleeper
+        n_dof_between_rail_pads = self.rail.ndof_per_node
 
         for i in range(self.__n_sleepers):
             self.global_mass_matrix[i * n_dof_between_rail_pads + 1, i * n_dof_between_rail_pads + 1] \
