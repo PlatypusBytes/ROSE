@@ -37,17 +37,6 @@ class TestNewmark(unittest.TestCase):
         self.number_eq = 2
         return
 
-    def test_const(self):
-        # check the constants
-        aux = solver.const(self.settings["beta"], self.settings["gamma"], self.t_step)
-        # assert if it is true
-        self.assertEqual(aux[0], 1 / (self.settings["beta"] * self.t_step ** 2))
-        self.assertEqual(aux[1], 1 / (self.settings["beta"] * self.t_step))
-        self.assertEqual(aux[2], (1 / (2 * self.settings["beta"]) - 1))
-        self.assertEqual(aux[3], self.settings["gamma"] / (self.settings["beta"] * self.t_step))
-        self.assertEqual(aux[4], (self.settings["gamma"] / self.settings["beta"]) - 1)
-        self.assertEqual(aux[5], self.t_step / 2 * (self.settings["gamma"] / self.settings["beta"] - 2))
-        return
 
     def test_a_init(self):
         force = self.F[:, 0]
@@ -105,7 +94,6 @@ class TestNewmark(unittest.TestCase):
         res.static(self.K, self.F, self.t_step, self.t_total)
         # check static solution
         np.testing.assert_array_almost_equal(np.round(res.u, 2), np.round(np.array([[0, 0],
-                                                                                    [1., 3.],
                                                                                     [1., 3.],
                                                                                     [1., 3.],
                                                                                     [1., 3.],
