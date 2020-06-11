@@ -101,6 +101,8 @@ class Rail():
 
             trans_aux_mass_matrix[[2, 4], [4, 2]] = (35 * phi ** 2 + 63 * phi + 26) * (l / 4)
 
+            trans_aux_mass_matrix[[4, 5], [5, 4]] = -(35 * phi ** 2 + 77 * phi + 44) * (l / 4)
+
             return trans_aux_mass_matrix.dot(constant)
         return None
 
@@ -125,7 +127,7 @@ class Rail():
             rot_aux_mass_matrix[[2, 5], [2, 5]] = (10 * phi**2 + 5*phi + 4) * l ** 2
             rot_aux_mass_matrix[[2, 5], [5, 2]] = (5 * phi**2 - 5*phi - 1) * l ** 2
 
-            rot_aux_mass_matrix[[2, 4], [4, 2]] = (15 * phi-3)*l
+            rot_aux_mass_matrix[[2, 4, 4, 5], [4, 2, 5, 4]] = (15 * phi - 3) * l
 
             return rot_aux_mass_matrix.dot(constant)
         return None
@@ -180,7 +182,7 @@ class Rail():
         :return:
         """
         a0, a1 = self.__calculate_rayleigh_damping_factors()
-        self.aux_damping_matrix = a0.dot(self.aux_mass_matrix) + a1.dot(self.aux_stiffness_matrix)
+        self.aux_damping_matrix =  self.aux_mass_matrix.dot(a0) + self.aux_stiffness_matrix.dot(a1)
 
 
 
@@ -307,9 +309,12 @@ class UTrack:
         self.global_stiffness_matrix = None
         self.global_damping_matrix = None
 
+        self.force = None
+        self.time = np.linspace(0, 10, 1000)
+
         self.__total_length = None
         self.__n_dof_rail = None
-        self.__n_dof_track = None
+        self.n_dof_track = None
 
     def set_global_stiffness_matrix(self):
         """
@@ -317,13 +322,16 @@ class UTrack:
 
         :return:
         """
-        self.global_stiffness_matrix = sparse.csr_matrix((self.__n_dof_track, self.__n_dof_track))
+        self.global_stiffness_matrix = sparse.csr_matrix((self.n_dof_track, self.n_dof_track))
 
         self.rail.set_aux_stiffness_matrix()
         self.__add_rail_to_global_stiffness_matrix()
 
         self.rail_pads.set_aux_stiffness_matrix()
         self.__add_rail_pads_to_global_stiffness_matrix()
+
+        self.soil.set_aux_stiffness_matrix()
+        self.__add_soil_to_global_stiffness_matrix()
 
     def __add_rail_to_global_stiffness_matrix(self):
         """
@@ -338,8 +346,7 @@ class UTrack:
             stiffness_matrix[i * ndof_node:i * ndof_node + ndof_node * 2, i * ndof_node:i * ndof_node + ndof_node * 2] \
                 += self.rail.aux_stiffness_matrix
 
-        self.global_stiffness_matrix[0:self.rail.ndof, 0:self.rail.ndof] \
-            = self.global_stiffness_matrix[0:self.rail.ndof, 0:self.rail.ndof] + stiffness_matrix
+        self.global_stiffness_matrix[0:self.rail.ndof, 0:self.rail.ndof] += stiffness_matrix
 
     def __add_rail_pads_to_global_stiffness_matrix(self):
         """
@@ -350,24 +357,24 @@ class UTrack:
 
         for i in range(self.__n_sleepers):
             self.global_stiffness_matrix[i*n_dof_between_rail_pads + 1, i*n_dof_between_rail_pads + 1] \
-                = self.rail_pads.aux_stiffness_matrix[0, 0]
+                += self.rail_pads.aux_stiffness_matrix[0, 0]
             self.global_stiffness_matrix[i + self.rail.ndof, i * n_dof_between_rail_pads + 1] \
-                = self.rail_pads.aux_stiffness_matrix[1, 0]
+                += self.rail_pads.aux_stiffness_matrix[1, 0]
             self.global_stiffness_matrix[i*n_dof_between_rail_pads + 1, i + self.rail.ndof] \
-                = self.rail_pads.aux_stiffness_matrix[0, 1]
+                += self.rail_pads.aux_stiffness_matrix[0, 1]
             self.global_stiffness_matrix[i + self.rail.ndof, i + self.rail.ndof] \
-                = self.rail_pads.aux_stiffness_matrix[1, 1]
+                += self.rail_pads.aux_stiffness_matrix[1, 1]
 
     def __add_soil_to_global_stiffness_matrix(self):
         for i in range(self.__n_sleepers):
             self.global_stiffness_matrix[i + self.rail.ndof, i + self.rail.ndof] \
-                = self.soil.aux_stiffness_matrix[0, 0]
+                += self.soil.aux_stiffness_matrix[0, 0]
             self.global_stiffness_matrix[i + self.rail.ndof + self.__n_sleepers, i + self.rail.ndof] \
-                = self.soil.aux_stiffness_matrix[1, 0]
+                += self.soil.aux_stiffness_matrix[1, 0]
             self.global_stiffness_matrix[i + self.rail.ndof, i + self.rail.ndof + self.__n_sleepers] \
-                = self.soil.aux_stiffness_matrix[0, 1]
+                += self.soil.aux_stiffness_matrix[0, 1]
             self.global_stiffness_matrix[i + self.rail.ndof + self.__n_sleepers, i + self.rail.ndof + self.__n_sleepers] \
-                = self.soil.aux_stiffness_matrix[1, 1]
+                += self.soil.aux_stiffness_matrix[1, 1]
 
     def __add_rail_to_global_mass_matrix(self):
         mass_matrix = sparse.csr_matrix((self.rail.ndof, self.rail.ndof))
@@ -378,21 +385,22 @@ class UTrack:
                 += self.rail.aux_mass_matrix
 
         self.global_mass_matrix[0:self.rail.ndof, 0:self.rail.ndof] \
-            = self.global_mass_matrix[0:self.rail.ndof, 0:self.rail.ndof] + mass_matrix
+            += mass_matrix
 
     def __add_sleeper_to_global_mass_matrix(self):
         for i in range(self.__n_sleepers):
-            self.global_mass_matrix[i + self.rail.ndof, i + self.rail.ndof] = self.sleeper.mass
+            self.global_mass_matrix[i + self.rail.ndof, i + self.rail.ndof] += self.sleeper.mass
 
     def set_global_mass_matrix(self):
         """
         Set global mass matrix
         :return:
         """
-        self.global_mass_matrix = sparse.csr_matrix((self.__n_dof_track, self.__n_dof_track))
+        self.global_mass_matrix = sparse.csr_matrix((self.n_dof_track, self.n_dof_track))
 
         self.rail.set_aux_mass_matrix()
-        self.__add_rail_to_global_stiffness_matrix()
+
+        self.__add_rail_to_global_mass_matrix()
         self.__add_sleeper_to_global_mass_matrix()
 
     def __add_rail_to_global_damping_matrix(self):
@@ -401,42 +409,102 @@ class UTrack:
         ndof_node = self.rail.ndof_per_node
         for i in range(self.rail.n_nodes - 1):
             damping_matrix[i * ndof_node:i * ndof_node + ndof_node * 2, i * ndof_node:i * ndof_node + ndof_node * 2] \
-                += self.rail.aux_mass_matrix
+                += self.rail.aux_damping_matrix
 
         self.global_damping_matrix[0:self.rail.ndof, 0:self.rail.ndof] \
-            = self.global_damping_matrix[0:self.rail.ndof, 0:self.rail.ndof] + damping_matrix
+            += damping_matrix
 
     def __add_rail_pad_to_global_damping_matrix(self):
         n_dof_between_rail_pads = self.rail.ndof_per_node
 
         for i in range(self.__n_sleepers):
             self.global_damping_matrix[i*n_dof_between_rail_pads + 1, i*n_dof_between_rail_pads + 1] \
-                = self.rail_pads.aux_damping_matrix[0, 0]
+                += self.rail_pads.aux_damping_matrix[0, 0]
             self.global_damping_matrix[i + self.rail.ndof, i * n_dof_between_rail_pads + 1] \
-                = self.rail_pads.aux_damping_matrix[1, 0]
+                += self.rail_pads.aux_damping_matrix[1, 0]
             self.global_damping_matrix[i*n_dof_between_rail_pads + 1, i + self.rail.ndof] \
-                = self.rail_pads.aux_damping_matrix[0, 1]
+                += self.rail_pads.aux_damping_matrix[0, 1]
             self.global_damping_matrix[i + self.rail.ndof, i + self.rail.ndof] \
-                = self.rail_pads.aux_damping_matrix[1, 1]
+                += self.rail_pads.aux_damping_matrix[1, 1]
 
     def __add_soil_to_global_damping_matrix(self):
         for i in range(self.__n_sleepers):
             self.global_damping_matrix[i + self.rail.ndof, i + self.rail.ndof] \
-                = self.soil.aux_damping_matrix[0, 0]
+                += self.soil.aux_damping_matrix[0, 0]
             self.global_damping_matrix[i + self.rail.ndof + self.__n_sleepers, i + self.rail.ndof] \
-                = self.soil.aux_damping_matrix[1, 0]
+                += self.soil.aux_damping_matrix[1, 0]
             self.global_damping_matrix[i + self.rail.ndof, i + self.rail.ndof + self.__n_sleepers] \
-                = self.soil.aux_damping_matrix[0, 1]
+                += self.soil.aux_damping_matrix[0, 1]
             self.global_damping_matrix[i + self.rail.ndof + self.__n_sleepers, i + self.rail.ndof + self.__n_sleepers] \
-                = self.soil.aux_damping_matrix[1, 1]
+                += self.soil.aux_damping_matrix[1, 1]
 
     def set_global_damping_matrix(self):
-        self.global_damping_matrix = sparse.csr_matrix((self.__n_dof_track, self.__n_dof_track))
+        self.global_damping_matrix = sparse.csr_matrix((self.n_dof_track, self.n_dof_track))
 
         self.rail.calculate_rayleigh_damping_matrix()
+        self.rail_pads.set_aux_damping_matrix()
+        self.soil.set_aux_damping_matrix()
+
         self.__add_rail_to_global_damping_matrix()
         self.__add_rail_pad_to_global_damping_matrix()
+        self.__add_soil_to_global_damping_matrix()
         pass
+
+    def set_force(self):
+        self.force = sparse.csr_matrix((self.n_dof_track, len(self.time)))
+        frequency=1
+        self.force[4,:] = np.sin(frequency * self.time) * 15000
+
+    def delete_from_csr(self, mat, row_indices=[], col_indices=[]):
+        """
+        Remove the rows (denoted by ``row_indices``) and columns (denoted by ``col_indices``) from the CSR sparse matrix ``mat``.
+        WARNING: Indices of altered axes are reset in the returned matrix
+        """
+        if not isinstance(mat, sparse.csr_matrix):
+            raise ValueError("works only for CSR format -- use .tocsr() first")
+
+        rows = []
+        cols = []
+        if row_indices:
+            rows = list(row_indices)
+        if col_indices:
+            cols = list(col_indices)
+
+        if len(rows) > 0 and len(cols) > 0:
+            row_mask = np.ones(mat.shape[0], dtype=bool)
+            row_mask[rows] = False
+            col_mask = np.ones(mat.shape[1], dtype=bool)
+            col_mask[cols] = False
+            return mat[row_mask][:, col_mask]
+        elif len(rows) > 0:
+            mask = np.ones(mat.shape[0], dtype=bool)
+            mask[rows] = False
+            return mat[mask]
+        elif len(cols) > 0:
+            mask = np.ones(mat.shape[1], dtype=bool)
+            mask[cols] = False
+            return mat[:, mask]
+        else:
+            return mat
+
+    def apply_boundary_condition(self):
+        bottom_node_idxs = np.arange(self.rail.ndof + self.__n_sleepers,self.rail.ndof + 2*self.__n_sleepers).tolist()
+
+
+        self.force = self.delete_from_csr(self.force, row_indices=bottom_node_idxs)
+        self.global_mass_matrix = self.delete_from_csr(self.global_mass_matrix, row_indices=bottom_node_idxs, col_indices=bottom_node_idxs)
+        self.global_stiffness_matrix = self.delete_from_csr(self.global_stiffness_matrix, row_indices=bottom_node_idxs, col_indices=bottom_node_idxs)
+        self.global_damping_matrix = self.delete_from_csr(self.global_damping_matrix, row_indices=bottom_node_idxs, col_indices=bottom_node_idxs)
+
+        # self.force = np.delete(self.force, idx, axis=0)
+        # self.global_mass_matrix = np.delete(np.delete(self.global_mass_matrix, idx, axis=0),
+        #                                          idx, axis=1)
+        # self.global_stiffness_matrix = np.delete(np.delete(self.global_stiffness_matrix, idx, axis=0),
+        #                                          idx, axis=1)
+        # self.global_damping_matrix = np.delete(np.delete(self.global_damping_matrix, idx, axis=0),
+        #                                          idx, axis=1)
+
+
 
     def calculate_n_dofs(self):
         """
@@ -448,14 +516,14 @@ class UTrack:
         ndof_rail_pads = self.__n_sleepers
         ndof_soil = self.__n_sleepers
 
-        self.__n_dof_track = self.rail.ndof + ndof_rail_pads + ndof_soil
+        self.n_dof_track = self.rail.ndof + ndof_rail_pads + ndof_soil
 
     def calculate_length_track(self):
         self.__total_length = (self.__n_sleepers - 1) * self.sleeper.distance_between_sleepers
 
 
 if __name__ == "__main__":
-
+    pass
     # # do stuff
     #
     # sleeper = Sleeper()
