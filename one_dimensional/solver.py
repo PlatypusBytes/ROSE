@@ -1,5 +1,6 @@
 import numpy as np
-from scipy.linalg import solve, inv
+from scipy.sparse.linalg import  spsolve, inv
+from scipy.sparse import csr_matrix
 import os
 import pickle
 from tqdm import tqdm
@@ -104,8 +105,8 @@ class Solver:
         gamma = settings["gamma"]
 
         # initial force conditions: for computation of initial acceleration
-        d_force = F[:, 0]
-
+        d_force = F[:, 0].toarray()
+        d_force = d_force[:,0]
         # initial conditions u, v, a
         u = du = self.u0
         v = self.v0
@@ -140,10 +141,10 @@ class Solver:
             d_force = F[:, t] - F[:, t - 1]
 
             # external force
-            force_ext = d_force + m_part + c_part
+            force_ext = d_force.toarray()[:,0] + m_part + c_part
 
             # solve
-            du = solve(K_till, force_ext)
+            du = spsolve(K_till, force_ext)
 
             # velocity calculated through Newmark relation
             dv = du.dot(gamma / (beta * t_step)) - v.dot(gamma / beta) + a.dot(t_step * (1 - gamma / (2 * beta)))
@@ -151,9 +152,9 @@ class Solver:
             da = du.dot(1 / (beta * t_step ** 2)) - v.dot(1 / (beta * t_step)) - a.dot(1 / (2 * beta))
 
             # update variables
-            u = np.array(u + du)
-            v = np.array(v + dv)
-            a = np.array(a + da)
+            u = u + du
+            v = v + dv
+            a = a + da
 
             # add to results
             self.u.append(u)
