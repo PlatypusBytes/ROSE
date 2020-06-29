@@ -1,6 +1,8 @@
 import pytest
 
-from src.train_model.track import *
+from src.track import *
+from src.soil import Soil
+from src.global_system import *
 import matplotlib.pyplot as plt
 from one_dimensional.solver import Solver
 
@@ -15,7 +17,35 @@ class TestTrainModel:
         utrack.rail_pads = set_up_rail_pad
         utrack.soil = set_up_soil
 
+        utrack.set_geometry()
         utrack.calculate_n_dofs()
+
+        utrack.set_global_stiffness_matrix()
+
+        plt.spy(utrack.global_stiffness_matrix)
+        plt.show()
+
+    def test_stiffness_matrix_global(self, set_up_rail, set_up_sleeper, set_up_rail_pad, set_up_soil):
+
+        n_sleepers = 3
+
+        global_system = GlobalSystem(n_sleepers)
+
+        utrack = UTrack(n_sleepers)
+        utrack.rail = set_up_rail
+        utrack.sleeper = set_up_sleeper
+        utrack.rail_pads = set_up_rail_pad
+
+        global_system.track = utrack
+        global_system.soil = set_up_soil
+
+        global_system.set_geometry()
+
+        global_system.set_global_stiffness_matrix()
+
+        utrack.set_geometry()
+        utrack.calculate_n_dofs()
+
         utrack.set_global_stiffness_matrix()
 
         plt.spy(utrack.global_stiffness_matrix)
@@ -30,6 +60,7 @@ class TestTrainModel:
         utrack.rail_pads = set_up_rail_pad
         utrack.soil = set_up_soil
 
+        utrack.set_geometry()
         utrack.calculate_n_dofs()
         utrack.set_global_mass_matrix()
 
@@ -44,6 +75,7 @@ class TestTrainModel:
         utrack.rail_pads = set_up_rail_pad
         utrack.soil = set_up_soil
 
+        utrack.set_geometry()
         utrack.calculate_n_dofs()
 
         utrack.set_global_stiffness_matrix()
@@ -61,11 +93,13 @@ class TestTrainModel:
         utrack.rail_pads = set_up_rail_pad
         utrack.soil = set_up_soil
 
+
+        utrack.set_geometry()
         utrack.calculate_n_dofs()
 
         utrack.set_force()
 
-        utrack.apply_boundary_condition()
+        utrack.apply_no_disp_boundary_condition()
 
         plt.spy(utrack.force)
         plt.show()
@@ -86,7 +120,7 @@ class TestTrainModel:
 
         utrack.set_force()
 
-        utrack.apply_boundary_condition()
+        utrack.apply_no_disp_boundary_condition()
         solver = Solver(utrack.n_dof_track-3)
 
         settings_newmark = {"gamma": 0.5,
