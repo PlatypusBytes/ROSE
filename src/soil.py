@@ -4,17 +4,23 @@ from src.geometry import Node, Element
 from src import utils
 import copy
 from scipy import sparse
+from src.model_part import ModelPart
 
-class Soil:
+class Soil(ModelPart):
     def __init__(self):
+        super(Soil, self).__init__()
+
         self.stiffness = None
         self.damping = None
 
         self.aux_stiffness_matrix = None
         self.aux_mass_matrix = None
 
-        self.nodes = np.array([])
-        self.elements = np.array([])
+        self.rotation_dof = False
+        self.x_disp_dof = False
+        self.y_disp_dof = True
+        # self.nodes = np.array([])
+        # self.elements = np.array([])
 
         self.nodal_ndof = 1
 
@@ -49,13 +55,29 @@ class Soil:
 
 
     def set_global_stiffness_matrix(self):
-        self.global_stiffness_matrix = sparse.csr_matrix((self.n_dof_track, self.n_dof_track))
+        self.global_stiffness_matrix = sparse.csr_matrix((self.n_dofs, self.n_dofs))
 
         self.set_aux_stiffness_matrix()
 
-        soil_elements =  self.elements
+        soil_elements = self.elements
         self.global_stiffness_matrix = utils.add_aux_matrix_to_global(
             self.global_stiffness_matrix, self.aux_stiffness_matrix, soil_elements)
+
+    def calculate_n_dofs(self):
+        """
+        :return:
+        """
+        ndof = 0
+        index_dof = 0
+        for node in self.nodes:
+            node.index_dof[0] = index_dof
+            index_dof += 1
+            node.index_dof[1] = index_dof
+            index_dof += 1
+            node.index_dof[2] = index_dof
+            index_dof += 1
+
+        self.n_dofs = len(self.nodes) * 3
 
 
 
