@@ -5,8 +5,8 @@ import numpy as np
 
 class GlobalSystem:
     def __init__(self, n_sleepers):
-        self.track = track.UTrack(n_sleepers)
-        self.soil = soil.Soil()
+        # self.track = track.UTrack(n_sleepers)
+        # self.soil = soil.Soil()
 
         self.nodes = np.array([])
         self.elements = np.array([])
@@ -17,6 +17,8 @@ class GlobalSystem:
 
         self.force = None
         self.time = None
+
+        self.model_parts=[]
 
         self.total_n_dof = None
 
@@ -35,6 +37,14 @@ class GlobalSystem:
         self.nodes = np.append(self.nodes, soil_nodes)
         self.elements = np.append(self.elements, soil_elements)
 
+    def _add_model_part_to_geometry(self, model_part):
+        model_part_nodes = model_part.mesh.nodes
+        model_part_elements = model_part.mesh.elements
+
+        self.nodes = np.append(self.nodes, model_part_nodes)
+        self.elements = np.append(self.elements, model_part_elements)
+
+
     def __get_unique_items(self, L):
         seen = set()
         seen2 = set()
@@ -52,23 +62,32 @@ class GlobalSystem:
         self.elements = self.__get_unique_items(self.elements)
 
     def set_geometry(self):
-        self.track.set_geometry()
 
-        track_nodes, _ = self.__add_track_to_geometry()
-        self.__add_soil_to_geometry()
+
+        for model_part in self.model_parts:
+            model_part.set_geometry()
+            self._add_model_part_to_geometry(model_part)
+
+        # self.track.set_geometry()
+
+        # track_nodes, _ = self.__add_track_to_geometry()
+        # self.__add_soil_to_geometry()
+
         self.__merge_geometry()
 
 
-    def __add_soil_to_global_stiffness_matrix(self):
-        for i in range(self.__n_sleepers):
-            self.global_stiffness_matrix[i + self.rail.ndof, i + self.rail.ndof] \
-                += self.soil.aux_stiffness_matrix[0, 0]
-            self.global_stiffness_matrix[i + self.rail.ndof + self.__n_sleepers, i + self.rail.ndof] \
-                += self.soil.aux_stiffness_matrix[1, 0]
-            self.global_stiffness_matrix[i + self.rail.ndof, i + self.rail.ndof + self.__n_sleepers] \
-                += self.soil.aux_stiffness_matrix[0, 1]
-            self.global_stiffness_matrix[i + self.rail.ndof + self.__n_sleepers, i + self.rail.ndof + self.__n_sleepers] \
-                += self.soil.aux_stiffness_matrix[1, 1]
+
+
+    # def __add_soil_to_global_stiffness_matrix(self):
+    #     for i in range(self.__n_sleepers):
+    #         self.global_stiffness_matrix[i + self.rail.ndof, i + self.rail.ndof] \
+    #             += self.soil.aux_stiffness_matrix[0, 0]
+    #         self.global_stiffness_matrix[i + self.rail.ndof + self.__n_sleepers, i + self.rail.ndof] \
+    #             += self.soil.aux_stiffness_matrix[1, 0]
+    #         self.global_stiffness_matrix[i + self.rail.ndof, i + self.rail.ndof + self.__n_sleepers] \
+    #             += self.soil.aux_stiffness_matrix[0, 1]
+    #         self.global_stiffness_matrix[i + self.rail.ndof + self.__n_sleepers, i + self.rail.ndof + self.__n_sleepers] \
+    #             += self.soil.aux_stiffness_matrix[1, 1]
 
     def set_global_stiffness_matrix(self):
         """
@@ -77,27 +96,33 @@ class GlobalSystem:
         """
         self.global_stiffness_matrix = sparse.csr_matrix((self.total_n_dof, self.total_n_dof))
 
+
+
         self.track.set_global_stiffness_matrix()
         self.soil.set_global_stiffness_matrix()
 
 
+    def calculte_ndof(self):
+        for node in self.nodes:
+            self.total_n_dof = self.total_n_dof + node.ndof
 
 
-        self.soil.set_aux_stiffness_matrix()
-        self.__add_soil_to_global_stiffness_matrix()
+
+        # self.soil.set_aux_stiffness_matrix()
+        # self.__add_soil_to_global_stiffness_matrix()
 
 
-    def apply_no_disp_boundary_condition(self):
-        bottom_node_idxs = np.arange(self.rail.ndof + self.__n_sleepers,
-                                     self.rail.ndof + 2 * self.__n_sleepers).tolist()
-
-        self.force = utils.delete_from_csr(self.force, row_indices=bottom_node_idxs)
-        self.global_mass_matrix = utils.delete_from_csr(self.global_mass_matrix, row_indices=bottom_node_idxs,
-                                                        col_indices=bottom_node_idxs)
-        self.global_stiffness_matrix = utils.delete_from_csr(self.global_stiffness_matrix, row_indices=bottom_node_idxs,
-                                                             col_indices=bottom_node_idxs)
-        self.global_damping_matrix = utils.delete_from_csr(self.global_damping_matrix, row_indices=bottom_node_idxs,
-                                                           col_indices=bottom_node_idxs)
+    # def apply_no_disp_boundary_condition(self):
+    #     bottom_node_idxs = np.arange(self.rail.ndof + self.__n_sleepers,
+    #                                  self.rail.ndof + 2 * self.__n_sleepers).tolist()
+    #
+    #     self.force = utils.delete_from_csr(self.force, row_indices=bottom_node_idxs)
+    #     self.global_mass_matrix = utils.delete_from_csr(self.global_mass_matrix, row_indices=bottom_node_idxs,
+    #                                                     col_indices=bottom_node_idxs)
+    #     self.global_stiffness_matrix = utils.delete_from_csr(self.global_stiffness_matrix, row_indices=bottom_node_idxs,
+    #                                                          col_indices=bottom_node_idxs)
+    #     self.global_damping_matrix = utils.delete_from_csr(self.global_damping_matrix, row_indices=bottom_node_idxs,
+    #                                                        col_indices=bottom_node_idxs)
 
     def initialise_track(self, rail, sleeper, rail_pads):
         self.track.rail = rail

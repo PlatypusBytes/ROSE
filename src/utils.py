@@ -51,11 +51,9 @@ def delete_from_csr(mat, row_indices=[], col_indices=[]):
         return mat[:, mask]
     else:
         return mat
-#
-# def place_aux_value_global_matrix():
-#
 
-def add_aux_matrix_to_global(global_matrix, aux_matrix, elements):
+
+def add_aux_matrix_to_global(global_matrix, aux_matrix, elements, nodes=None):
     """
 
     :param global_matrix:
@@ -63,27 +61,40 @@ def add_aux_matrix_to_global(global_matrix, aux_matrix, elements):
     :param elements:
     :return:
     """
-    for element in elements:
-        for node_nr in range(len(element.nodes) - 1):
-            for j, id_1 in enumerate(element.nodes[node_nr].index_dof):
-                for k, id_2 in enumerate(element.nodes[node_nr].index_dof):
-                    global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[node_nr].index_dof) * node_nr + j,
-                                                            len(element.nodes[node_nr].index_dof) * node_nr + k]
-
-            for node_nr_2 in range(node_nr+1, len(element.nodes)):
+    if nodes is None:
+        nodes = []
+    if elements:
+        for element in elements:
+            for node_nr in range(len(element.nodes) - 1):
                 for j, id_1 in enumerate(element.nodes[node_nr].index_dof):
-                    for k, id_2 in enumerate(element.nodes[node_nr_2].index_dof):
-                        global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[node_nr].index_dof) * node_nr + j,
-                                                                len(element.nodes[node_nr].index_dof) * (node_nr + node_nr_2) + k]
-                for j, id_1 in enumerate(element.nodes[node_nr_2].index_dof):
                     for k, id_2 in enumerate(element.nodes[node_nr].index_dof):
-                        global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[node_nr].index_dof) * (node_nr + node_nr_2) + j,
+                        global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[node_nr].index_dof) * node_nr + j,
                                                                 len(element.nodes[node_nr].index_dof) * node_nr + k]
 
-        for j, id_1 in enumerate(element.nodes[-1].index_dof):
-            for k, id_2 in enumerate(element.nodes[-1].index_dof):
-                global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[-1].index_dof) * (len(element.nodes)-1) + j,
-                                                        len(element.nodes[-1].index_dof) * (len(element.nodes)-1) + k]
+                for node_nr_2 in range(node_nr+1, len(element.nodes)):
+                    for j, id_1 in enumerate(element.nodes[node_nr].index_dof):
+                        for k, id_2 in enumerate(element.nodes[node_nr_2].index_dof):
+                            global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[node_nr].index_dof) * node_nr + j,
+                                                                    len(element.nodes[node_nr].index_dof) * (node_nr + node_nr_2) + k]
+                    for j, id_1 in enumerate(element.nodes[node_nr_2].index_dof):
+                        for k, id_2 in enumerate(element.nodes[node_nr].index_dof):
+                            global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[node_nr].index_dof) * (node_nr + node_nr_2) + j,
+                                                                    len(element.nodes[node_nr].index_dof) * node_nr + k]
+
+            for j, id_1 in enumerate(element.nodes[-1].index_dof):
+                for k, id_2 in enumerate(element.nodes[-1].index_dof):
+                    global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[-1].index_dof) * (len(element.nodes)-1) + j,
+                                                            len(element.nodes[-1].index_dof) * (len(element.nodes)-1) + k]
+        return global_matrix
+
+    elif nodes is not None:
+        for node in nodes:
+            for j, id_1 in enumerate(node.index_dof):
+                for k, id_2 in enumerate(node.index_dof):
+                    global_matrix[id_1, id_2] += aux_matrix[j, k]
+
+        return global_matrix
 
 
-    return global_matrix
+def assign_model_part_to_geometry(elements, model_part):
+    pass

@@ -2,7 +2,7 @@ import numpy as np
 from scipy import sparse
 from src import utils, geometry
 import time
-
+from src.model_part import ModelPart
 
 class Material():
     def __init__(self):
@@ -21,8 +21,10 @@ class Section():
         self.sec_moment_of_inertia = None  # [m^4]
         self.shear_factor = 0  # shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
 
-class Rail():
+class Rail(ModelPart):
     def __init__(self, n_sleepers):
+        super(Rail, self).__init__()
+
         self.material = Material()
         self.section = Section()
         self.__n_sleepers = n_sleepers
@@ -49,6 +51,10 @@ class Rail():
         self.aux_damping_matrix = None
 
         self.nodal_ndof = 3
+
+        self.rotation_dof = True
+        self.x_disp_dof = True
+        self.y_disp_dof = True
 
     def set_top_level_to_zero(self):
         self.level = self.level - np.max(self.level)
@@ -196,18 +202,34 @@ class Rail():
 
 
 
-class Sleeper:
+class Sleeper(ModelPart):
     def __init__(self):
+        super(Sleeper, self).__init__()
         self.mass = None
         self.distance_between_sleepers = None
         self.height_sleeper = 0.1
 
-class RailPad:
+        self.y_disp_dof = True
+
+    def set_aux_stiffness_matrix(self):
+        self.aux_stiffness_matrix = np.zeros((1, 1))
+
+    def set_aux_damping_matrix(self):
+        self.aux_damping_matrix = np.zeros((1, 1))
+
+    def set_aux_mass_matrix(self):
+        self.aux_damping_matrix = np.ones((1, 1)) * self.mass
+
+
+class RailPad(ModelPart):
     def __init__(self):
+        super(RailPad, self).__init__()
         self.stiffness = None
         self.damping = None
         self.aux_stiffness_matrix = None
         self.aux_damping_matrix = None
+
+        self.y_disp_dof = True
 
     def set_aux_stiffness_matrix(self):
         self.aux_stiffness_matrix = np.zeros((2, 2))
@@ -286,8 +308,10 @@ class Ballast:
 
 
 
-class UTrack:
+class UTrack(ModelPart):
     def __init__(self, n_sleepers):
+        super(UTrack, self).__init__()
+
         self.__n_sleepers = n_sleepers
 
         self.rail = Rail(n_sleepers)
@@ -309,8 +333,8 @@ class UTrack:
         self.__n_dof_rail = None
         self.n_dof_track = None
 
-        self.nodes = np.array([])
-        self.elements = np.array([])
+        # self.nodes = np.array([])
+        # self.elements = np.array([])
 
 
     def __add_rail_to_geometry(self):
@@ -366,9 +390,28 @@ class UTrack:
 
 
     def set_geometry(self):
+        super(UTrack, self).set_geometry()
         self.rail.calculate_coordinates()
         rail_nodes, _ = self.__add_rail_to_geometry()
         self.__add_rail_pads_to_geometry(rail_nodes)
+
+    def set_aux_stiffness_matrix(self):
+        super(UTrack, self).set_aux_stiffness_matrix()
+
+        self.rail.set_aux_stiffness_matrix()
+        self.rail_pads.set_aux_stiffness_matrix()
+
+    def set_aux_damping_matrix(self):
+        super(UTrack, self).set_aux_damping_matrix()
+        # self.rail.set_aux_damping_matrix()
+        self.rail_pads.set_aux_damping_matrix()
+
+    def set_aux_mass_matrix(self):
+        super(UTrack, self).set_aux_mass_matrix()
+        self.rail.set_aux_mass_matrix()
+
+        self.aux_mass_matrix = self.rail.aux_mass_matrix
+
 
 
 
@@ -380,8 +423,8 @@ class UTrack:
         """
         self.global_stiffness_matrix = sparse.csr_matrix((self.n_dof_track, self.n_dof_track))
 
-        self.rail.set_aux_stiffness_matrix()
-        self.rail_pads.set_aux_stiffness_matrix()
+        # self.rail.set_aux_stiffness_matrix()
+        # self.rail_pads.set_aux_stiffness_matrix()
 
         rail_elements = [element for element in self.elements if "RAIL" in element.model_parts]
         self.global_stiffness_matrix = utils.add_aux_matrix_to_global(
