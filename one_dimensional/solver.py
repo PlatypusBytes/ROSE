@@ -6,6 +6,10 @@ from tqdm import tqdm
 from enum import Enum
 
 
+
+class TimeException(Exception):
+    pass
+
 def init(m_global, c_global, k_global, force_ini, u, v):
     r"""
     Calculation of the initial conditions - acceleration for the first time-step.
@@ -46,6 +50,9 @@ class Solver:
         self.u0 = np.zeros(number_equations)
         self.v0 = np.zeros(number_equations)
 
+    def validate_input(self, F):
+        if len(self.time) != np.shape(F)[1]:
+            raise TimeException("Solver time is not equal to force vector time")
 
 class NewmarkSolver(Solver):
     def __init__(self):
@@ -88,6 +95,8 @@ class NewmarkSolver(Solver):
 
         # time
         self.time = np.linspace(t_start, t_end, int(np.ceil((t_end - t_start) / t_step)))
+
+        self.validate_input(F)
 
         # combined stiffness matrix
         K_till = K + C.dot(gamma / (beta * t_step)) + M.dot(1 / (beta * t_step ** 2))
@@ -168,6 +177,9 @@ class StaticSolver(Solver):
 
         # time
         self.time = np.linspace(t_start, t_end, int(np.ceil((t_end - t_start) / t_step)))
+
+        # validate input
+        self.validate_input(F)
 
         # define progress bar
         pbar = tqdm(total=len(self.time), unit_scale=True, unit_divisor=1000, unit="steps")
