@@ -1,16 +1,17 @@
 import numpy as np
-from scipy.sparse.linalg import  spsolve, inv
+from scipy.sparse.linalg import spsolve, inv
 from scipy.sparse import csr_matrix
 import os
 import pickle
 from tqdm import tqdm
+from enum import Enum
 
 
 class Solver:
-    def __init__(self, number_equations):
+    def __init__(self):
         # define initial conditions
-        self.u0 = np.zeros(number_equations)
-        self.v0 = np.zeros(number_equations)
+        self.u0 = []
+        self.v0 = []
 
         # define variables
         self.u = []
@@ -20,7 +21,53 @@ class Solver:
 
         return
 
-    def newmark(self, settings, M, C, K, F, t_step, t_end, t_start=0):
+    def initialise(self, number_equations, time):
+        self.u0 = np.zeros(number_equations)
+        self.v0 = np.zeros(number_equations)
+
+        self.time = time
+
+
+    def init(self, m_global, c_global, k_global, force_ini, u, v):
+        r"""
+        Calculation of the initial conditions - acceleration for the first time-step.
+
+        :param m_global: Global mass matrix.
+        :type m_global: np.ndarray
+        :param c_global: Global damping matrix.
+        :type c_global: np.ndarray
+        :param k_global: Global stiffness matrix beam.
+        :type k_global: np.ndarray
+        :param force_ini: Initial force.
+        :type force_ini: np.ndarray
+        :param u: Initial conditions - displacement.
+        :type u: np.ndarray
+        :param v: Initial conditions - velocity.
+        :type v: np.ndarray
+
+        :return a: Initial acceleration.
+
+        :raises ValueError:
+        :raises TypeError:
+        """
+
+        k_part = k_global.dot(u)
+        c_part = c_global.dot(v)
+
+        if m_global.size == 1:
+            a = (force_ini - c_part - k_part) / m_global
+        else:
+            a = inv(m_global).dot(force_ini - c_part - k_part)
+        return a
+
+
+class NewmarkSolver(Solver):
+    def __init__(self):
+        super(NewmarkSolver, self).__init__()
+        self.beta = 0.25
+        self.gamma = 0.5
+
+    def calculate(self, M, C, K, F, t_step, t_end, t_start=0):
         """
         Newmark integration scheme.
         Incremental formulation.
@@ -37,8 +84,8 @@ class Solver:
         """
 
         # constants for the Newmark integration
-        beta = settings["beta"]
-        gamma = settings["gamma"]
+        beta = self.beta
+        gamma = self.gamma
 
         # initial force conditions: for computation of initial acceleration
         d_force = F[:, 0].toarray()
@@ -46,7 +93,7 @@ class Solver:
         # initial conditions u, v, a
         u = du = self.u0
         v = self.v0
-        a = init(M, C, K, d_force, u, v)
+        a = self.init(M, C, K, d_force, u, v)
         # add to results initial conditions
         self.u.append(u)
         self.v.append(v)
@@ -106,7 +153,12 @@ class Solver:
         pbar.close()
         return
 
-    def static(self, K, F, t_step, t_end, t_start=0):
+class StaticSolver(Solver):
+
+    def __init__(self, number_equations):
+        super(StaticSolver, self).__init__(number_equations)
+
+    def calculate(self, K, F, t_step, t_end, t_start=0):
         """
         Static integration scheme.
         Incremental formulation.
