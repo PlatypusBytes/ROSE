@@ -4,9 +4,9 @@ from src.geometry import Node, Element
 from src import utils
 import copy
 from scipy import sparse
-from src.model_part import ModelPart
+from src.model_part import ElementModelPart
 
-class Soil(ModelPart):
+class Soil(ElementModelPart):
     def __init__(self):
         super(Soil, self).__init__()
 
@@ -14,6 +14,7 @@ class Soil(ModelPart):
         self.damping = None
 
         self.aux_stiffness_matrix = None
+        self.aux_damping_matrix = None
         self.aux_mass_matrix = None
 
         self.rotation_dof = False

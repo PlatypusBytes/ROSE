@@ -2,7 +2,7 @@ import numpy as np
 from scipy import sparse
 from src import utils, geometry
 import time
-from src.model_part import ModelPart
+from src.model_part import ElementModelPart
 
 class Material():
     def __init__(self):
@@ -21,7 +21,7 @@ class Section():
         self.sec_moment_of_inertia = None  # [m^4]
         self.shear_factor = 0  # shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
 
-class Rail(ModelPart):
+class Rail(ElementModelPart):
     def __init__(self, n_sleepers):
         super(Rail, self).__init__()
 
@@ -47,7 +47,6 @@ class Rail(ModelPart):
 
         self.aux_stiffness_matrix = None
         self.global_stiffness_matrix = None
-
         self.aux_damping_matrix = None
 
         self.nodal_ndof = 3
@@ -178,7 +177,6 @@ class Rail(ModelPart):
             self.aux_stiffness_matrix[[2, 5], [5, 2]] = (2 - self.timoshenko_factor) * self.length_rail ** 2
 
             self.aux_stiffness_matrix = self.aux_stiffness_matrix.dot(constant)
-
             self.aux_stiffness_matrix = utils.reshape_aux_matrix(2, [True, True, True], self.aux_stiffness_matrix)
 
 
@@ -192,7 +190,7 @@ class Rail(ModelPart):
         a1 = constant
         return a0, a1
 
-    def calculate_rayleigh_damping_matrix(self):
+    def set_aux_damping_matrix(self):
         """
         Damping matrix is calculated with the assumption of Rayleigh damping
         :return:
@@ -202,7 +200,7 @@ class Rail(ModelPart):
 
 
 
-class Sleeper(ModelPart):
+class Sleeper(ElementModelPart):
     def __init__(self):
         super(Sleeper, self).__init__()
         self.mass = None
@@ -218,10 +216,10 @@ class Sleeper(ModelPart):
         self.aux_damping_matrix = np.zeros((1, 1))
 
     def set_aux_mass_matrix(self):
-        self.aux_damping_matrix = np.ones((1, 1)) * self.mass
+        self.aux_mass_matrix = np.ones((1, 1)) * self.mass
 
 
-class RailPad(ModelPart):
+class RailPad(ElementModelPart):
     def __init__(self):
         super(RailPad, self).__init__()
         self.stiffness = None
@@ -238,8 +236,6 @@ class RailPad(ModelPart):
         self.aux_stiffness_matrix[0, 1] = -self.stiffness
         self.aux_stiffness_matrix[1, 1] = self.stiffness
 
-        self.aux_stiffness_matrix = utils.reshape_aux_matrix(2, [False, True, False], self.aux_stiffness_matrix)
-
 
     def set_aux_damping_matrix(self):
         self.aux_damping_matrix = np.zeros((2, 2))
@@ -247,8 +243,6 @@ class RailPad(ModelPart):
         self.aux_damping_matrix[1, 0] = -self.damping
         self.aux_damping_matrix[0, 1] = -self.damping
         self.aux_damping_matrix[1, 1] = self.damping
-
-        self.aux_damping_matrix = utils.reshape_aux_matrix(2, [False, True, False], self.aux_damping_matrix)
 
 
 class ContactRailWheel:
@@ -308,7 +302,7 @@ class Ballast:
 
 
 
-class UTrack(ModelPart):
+class UTrack(ElementModelPart):
     def __init__(self, n_sleepers):
         super(UTrack, self).__init__()
 
@@ -332,9 +326,6 @@ class UTrack(ModelPart):
         self.__total_length = None
         self.__n_dof_rail = None
         self.n_dof_track = None
-
-        # self.nodes = np.array([])
-        # self.elements = np.array([])
 
 
     def __add_rail_to_geometry(self):

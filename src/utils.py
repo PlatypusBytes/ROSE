@@ -96,5 +96,17 @@ def add_aux_matrix_to_global(global_matrix, aux_matrix, elements, nodes=None):
         return global_matrix
 
 
+def add_condition_to_global(global_b_matrix, condition):
+
+    for i, node in enumerate(condition.nodes):
+        if condition.rotation_dof:
+            global_b_matrix[node.index_dof[0], :] += condition.moment[i, :]
+        if condition.y_disp_dof:
+            global_b_matrix[node.index_dof[1], :] += condition.y_force[i, :]
+        if condition.x_disp_dof:
+            global_b_matrix[node.index_dof[2], :] += condition.x_force[i, :]
+
+    return global_b_matrix
+
 def assign_model_part_to_geometry(elements, model_part):
     pass
