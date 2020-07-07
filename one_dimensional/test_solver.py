@@ -118,6 +118,17 @@ class TestNewmark(unittest.TestCase):
                                                                                     ]), 2))
         return
 
+    def test_time_input_exception(self):
+        res = solver.StaticSolver()
+        res.initialise(self.number_eq)
+
+        with self.assertRaises(solver.TimeException) as exception:
+            res.calculate(self.K, self.F, 100, self.t_total)()
+
+        self.assertTrue("Solver time is not equal to force vector time" in exception.exception.args)
+
+
+
     def tearDown(self):
         pass
 
