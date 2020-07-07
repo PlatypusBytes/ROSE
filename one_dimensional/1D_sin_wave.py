@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pylab as plt
+from scipy import sparse
 import solver
 import json
 import os
@@ -14,7 +15,8 @@ def mass_matrix(H_discretisation, rho):
     aux[1, 0] = 1
     aux[0, 1] = 1
     aux[1, 1] = 2
-    mass = np.zeros((H_discretisation.shape[0], H_discretisation.shape[0]))
+    # mass = np.zeros((H_discretisation.shape[0], H_discretisation.shape[0]))
+    mass = sparse.lil_matrix((H_discretisation.shape[0], H_discretisation.shape[0]))
     for i in range(mass.shape[0] - 1):
         mass_aux = aux * rho * discretisation[i] / 6
         mass[i:i + 2, i:i + 2] += mass_aux
@@ -31,7 +33,8 @@ def stiff_matrix(H_discretisation, kappa):
     aux[1, 0] = -1
     aux[0, 1] = -1
     aux[1, 1] = 1
-    stiff = np.zeros((H_discretisation.shape[0], H_discretisation.shape[0]))
+    # stiff = np.zeros((H_discretisation.shape[0], H_discretisation.shape[0]))
+    stiff = sparse.lil_matrix((H_discretisation.shape[0], H_discretisation.shape[0]))
     for i in range(stiff.shape[0] - 1):
         stiff_aux = aux * kappa / discretisation[i]
         stiff[i:i + 2, i:i + 2] += stiff_aux
@@ -39,12 +42,20 @@ def stiff_matrix(H_discretisation, kappa):
     return stiff
 
 
-def apply_BC(M, C, K, F, idx):
+def apply_BC(M, C, K, F, H_discre, idx):
 
-    M = np.delete(np.delete(M, idx, axis=0), idx, axis=1)
-    C = np.delete(np.delete(C, idx, axis=0), idx, axis=1)
-    K = np.delete(np.delete(K, idx, axis=0), idx, axis=1)
-    F = np.delete(F, idx, axis=0)
+    # list of indexes
+    indexes = list(range(len(H_discre)))
+
+    # delete indexes that are BC
+    del indexes[idx]
+
+    # delete BC from global matrix
+    M = M[indexes][:, indexes]
+    C = C[indexes][:, indexes]
+    K = K[indexes][:, indexes]
+    F = F[indexes]
+
     return M, C, K, F
 
 
@@ -74,12 +85,12 @@ def main(omega=range(50, 100, 10), out_fold="./"):
     # create matrices
     M = mass_matrix(H_discre, rho)
     K = stiff_matrix(H_discre, kappa)
-    C = np.zeros(K.shape)
+    C = sparse.lil_matrix(K.shape)
     # Force vector
-    F = np.zeros((len(H_discre), len(time)))
+    F = sparse.lil_matrix((len(H_discre), len(time)))
 
     # apply boundary conditions
-    M, C, K, F = apply_BC(M, C, K, F, -1)
+    M, C, K, F = apply_BC(M, C, K, F, H_discre, -1)
 
     # maximum displacement list
     max_disp = []
@@ -90,7 +101,7 @@ def main(omega=range(50, 100, 10), out_fold="./"):
         F[0, :] = np.sin(w * time)
         # newmark solver
         res = solver.Solver(K.shape[0])
-        res.newmark(settings_newmark, M, C, K, F, time[1] - time[0], time[-1])
+        res.newmark(settings_newmark, M.tocsc(), C.tocsc(), K.tocsc(), F.tocsc(), time[1] - time[0], time[-1])
         # add the maximum displacement
         max_disp.append(np.max(res.u))
 

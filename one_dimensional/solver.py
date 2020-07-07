@@ -1,10 +1,31 @@
 import numpy as np
 from scipy.sparse.linalg import spsolve, inv
-from scipy.sparse import csr_matrix
 import os
 import pickle
 from tqdm import tqdm
 from enum import Enum
+
+
+def init(m_global, c_global, k_global, force_ini, u, v):
+    r"""
+    Calculation of the initial conditions - acceleration for the first time-step.
+
+    :param m_global: Global mass matrix
+    :param c_global: Global damping matrix
+    :param k_global: Global stiffness matrix
+    :param force_ini: Initial force
+    :param u: Initial conditions - displacement
+    :param v: Initial conditions - velocity
+
+    :return a: Initial acceleration
+    """
+
+    k_part = k_global.dot(u)
+    c_part = c_global.dot(v)
+
+    # initial acceleration
+    a = inv(m_global).dot(force_ini - c_part - k_part)
+    return a
 
 
 class Solver:
@@ -89,9 +110,10 @@ class NewmarkSolver(Solver):
 
         # initial force conditions: for computation of initial acceleration
         d_force = F[:, 0].toarray()
-        d_force = d_force[:,0]
+        d_force = d_force[:, 0]
+
         # initial conditions u, v, a
-        u = du = self.u0
+        u = self.u0
         v = self.v0
         a = self.init(M, C, K, d_force, u, v)
         # add to results initial conditions
@@ -124,7 +146,7 @@ class NewmarkSolver(Solver):
             d_force = F[:, t] - F[:, t - 1]
 
             # external force
-            force_ext = d_force.toarray()[:,0] + m_part + c_part
+            force_ext = d_force.toarray()[:, 0] + m_part + c_part
 
             # solve
             du = spsolve(K_till, force_ext)
@@ -189,7 +211,7 @@ class StaticSolver(Solver):
             pbar.update(1)
 
             # solve
-            uu = solve(K, d_force)
+            uu = spsolve(K, d_force)
 
             # update displacement
             u = np.array(u + uu)
