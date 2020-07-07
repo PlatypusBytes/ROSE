@@ -45,8 +45,14 @@ class TestNewmark(unittest.TestCase):
         return
 
     def test_solver_newmark(self):
-        res = solver.Solver(self.number_eq)
-        res.newmark(self.settings, self.M, self.C, self.K, self.F, self.t_step, self.t_total)
+        res = solver.NewmarkSolver()
+
+        res.beta = self.settings["beta"]
+        res.gamma = self.settings["gamma"]
+
+        res.initialise(self.number_eq)
+
+        res.calculate(self.M, self.C, self.K, self.F, self.t_step, self.t_total)
         # check solution
         np.testing.assert_array_almost_equal(np.round(res.u, 2), np.round(np.array([[0, 0],
                                                                                     [0.00673, 0.364],
@@ -66,7 +72,12 @@ class TestNewmark(unittest.TestCase):
 
     def test_solver_newmark_static(self):
         # with damping solution converges to the static one
-        res = solver.Solver(self.number_eq)
+        res = solver.NewmarkSolver()
+        res.initialise(self.number_eq)
+
+        res.beta = self.settings["beta"]
+        res.gamma = self.settings["gamma"]
+
         F = sparse.csc_matrix(np.zeros((2, 500)))
         F[1, :] = 10
         # rayleigh damping matrix
@@ -80,15 +91,16 @@ class TestNewmark(unittest.TestCase):
         # solution
         alpha, beta = np.linalg.solve(damp_mat, damp_qsi)
         damp = self.M.dot(alpha) + self.K.dot(beta)
-        res.newmark(self.settings, self.M, damp, self.K, F, self.t_step, self.t_step * 500)
+        res.calculate(self.M, damp, self.K, F, self.t_step, self.t_step * 500)
         # check solution
         np.testing.assert_array_almost_equal(np.round(res.u[0], 2), np.round(np.array([0, 0]), 2))
         np.testing.assert_array_almost_equal(np.round(res.u[-1], 2), np.round(np.array([1, 3]), 2))
         return
 
     def test_solver_static(self):
-        res = solver.Solver(self.number_eq)
-        res.static(self.K, self.F, self.t_step, self.t_total)
+        res = solver.StaticSolver()
+        res.initialise(self.number_eq)
+        res.calculate(self.K, self.F, self.t_step, self.t_total)
         # check static solution
         np.testing.assert_array_almost_equal(np.round(res.u, 2), np.round(np.array([[0, 0],
                                                                                     [1., 3.],

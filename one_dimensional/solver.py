@@ -42,44 +42,9 @@ class Solver:
 
         return
 
-    def initialise(self, number_equations, time):
+    def initialise(self, number_equations):
         self.u0 = np.zeros(number_equations)
         self.v0 = np.zeros(number_equations)
-
-        self.time = time
-
-
-    def init(self, m_global, c_global, k_global, force_ini, u, v):
-        r"""
-        Calculation of the initial conditions - acceleration for the first time-step.
-
-        :param m_global: Global mass matrix.
-        :type m_global: np.ndarray
-        :param c_global: Global damping matrix.
-        :type c_global: np.ndarray
-        :param k_global: Global stiffness matrix beam.
-        :type k_global: np.ndarray
-        :param force_ini: Initial force.
-        :type force_ini: np.ndarray
-        :param u: Initial conditions - displacement.
-        :type u: np.ndarray
-        :param v: Initial conditions - velocity.
-        :type v: np.ndarray
-
-        :return a: Initial acceleration.
-
-        :raises ValueError:
-        :raises TypeError:
-        """
-
-        k_part = k_global.dot(u)
-        c_part = c_global.dot(v)
-
-        if m_global.size == 1:
-            a = (force_ini - c_part - k_part) / m_global
-        else:
-            a = inv(m_global).dot(force_ini - c_part - k_part)
-        return a
 
 
 class NewmarkSolver(Solver):
@@ -115,7 +80,7 @@ class NewmarkSolver(Solver):
         # initial conditions u, v, a
         u = self.u0
         v = self.v0
-        a = self.init(M, C, K, d_force, u, v)
+        a = init(M, C, K, d_force, u, v)
         # add to results initial conditions
         self.u.append(u)
         self.v.append(v)
@@ -175,10 +140,11 @@ class NewmarkSolver(Solver):
         pbar.close()
         return
 
+
 class StaticSolver(Solver):
 
-    def __init__(self, number_equations):
-        super(StaticSolver, self).__init__(number_equations)
+    def __init__(self):
+        super(StaticSolver, self).__init__()
 
     def calculate(self, K, F, t_step, t_end, t_start=0):
         """
