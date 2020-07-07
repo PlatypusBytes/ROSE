@@ -2,12 +2,10 @@
 # tests based on Bathe
 # for newmark pg 782
 
-import sys
-# add the src folder to the path to search for files
-sys.path.append('../src/')
 import unittest
 import solver
 import numpy as np
+from scipy import sparse
 
 
 class TestNewmark(unittest.TestCase):
@@ -23,10 +21,10 @@ class TestNewmark(unittest.TestCase):
         C = [[0, 0], [0, 0]]
         F = np.zeros((2, 13))
         F[1, :] = 10
-        self.M = np.array(M)
-        self.K = np.array(K)
-        self.C = np.array(C)
-        self.F = np.array(F)
+        self.M = sparse.csc_matrix(np.array(M))
+        self.K = sparse.csc_matrix(np.array(K))
+        self.C = sparse.csc_matrix(np.array(C))
+        self.F = sparse.csc_matrix(np.array(F))
 
         self.u0 = np.zeros(2)
         self.v0 = np.zeros(2)
@@ -37,9 +35,8 @@ class TestNewmark(unittest.TestCase):
         self.number_eq = 2
         return
 
-
     def test_a_init(self):
-        force = self.F[:, 0]
+        force = self.F[:, 0].toarray()[:, 0]
         # check computation of the acceleration
         acc = solver.init(self.M, self.C, self.K, force, self.u0, self.v0)
 
@@ -70,7 +67,7 @@ class TestNewmark(unittest.TestCase):
     def test_solver_newmark_static(self):
         # with damping solution converges to the static one
         res = solver.Solver(self.number_eq)
-        F = np.zeros((2, 500))
+        F = sparse.csc_matrix(np.zeros((2, 500)))
         F[1, :] = 10
         # rayleigh damping matrix
         f1 = 1
@@ -83,7 +80,7 @@ class TestNewmark(unittest.TestCase):
         # solution
         alpha, beta = np.linalg.solve(damp_mat, damp_qsi)
         damp = self.M.dot(alpha) + self.K.dot(beta)
-        res.newmark(self.settings, self.M, damp, self.K, np.array(F), self.t_step, self.t_step * 500)
+        res.newmark(self.settings, self.M, damp, self.K, F, self.t_step, self.t_step * 500)
         # check solution
         np.testing.assert_array_almost_equal(np.round(res.u[0], 2), np.round(np.array([0, 0]), 2))
         np.testing.assert_array_almost_equal(np.round(res.u[-1], 2), np.round(np.array([1, 3]), 2))
