@@ -20,12 +20,12 @@ def reshape_aux_matrix(n_nodes, dofs, aux_matrix):
     return new_aux_matrix
 
 
-def delete_from_csr(mat, row_indices=[], col_indices=[]):
+def delete_from_lil(mat, row_indices=[], col_indices=[]):
     """
-    Remove the rows (denoted by ``row_indices``) and columns (denoted by ``col_indices``) from the CSR sparse matrix ``mat``.
+    Remove the rows (denoted by ``row_indices``) and columns (denoted by ``col_indices``) from the CSC sparse matrix ``mat``.
     WARNING: Indices of altered axes are reset in the returned matrix
     """
-    if not isinstance(mat, sparse.csr_matrix):
+    if not isinstance(mat, sparse.lil_matrix):
         raise ValueError("works only for CSR format -- use .tocsr() first")
 
     rows = []

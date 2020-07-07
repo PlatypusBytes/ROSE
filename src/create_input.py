@@ -137,12 +137,16 @@ global_system.solver = solver
 global_system.main()
 
 
-plt.plot(global_system.solver.time, solver.u[:, 1])
-plt.plot(global_system.solver.time, solver.u[:, 4])
-plt.plot(global_system.solver.time, solver.u[:, 7])
-plt.plot(global_system.solver.time, solver.u[:, 9])
-plt.plot(global_system.solver.time, solver.u[:, 10])
-plt.plot(global_system.solver.time, solver.u[:, 11])
+
+
+
+
+plt.plot(global_system.time, global_system.displacements[:, 1])
+plt.plot(global_system.time, global_system.displacements[:, 4])
+plt.plot(global_system.time, global_system.displacements[:, 7])
+plt.plot(global_system.time, global_system.displacements[:, 9])
+plt.plot(global_system.time, global_system.displacements[:, 10])
+plt.plot(global_system.time, global_system.displacements[:, 11])
 
 plt.legend(["1","4","7","9","10","11"])
 plt.show()
