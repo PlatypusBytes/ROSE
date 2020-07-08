@@ -163,9 +163,9 @@ class Rail(ElementModelPart):
         if self.nodal_ndof == 3:
             self.aux_stiffness_matrix = np.zeros((6, 6))
             self.aux_stiffness_matrix[[0, 3], [0, 3]] = self.section.area / self.section.sec_moment_of_inertia * \
-                                                        (1 + self.timoshenko_factor)
+                                                        (1 + self.timoshenko_factor) * self.length_rail**2
             self.aux_stiffness_matrix[[3, 0], [0, 3]] = -self.section.area / self.section.sec_moment_of_inertia * \
-                                                        (1 + self.timoshenko_factor)
+                                                        (1 + self.timoshenko_factor) * self.length_rail**2
 
             self.aux_stiffness_matrix[[1, 4], [1, 4]] = 12
             self.aux_stiffness_matrix[[1, 4], [4, 1]] = -12
@@ -196,7 +196,7 @@ class Rail(ElementModelPart):
         :return:
         """
         a0, a1 = self.__calculate_rayleigh_damping_factors()
-        self.aux_damping_matrix =  self.aux_mass_matrix.dot(a0) + self.aux_stiffness_matrix.dot(a1)
+        self.aux_damping_matrix = self.aux_mass_matrix.dot(a0) + self.aux_stiffness_matrix.dot(a1)
 
 
 
