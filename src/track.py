@@ -78,12 +78,6 @@ class Rail(ElementModelPart):
         self.n_nodes = self.__n_sleepers
         self.ndof = self.n_nodes * self.nodal_ndof
 
-    # def calculate_mass_matrix(self):
-    #     self.mass_matrix = np.zeros((1, self.ndof))
-    #     self.mass_matrix[0, 0] = self.mass * self.length_rail / 2
-    #     self.mass_matrix[0, 1:self.ndof - 1] = self.mass * self.length_rail
-    #     self.mass_matrix[0, -1] = self.mass * self.length_rail / 2
-
     def __set_translational_aux_mass_matrix(self):
         """
         timoshenko straight beam auxiliar mass matrix associated with translational inertia
@@ -179,7 +173,6 @@ class Rail(ElementModelPart):
             self.aux_stiffness_matrix = self.aux_stiffness_matrix.dot(constant)
             self.aux_stiffness_matrix = utils.reshape_aux_matrix(2, [True, True, True], self.aux_stiffness_matrix)
 
-
     def __calculate_rayleigh_damping_factors(self):
         """
         Calculate rayleigh damping coefficients
@@ -198,7 +191,9 @@ class Rail(ElementModelPart):
         a0, a1 = self.__calculate_rayleigh_damping_factors()
         self.aux_damping_matrix = self.aux_mass_matrix.dot(a0) + self.aux_stiffness_matrix.dot(a1)
 
-
+    def initialize(self):
+        self.calculate_timoshenko_factor()
+        super(Rail, self).initialize()
 
 class Sleeper(ElementModelPart):
     def __init__(self):
@@ -379,7 +374,6 @@ class UTrack(ElementModelPart):
 
         return rail_pad_nodes, rail_pad_elements
 
-
     def set_geometry(self):
         super(UTrack, self).set_geometry()
         self.rail.calculate_coordinates()
@@ -403,19 +397,12 @@ class UTrack(ElementModelPart):
 
         self.aux_mass_matrix = self.rail.aux_mass_matrix
 
-
-
-
     def set_global_stiffness_matrix(self):
         """
-        sparse.csr_matrix((self.ndof, self.ndof))
 
         :return:
         """
         self.global_stiffness_matrix = sparse.csr_matrix((self.n_dof_track, self.n_dof_track))
-
-        # self.rail.set_aux_stiffness_matrix()
-        # self.rail_pads.set_aux_stiffness_matrix()
 
         rail_elements = [element for element in self.elements if "RAIL" in element.model_parts]
         self.global_stiffness_matrix = utils.add_aux_matrix_to_global(
@@ -424,71 +411,6 @@ class UTrack(ElementModelPart):
         rail_pad_elements = [element for element in self.elements if "RAIL_PAD" in element.model_parts]
         self.global_stiffness_matrix = utils.add_aux_matrix_to_global(
             self.global_stiffness_matrix, self.rail_pads.aux_stiffness_matrix, rail_pad_elements)
-
-        # self.soil.set_aux_stiffness_matrix()
-        # self.__add_soil_to_global_stiffness_matrix()
-
-    # def __add_rail_to_global_stiffness_matrix(self):
-    #     """
-    #     Set rail stiffness to global stifness matrix, dofs => normal direction, perpendicular direction, bending
-    #     :return:
-    #     """
-    #
-    #     stiffness_matrix = sparse.csr_matrix((self.rail.ndof, self.rail.ndof))
-    #
-    #     ndof_node = self.rail.nodal_ndof
-    #     for i in range(self.rail.n_nodes - 1):
-    #         stiffness_matrix[i * ndof_node:i * ndof_node + ndof_node * 2, i * ndof_node:i * ndof_node + ndof_node * 2] \
-    #             += self.rail.aux_stiffness_matrix
-    #
-    #     self.global_stiffness_matrix[0:self.rail.ndof, 0:self.rail.ndof] += stiffness_matrix
-
-    # def __add_rail_pads_to_global_stiffness_matrix(self):
-    #     """
-    #     Set rail pad stiffness to global stiffness matrix, dofs => perpendicular direction
-    #     :return:
-    #     """
-    #
-    #     top_rail_pad_nodes = [node for node in self.nodes
-    #                     if "RAIL" in node.model_parts and "RAIL_PAD" in node.model_parts]
-    #
-    #     bot_rail_pad_nodes = [node for node in self.nodes
-    #                     if "RAIL" not in node.model_parts and "RAIL_PAD" in node.model_parts]
-    #
-    #     top_rail_pad_y_dof_indices = [node.index_dof[1] for node in top_rail_pad_nodes]
-    #     bot_rail_pad_y_dof_indices = [node.index_dof[1] for node in bot_rail_pad_nodes]
-    #
-    #     self.global_stiffness_matrix[top_rail_pad_y_dof_indices, top_rail_pad_y_dof_indices] \
-    #         += self.rail_pads.aux_stiffness_matrix[0, 0]
-    #     self.global_stiffness_matrix[bot_rail_pad_y_dof_indices, top_rail_pad_y_dof_indices] \
-    #         += self.rail_pads.aux_stiffness_matrix[1, 0]
-    #     self.global_stiffness_matrix[top_rail_pad_y_dof_indices, bot_rail_pad_y_dof_indices] \
-    #         += self.rail_pads.aux_stiffness_matrix[0, 1]
-    #     self.global_stiffness_matrix[bot_rail_pad_y_dof_indices, bot_rail_pad_y_dof_indices] \
-    #         += self.rail_pads.aux_stiffness_matrix[1, 1]
-    #
-
-    # def __add_soil_to_global_stiffness_matrix(self):
-    #     for i in range(self.__n_sleepers):
-    #         self.global_stiffness_matrix[i + self.rail.ndof, i + self.rail.ndof] \
-    #             += self.soil.aux_stiffness_matrix[0, 0]
-    #         self.global_stiffness_matrix[i + self.rail.ndof + self.__n_sleepers, i + self.rail.ndof] \
-    #             += self.soil.aux_stiffness_matrix[1, 0]
-    #         self.global_stiffness_matrix[i + self.rail.ndof, i + self.rail.ndof + self.__n_sleepers] \
-    #             += self.soil.aux_stiffness_matrix[0, 1]
-    #         self.global_stiffness_matrix[i + self.rail.ndof + self.__n_sleepers, i + self.rail.ndof + self.__n_sleepers] \
-    #             += self.soil.aux_stiffness_matrix[1, 1]
-
-    # def __add_rail_to_global_mass_matrix(self):
-    #     mass_matrix = sparse.csr_matrix((self.rail.ndof, self.rail.ndof))
-    #
-    #     ndof_node = self.rail.nodal_ndof
-    #     for i in range(self.rail.n_nodes - 1):
-    #         mass_matrix[i * ndof_node:i * ndof_node + ndof_node * 2, i * ndof_node:i * ndof_node + ndof_node * 2] \
-    #             += self.rail.aux_mass_matrix
-    #
-    #     self.global_mass_matrix[0:self.rail.ndof, 0:self.rail.ndof] \
-    #         += mass_matrix
 
     def __add_sleeper_to_global_mass_matrix(self):
 
@@ -558,7 +480,7 @@ class UTrack(ElementModelPart):
     def set_global_damping_matrix(self):
         self.global_damping_matrix = sparse.csr_matrix((self.n_dof_track, self.n_dof_track))
 
-        self.rail.calculate_rayleigh_damping_matrix()
+        self.rail.set_aux_damping_matrix()
         self.rail_pads.set_aux_damping_matrix()
 
         rail_elements = [element for element in self.elements if "RAIL" in element.model_parts]
