@@ -4,6 +4,7 @@ from src.soil import *
 from src.boundary_conditions import NoDispRotCondition, CauchyCondition
 from src.model_part import ConditionModelPart, ConstraintModelPart
 from one_dimensional.solver import Solver, NewmarkSolver
+from src.plot_utils import plot_2d_geometry
 
 from src.global_system import GlobalSystem
 
@@ -26,10 +27,9 @@ points_rail_pad = [nodes_track[0], Node(0.0, -0.1, 0.0), nodes_track[1], Node(1.
                    nodes_track[2], Node(2.0, -0.1, 0.0)]
 mesh.add_unique_nodes_to_mesh(points_rail_pad)
 
-
 elements_rail_pad = [Element([points_rail_pad[0], points_rail_pad[1]]), Element([points_rail_pad[2], points_rail_pad[3]]),
                  Element([points_rail_pad[4], points_rail_pad[5]])]
-mesh.add_unique_elements_to_mesh(elements_track)
+mesh.add_unique_elements_to_mesh(elements_rail_pad)
 
 
 nodes_sleeper = [points_rail_pad[1], points_rail_pad[3], points_rail_pad[5]]
@@ -50,7 +50,8 @@ no_disp_boundary_condition_nodes = [points_soil[1], points_soil[3], points_soil[
 mesh.add_unique_nodes_to_mesh(no_disp_boundary_condition_nodes)
 
 
-force_nodes = [nodes_track[1]]
+force_nodes = nodes_track
+force_elements = elements_track
 mesh.add_unique_nodes_to_mesh(no_disp_boundary_condition_nodes)
 
 
@@ -115,10 +116,18 @@ no_disp_boundary_condition.nodes = no_disp_boundary_condition_nodes
 
 force = CauchyCondition(y_disp_dof=True)
 force.nodes = force_nodes
+force.elements = force_elements
 
-force.y_force = sparse.csr_matrix((1, len(time)))
-frequency = 1
-force.y_force[0, :] = np.sin(frequency * time) * 15000
+force.y_force = sparse.csr_matrix((len(force.nodes), len(time)))
+#frequency = 1
+#force.y_force[0, :] = np.sin(frequency * time) * 15000
+moving_y_force = np.ones(len(time))* -15000
+moving_y_force[0:10] = np.linspace(0,-15000,10)
+
+
+moving_x_coords = np.linspace(force.nodes[0].coordinates[0],force.nodes[-1].coordinates[0], len(time) )
+moving_coords = np.array([Node(moving_x_coord, 0.0, 0.0) for moving_x_coord in moving_x_coords])
+force.set_moving_point_load(moving_coords, time, y_force=moving_y_force)
 
 # set solver
 solver = NewmarkSolver()
@@ -140,6 +149,10 @@ global_system.main()
 
 
 
+fig = plot_2d_geometry(mesh.elements)
+fig.show()
+
+fig2 = plt.figure()
 
 plt.plot(global_system.time, global_system.displacements[:, 1])
 plt.plot(global_system.time, global_system.displacements[:, 4])
@@ -148,5 +161,10 @@ plt.plot(global_system.time, global_system.displacements[:, 9])
 plt.plot(global_system.time, global_system.displacements[:, 10])
 plt.plot(global_system.time, global_system.displacements[:, 11])
 
-plt.legend(["1","4","7","9","10","11"])
-plt.show()
+# plt.legend(["1","4","7","9","10","11"])
+plt.legend(["1","2","3","4","5","6"])
+plt.xlabel('time')
+plt.ylabel('displacement')
+fig2.show()
+
+
