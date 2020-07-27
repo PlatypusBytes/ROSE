@@ -6,7 +6,7 @@ from src.geometry import Mesh
 from scipy import sparse
 from typing import List
 
-from one_dimensional.solver import  NewmarkSolver, StaticSolver
+from one_dimensional.solver import NewmarkSolver, StaticSolver
 
 
 class GlobalSystem:
@@ -29,8 +29,6 @@ class GlobalSystem:
         self.displacements = None
         self.velocities = None
         self.accelerations = None
-
-
 
     def __update_nodal_dofs(self, node, model_part):
         """
