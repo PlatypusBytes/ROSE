@@ -167,31 +167,38 @@ class GlobalSystem:
 
         :return:
         """
+        all_row_indices = []
+        all_col_indices = []
         for idx in range(len(self.mesh.nodes) - 1, -1, -1):
             if not self.mesh.nodes[idx].x_disp_dof:
-                row_indices = [self.mesh.nodes[idx].index_dof[2]]
-                col_indices = [self.mesh.nodes[idx].index_dof[2]]
+                all_row_indices.append(self.mesh.nodes[idx].index_dof[2])
+                all_col_indices.append(self.mesh.nodes[idx].index_dof[2])
 
                 self.mesh.nodes[idx].index_dof[2] = None
 
-                self.__trim_global_matrices_on_indices(row_indices, col_indices)
+                # self.__trim_global_matrices_on_indices(row_indices, col_indices)
 
             if not self.mesh.nodes[idx].y_disp_dof:
-                row_indices = [self.mesh.nodes[idx].index_dof[1]]
-                col_indices = [self.mesh.nodes[idx].index_dof[1]]
+                all_row_indices.append(self.mesh.nodes[idx].index_dof[1])
+                all_col_indices.append(self.mesh.nodes[idx].index_dof[1])
+                # row_indices = [self.mesh.nodes[idx].index_dof[1]]
+                # col_indices = [self.mesh.nodes[idx].index_dof[1]]
 
                 self.mesh.nodes[idx].index_dof[1] = None
 
-                self.__trim_global_matrices_on_indices(row_indices, col_indices)
+                # self.__trim_global_matrices_on_indices(row_indices, col_indices)
 
             if not self.mesh.nodes[idx].rotation_dof:
-                row_indices = [self.mesh.nodes[idx].index_dof[0]]
-                col_indices = [self.mesh.nodes[idx].index_dof[0]]
+                all_row_indices.append(self.mesh.nodes[idx].index_dof[0])
+                all_col_indices.append(self.mesh.nodes[idx].index_dof[0])
+                # row_indices = [self.mesh.nodes[idx].index_dof[0]]
+                # col_indices = [self.mesh.nodes[idx].index_dof[0]]
 
                 self.mesh.nodes[idx].index_dof[0] = None
 
-                self.__trim_global_matrices_on_indices(row_indices, col_indices)
+                # self.__trim_global_matrices_on_indices(row_indices, col_indices)
 
+        self.__trim_global_matrices_on_indices(all_row_indices, all_col_indices)
         self.__recalculate_dof()
 
     def initialise_global_matrices(self):
