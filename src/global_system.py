@@ -3,8 +3,13 @@ from src import utils
 from src.model_part import ElementModelPart, ConstraintModelPart, ModelPart
 from src.boundary_conditions import CauchyCondition
 from src.geometry import Mesh
+
 from scipy import sparse
+import numpy as np
+
 from typing import List
+
+import time as timet
 
 from one_dimensional.solver import NewmarkSolver, StaticSolver
 
@@ -198,6 +203,7 @@ class GlobalSystem:
 
                 # self.__trim_global_matrices_on_indices(row_indices, col_indices)
 
+
         self.__trim_global_matrices_on_indices(all_row_indices, all_col_indices)
         self.__recalculate_dof()
 
@@ -215,15 +221,18 @@ class GlobalSystem:
 
         for model_part in self.model_parts:
             if isinstance(model_part, ElementModelPart):
-                self.__reshape_aux_matrices(model_part)
-                self.__add_aux_matrices_to_global(model_part)
 
+                self.__reshape_aux_matrices(model_part)
+                t = timet.time()
+                self.__add_aux_matrices_to_global(model_part)
+                print(timet.time() - t)
             if isinstance(model_part, CauchyCondition):
                 self.__add_condition_to_global(model_part)
 
         for model_part in self.model_parts:
             if isinstance(model_part, ConstraintModelPart):
                 model_part.set_constraint_condition()
+
 
         self.trim_all_global_matrices()
 
@@ -256,7 +265,7 @@ class GlobalSystem:
         self.initialise_ndof()
         self.initialise_global_matrices()
 
-        self.solver.initialise(self.total_n_dof)
+        self.solver.initialise(self.total_n_dof, self.time)
 
     def calculate(self):
         """
@@ -264,17 +273,27 @@ class GlobalSystem:
         :return:
         """
 
+        # transfer matrices to compressed sparsed column matrices
         M = self.global_mass_matrix.tocsc()
         C = self.global_damping_matrix.tocsc()
         K = self.global_stiffness_matrix.tocsc()
         F = self.global_force_vector.tocsc()
 
-        dt = (self.time[-1] - self.time[0])/len(self.time)
+        # find indices of unique time steps
+        diff = np.diff(self.time)
+        new_dt_idxs = sorted(np.unique(diff.round(decimals=7), return_index=True)[1])
 
+        # run_stages with Newmark solver
         if isinstance(self.solver, NewmarkSolver):
-            self.solver.calculate(M, C, K, F, dt, self.time[-1], t_start=self.time[0])
+            for i in range(len(new_dt_idxs) - 1):
+                self.solver.calculate(M, C, K, F, new_dt_idxs[i], new_dt_idxs[i + 1])
+            self.solver.calculate(M, C, K, F, new_dt_idxs[-1], len(self.time) - 1)
+
+        # run_stages with Static solver
         if isinstance(self.solver, StaticSolver):
-            self.solver.calculate(K, F, dt, self.time[-1], t_start=self.time[0])
+            for i in range(len(new_dt_idxs) - 1):
+                self.solver.calculate(K, F, new_dt_idxs[i], new_dt_idxs[i + 1])
+            self.solver.calculate(K, F, new_dt_idxs[-1], len(self.time) - 1)
 
     def finalise(self):
 
