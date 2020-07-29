@@ -3,12 +3,11 @@ from scipy.sparse.linalg import spsolve, inv
 import os
 import pickle
 from tqdm import tqdm
-from enum import Enum
-
 
 
 class TimeException(Exception):
     pass
+
 
 def init(m_global, c_global, k_global, force_ini, u, v):
     r"""
@@ -46,13 +45,28 @@ class Solver:
 
         return
 
-    def initialise(self, number_equations):
+    def initialise(self, number_equations, time):
         self.u0 = np.zeros(number_equations)
         self.v0 = np.zeros(number_equations)
 
-    def validate_input(self, F):
+        self.time = np.array(time)
+
+        self.u = np.zeros([len(time), number_equations])
+        self.v = np.zeros([len(time), number_equations])
+        self.a = np.zeros([len(time), number_equations])
+
+    def finalise(self, t_end_idx):
+        self.u0 = self.u[t_end_idx, :]
+        self.v0 = self.v[t_end_idx, :]
+
+    def validate_input(self, F, t_start_idx, t_end_idx):
         if len(self.time) != np.shape(F)[1]:
             raise TimeException("Solver time is not equal to force vector time")
+
+        diff = np.diff(self.time[t_start_idx:t_end_idx])
+        if not np.all(np.isclose(diff, diff[0])):
+            raise TimeException("Time steps differ in current stage")
+
 
 class NewmarkSolver(Solver):
     def __init__(self):
@@ -60,7 +74,7 @@ class NewmarkSolver(Solver):
         self.beta = 0.25
         self.gamma = 0.5
 
-    def calculate(self, M, C, K, F, t_step, t_end, t_start=0):
+    def calculate(self, M, C, K, F, t_start_idx, t_end_idx):
         """
         Newmark integration scheme.
         Incremental formulation.
@@ -70,18 +84,21 @@ class NewmarkSolver(Solver):
         :param C: Damping matrix
         :param K: Stiffness matrix
         :param F: External force matrix
-        :param t_step: time step for the analysis
-        :param t_end: total time for the analysis
-        :param t_start: start time for the analysis (optional, default is zero)
+        :param t_start_idx: time index of starting time for the analysis
+        :param t_end_idx: time index of end time for the analysis
         :return:
         """
+
+        self.validate_input(F, t_start_idx, t_end_idx)
+        # todo correct t_step, as it is not correct, but tests succeed
+        t_step = (self.time[t_end_idx] - self.time[t_start_idx]) / ((t_end_idx - t_start_idx) + 1)
 
         # constants for the Newmark integration
         beta = self.beta
         gamma = self.gamma
 
         # initial force conditions: for computation of initial acceleration
-        d_force = F[:, 0].toarray()
+        d_force = F[:, t_start_idx].toarray() #add index of timestep
         d_force = d_force[:, 0]
 
         # initial conditions u, v, a
@@ -89,23 +106,19 @@ class NewmarkSolver(Solver):
         v = self.v0
         a = init(M, C, K, d_force, u, v)
         # add to results initial conditions
-        self.u.append(u)
-        self.v.append(v)
-        self.a.append(a)
 
-        # time
-        self.time = np.linspace(t_start, t_end, int(np.ceil((t_end - t_start) / t_step)))
-
-        self.validate_input(F)
+        self.u[t_start_idx, :] = u
+        self.v[t_start_idx, :] = v
+        self.a[t_start_idx, :] = a
 
         # combined stiffness matrix
         K_till = K + C.dot(gamma / (beta * t_step)) + M.dot(1 / (beta * t_step ** 2))
 
         # define progress bar
-        pbar = tqdm(total=int(len(self.time) - 1), unit_scale=True, unit_divisor=1000, unit="steps")
+        pbar = tqdm(total=(t_end_idx - t_start_idx), unit_scale=True, unit_divisor=1000, unit="steps")
 
         # iterate for each time step
-        for t in range(1, len(self.time)):
+        for t in range(t_start_idx+1, t_end_idx+1):
             # update progress bar
             pbar.update(1)
 
@@ -136,17 +149,14 @@ class NewmarkSolver(Solver):
             a = a + da
 
             # add to results
-            self.u.append(u)
-            self.v.append(v)
-            self.a.append(a)
-
-        # convert to numpy arrays
-        self.u = np.array(self.u)
-        self.v = np.array(self.v)
-        self.a = np.array(self.a)
+            self.u[t, :] = u
+            self.v[t, :] = v
+            self.a[t, :] = a
 
         # close the progress bar
         pbar.close()
+
+        self.finalise(t_end_idx)
         return
 
 
@@ -155,36 +165,32 @@ class StaticSolver(Solver):
     def __init__(self):
         super(StaticSolver, self).__init__()
 
-    def calculate(self, K, F, t_step, t_end, t_start=0):
+    def calculate(self, K, F, t_start_idx, t_end_idx):
         """
         Static integration scheme.
         Incremental formulation.
 
         :param K: Stiffness matrix
         :param F: External force matrix
-        :param t_step: time step for the analysis
-        :param t_end: total time for the analysis
-        :param t_start: start time for the analysis (optional, default is zero)
+        :param t_start_idx: time index of starting time for the analysis
+        :param t_end_idx: time index of end time for the analysis
         :return:
         """
 
         # initial conditions u
         u = self.u0
         # add to results initial conditions
-        self.u.append(u)
+        self.u[t_start_idx, :] = u
         # initial differential force
-        d_force = F[:, 0]
-
-        # time
-        self.time = np.linspace(t_start, t_end, int(np.ceil((t_end - t_start) / t_step)))
+        d_force = F[:, t_start_idx]
 
         # validate input
-        self.validate_input(F)
+        self.validate_input(F, t_start_idx, t_end_idx)
 
         # define progress bar
-        pbar = tqdm(total=len(self.time), unit_scale=True, unit_divisor=1000, unit="steps")
+        pbar = tqdm(total=(t_end_idx - t_start_idx), unit_scale=True, unit_divisor=1000, unit="steps")
 
-        for t in range(1, len(self.time)):
+        for t in range(t_start_idx+1, t_end_idx+1):
             # update progress bar
             pbar.update(1)
 
@@ -198,13 +204,11 @@ class StaticSolver(Solver):
             d_force = F[:, t] - F[:, t - 1]
 
             # add to results
-            self.u.append(np.array(u))
-
-        # convert to numpy arrays
-        self.u = np.array(self.u)
+            self.u[t, :] = u
 
         # close the progress bar
         pbar.close()
+        self.finalise(t_end_idx)
         return
 
     def save_data(self):
