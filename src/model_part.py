@@ -1,5 +1,5 @@
-
 import numpy as np
+
 
 class ModelPart:
     """
@@ -9,8 +9,8 @@ class ModelPart:
         self.name = ""
         self.nodes = np.array([])
         self.elements = np.array([])
-        self.rotation_dof = False
-        self.x_disp_dof = False
+        self.normal_dof = False
+        self.z_rot_dof = False
         self.y_disp_dof = False
 
     def initialize(self):
@@ -51,10 +51,10 @@ class ConditionModelPart(ModelPart):
 
 
 class ConstraintModelPart(ConditionModelPart):
-    def __init__(self, rotation_dof=False, y_disp_dof=False, x_disp_dof=False):
+    def __init__(self, normal_dof=False, y_disp_dof=False, z_rot_dof=False):
         super(ConstraintModelPart, self).__init__()
-        self.rotation_dof = rotation_dof
-        self.x_disp_dof = x_disp_dof
+        self.normal_dof = normal_dof
+        self.z_rot_dof = z_rot_dof
         self.y_disp_dof = y_disp_dof
 
 
@@ -63,6 +63,6 @@ class ConstraintModelPart(ConditionModelPart):
 
     def set_constraint_condition(self):
         for node in self.nodes:
-            node.rotation_dof = self.rotation_dof
-            node.x_disp_dof = self.x_disp_dof
+            node.normal_dof = self.normal_dof
+            node.z_rot_dof = self.z_rot_dof
             node.y_disp_dof = self.y_disp_dof

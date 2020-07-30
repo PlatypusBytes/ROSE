@@ -1,5 +1,5 @@
 from src.model_part import ConditionModelPart
-from src.boundary_conditions import CauchyCondition
+from src.boundary_conditions import LoadCondition
 from src.geometry import Node, Element
 
 from scipy import sparse
@@ -11,7 +11,7 @@ class TestBoundaryConditions:
         nodes_track = [Node(0.0, 0.0, 0.0), Node(1.0, 0.0, 0.0), Node(2.0, 0.0, 0.0)]
         elements_track = [Element([nodes_track[0], nodes_track[1]]), Element([nodes_track[1], nodes_track[2]])]
 
-        force = CauchyCondition(y_disp_dof=True)
+        force = LoadCondition(y_disp_dof=True)
         force.nodes = nodes_track
         force.elements = elements_track
 

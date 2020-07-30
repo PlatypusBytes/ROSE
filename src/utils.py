@@ -2,6 +2,10 @@ from scipy import sparse
 import numpy as np
 from shapely.geometry import LineString, Polygon
 
+from typing import List
+from src.boundary_conditions import LoadCondition
+from src.geometry import Node, Element
+
 def init_aux_matrix(n_nodes, dofs):
     return np.zeros((n_nodes*sum(dofs), n_nodes*sum(dofs)))
 
@@ -21,13 +25,12 @@ def reshape_aux_matrix(n_nodes, dofs, aux_matrix):
     return new_aux_matrix
 
 
-def delete_from_lil(mat, row_indices=[], col_indices=[]):
+def delete_from_lil(mat: sparse.lil_matrix, row_indices=[], col_indices=[]):
     """
-    Remove the rows (denoted by ``row_indices``) and columns (denoted by ``col_indices``) from the lil sparse matrix ``mat``.
+    Remove the rows (denoted by ``row_indices``) and columns (denoted by ``col_indices``) from the lil sparse matrix
+    ``mat``.
     WARNING: Indices of altered axes are reset in the returned matrix
     """
-    if not isinstance(mat, sparse.lil_matrix):
-        raise ValueError("works only for lil format -- use .tolil() first")
 
     rows = []
     cols = []
@@ -54,7 +57,8 @@ def delete_from_lil(mat, row_indices=[], col_indices=[]):
         return mat
 
 
-def add_aux_matrix_to_global(global_matrix, aux_matrix, elements, nodes=None):
+def add_aux_matrix_to_global(global_matrix: sparse.lil_matrix, aux_matrix, elements: List[Element],
+                             nodes: List[Node] = None):
     """
 
     :param global_matrix:
@@ -99,15 +103,15 @@ def add_aux_matrix_to_global(global_matrix, aux_matrix, elements, nodes=None):
         return global_matrix
 
 
-def add_condition_to_global(global_b_matrix, condition):
+def add_condition_to_global(global_b_matrix, condition: LoadCondition):
 
     for i, node in enumerate(condition.nodes):
-        if condition.rotation_dof:
-            global_b_matrix[node.index_dof[0], :] += condition.moment[i, :]
+        if condition.normal_dof:
+            global_b_matrix[node.index_dof[0], :] += condition.normal_force[i, :]
         if condition.y_disp_dof:
             global_b_matrix[node.index_dof[1], :] += condition.y_force[i, :]
-        if condition.x_disp_dof:
-            global_b_matrix[node.index_dof[2], :] += condition.x_force[i, :]
+        if condition.z_rot_dof:
+            global_b_matrix[node.index_dof[2], :] += condition.z_moment[i, :]
 
     return global_b_matrix
 
@@ -125,7 +129,7 @@ def centeroidnp(arr):
     return sum_x / length, sum_y / length, sum_z / length
 
 
-def get_shapely_elements(elements):
+def get_shapely_elements(elements: List[Element]):
     # convert elements to shapely elements for intersection
     shapely_elements = []
     for element in elements:
