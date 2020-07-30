@@ -64,12 +64,7 @@ class TestTrack:
 
         rail.initialize()
 
-        rail_damping_matrix = rail.aux_damping_matrix
         assert rail.timoshenko_factor == pytest.approx(0.0096)
-
-        # for i in range(len(expected_damping_matrix)):
-        #     for j in range(len(expected_damping_matrix[i])):
-        #         assert rail_damping_matrix[i, j] == pytest.approx(expected_damping_matrix[i][j])
 
 
 @pytest.fixture
