@@ -1,29 +1,8 @@
-
-from src.geometry import *
-from src.track import *
-from src.soil import *
-from src.boundary_conditions import NoDispRotCondition, CauchyCondition
-from src.model_part import ConditionModelPart, ConstraintModelPart
-from one_dimensional.solver import Solver, NewmarkSolver
-from src.plot_utils import plot_2d_geometry
 from src.mesh_utils import *
-
-from src.global_system import GlobalSystem
-import cProfile
-
-# import src.global_system as gs
-
-import matplotlib.pyplot as plt
-
-from scipy import sparse
-
 import pytest
 
 from src.track import *
-from src.soil import Soil
 from src.global_system import *
-import matplotlib.pyplot as plt
-from one_dimensional.solver import Solver
 
 
 class TestTrack:
