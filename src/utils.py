@@ -1,5 +1,6 @@
 from scipy import sparse
 import numpy as np
+from shapely.geometry import LineString, Polygon
 
 def init_aux_matrix(n_nodes, dofs):
     return np.zeros((n_nodes*sum(dofs), n_nodes*sum(dofs)))
@@ -22,11 +23,11 @@ def reshape_aux_matrix(n_nodes, dofs, aux_matrix):
 
 def delete_from_lil(mat, row_indices=[], col_indices=[]):
     """
-    Remove the rows (denoted by ``row_indices``) and columns (denoted by ``col_indices``) from the CSC sparse matrix ``mat``.
+    Remove the rows (denoted by ``row_indices``) and columns (denoted by ``col_indices``) from the lil sparse matrix ``mat``.
     WARNING: Indices of altered axes are reset in the returned matrix
     """
     if not isinstance(mat, sparse.lil_matrix):
-        raise ValueError("works only for CSR format -- use .tocsr() first")
+        raise ValueError("works only for lil format -- use .tolil() first")
 
     rows = []
     cols = []
@@ -66,11 +67,12 @@ def add_aux_matrix_to_global(global_matrix, aux_matrix, elements, nodes=None):
     if elements:
         for element in elements:
             for node_nr in range(len(element.nodes) - 1):
+                # add diagonal
                 for j, id_1 in enumerate(element.nodes[node_nr].index_dof):
                     for k, id_2 in enumerate(element.nodes[node_nr].index_dof):
                         global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[node_nr].index_dof) * node_nr + j,
                                                                 len(element.nodes[node_nr].index_dof) * node_nr + k]
-
+                # add interaction
                 for node_nr_2 in range(node_nr+1, len(element.nodes)):
                     for j, id_1 in enumerate(element.nodes[node_nr].index_dof):
                         for k, id_2 in enumerate(element.nodes[node_nr_2].index_dof):
@@ -81,6 +83,7 @@ def add_aux_matrix_to_global(global_matrix, aux_matrix, elements, nodes=None):
                             global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[node_nr].index_dof) * (node_nr + node_nr_2) + j,
                                                                     len(element.nodes[node_nr].index_dof) * node_nr + k]
 
+            # add last node
             for j, id_1 in enumerate(element.nodes[-1].index_dof):
                 for k, id_2 in enumerate(element.nodes[-1].index_dof):
                     global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[-1].index_dof) * (len(element.nodes)-1) + j,
@@ -108,5 +111,28 @@ def add_condition_to_global(global_b_matrix, condition):
 
     return global_b_matrix
 
-def assign_model_part_to_geometry(elements, model_part):
-    pass
+
+def centeroidnp(arr):
+    """
+    Calculate centroid of numpy array
+    :param arr: numpy array
+    :return: centroid
+    """
+    length = arr.shape[0]
+    sum_x = np.sum(arr[:, 0])
+    sum_y = np.sum(arr[:, 1])
+    sum_z = np.sum(arr[:, 2])
+    return sum_x / length, sum_y / length, sum_z / length
+
+
+def get_shapely_elements(elements):
+    # convert elements to shapely elements for intersection
+    shapely_elements = []
+    for element in elements:
+        if len(element.nodes) == 2:
+            shapely_elements.append(LineString(
+                [node.coordinates for node in element.nodes]))
+        elif len(element.nodes) > 2:
+            shapely_elements.append(Polygon([node.coordinates for node in element.nodes]))
+
+    return shapely_elements
