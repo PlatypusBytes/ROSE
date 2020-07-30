@@ -1,6 +1,7 @@
-from src.model_part import ConditionModelPart
-from src.boundary_conditions import LoadCondition
+import pytest
 from src.geometry import Node, Element
+from src.boundary_conditions import LoadCondition
+
 
 from scipy import sparse
 import numpy as np

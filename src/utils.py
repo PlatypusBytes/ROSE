@@ -3,7 +3,7 @@ import numpy as np
 from shapely.geometry import LineString, Polygon
 
 from typing import List
-from src.boundary_conditions import LoadCondition
+# from src.boundary_conditions import LoadCondition
 from src.geometry import Node, Element
 
 def init_aux_matrix(n_nodes, dofs):
@@ -101,20 +101,6 @@ def add_aux_matrix_to_global(global_matrix: sparse.lil_matrix, aux_matrix, eleme
                     global_matrix[id_1, id_2] += aux_matrix[j, k]
 
         return global_matrix
-
-
-def add_condition_to_global(global_b_matrix, condition: LoadCondition):
-
-    for i, node in enumerate(condition.nodes):
-        if condition.normal_dof:
-            global_b_matrix[node.index_dof[0], :] += condition.normal_force[i, :]
-        if condition.y_disp_dof:
-            global_b_matrix[node.index_dof[1], :] += condition.y_force[i, :]
-        if condition.z_rot_dof:
-            global_b_matrix[node.index_dof[2], :] += condition.z_moment[i, :]
-
-    return global_b_matrix
-
 
 def centeroidnp(arr):
     """

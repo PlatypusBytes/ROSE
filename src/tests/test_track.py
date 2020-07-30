@@ -1,5 +1,7 @@
 import pytest
 
+from src.geometry import Node, Element
+
 from src.track import *
 from src.soil import Soil
 from src.global_system import *
@@ -91,11 +93,16 @@ def set_up_euler_section():
 
 @pytest.fixture
 def set_up_euler_rail(set_up_material, set_up_euler_section):
-    rail = Rail(2)
+
+    nodes = [Node(0, 0, 0), Node(10, 0, 0)]
+    elements = [Element([nodes])]
+    rail = Rail()
+    rail.nodes = nodes
+    rail.elements = elements
     rail.section = set_up_euler_section
     rail.material = set_up_material
 
-    rail.calculate_length_rail(10)
+    rail.calculate_length_rail()
     rail.calculate_mass()
     rail.calculate_n_dof()
 
