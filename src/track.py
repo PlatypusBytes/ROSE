@@ -4,7 +4,8 @@ from src import utils, geometry
 import time
 from src.model_part import ElementModelPart
 
-class Material():
+
+class Material:
     def __init__(self):
         self.youngs_modulus = None
         self.poisson_ratio = None
@@ -15,27 +16,24 @@ class Material():
         return self.youngs_modulus / (2 * (1 + self.poisson_ratio))
 
 
-class Section():
+class Section:
     def __init__(self):
         self.area = None  # [m^2]
         self.sec_moment_of_inertia = None  # [m^4]
         self.shear_factor = 0  # shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
 
+
 class Rail(ElementModelPart):
     def __init__(self):
-        super(Rail, self).__init__()
+        super().__init__()
 
         self.material = Material()
         self.section = Section()
-        # self.__n_sleepers = n_sleepers
-        # self.level = np.zeros((1, self.__n_sleepers))
-        # self.coordinates = []
 
         self.length_rail = None
         self.mass = None
 
         self.timoshenko_factor = 0  # ???
-        # self.n_nodes = None
         self.ndof = None
 
         self.damping_ratio = None
@@ -43,42 +41,28 @@ class Rail(ElementModelPart):
         self.radial_frequency_two = None
 
         self.aux_mass_matrix = None
-        # self.global_mass_matrix = None
-
         self.aux_stiffness_matrix = None
-        # self.global_stiffness_matrix = None
         self.aux_damping_matrix = None
 
         self.nodal_ndof = 3
 
-        self.rotation_dof = True
-        self.x_disp_dof = True
+        self.normal_dof = True
+        self.z_rot_dof = True
         self.y_disp_dof = True
 
-    # def set_top_level_to_zero(self):
-    #     self.level = self.level - np.max(self.level)
-    #
     def calculate_length_rail(self):
 
         xdiff = np.diff([node.coordinates[0] for node in self.nodes])
         ydiff = np.diff([node.coordinates[1] for node in self.nodes])
         zdiff = np.diff([node.coordinates[2] for node in self.nodes])
 
-        distances = np.sqrt(np.square(xdiff)+np.square(ydiff)+np.square(zdiff))
+        distances = np.sqrt(np.square(xdiff) + np.square(ydiff) + np.square(zdiff))
 
         if not np.all(np.isclose(distances[0], distances)):
             print("distance between sleepers is not equal")
             raise
 
         self.length_rail = distances[0]
-
-        # # if len(self.time) != np.shape(F)[1]:
-        # #     raise TimeException("Solver time is not equal to force vector time")
-        # self.length_rail = distance_between_sleepers
-
-    # def calculate_coordinates(self):
-    #     self.coordinates = [np.array([node*self.length_rail, self.level[0,node]])
-    #                                  for node in range(self.__n_sleepers)]
 
     def calculate_mass(self):
         self.mass = self.section.area * self.material.density
@@ -109,15 +93,15 @@ class Rail(ElementModelPart):
             trans_aux_mass_matrix[[0, 3], [0, 3]] = 70 * (1 + phi) ** 2
             trans_aux_mass_matrix[[3, 0], [0, 3]] = 35 * (1 + phi) ** 2
 
-            trans_aux_mass_matrix[[1, 4], [1, 4]] = 70 * phi**2 + 147*phi + 78
-            trans_aux_mass_matrix[[1, 4], [4, 1]] = 35 * phi**2 + 63*phi + 27
+            trans_aux_mass_matrix[[1, 4], [1, 4]] = 70 * phi ** 2 + 147 * phi + 78
+            trans_aux_mass_matrix[[1, 4], [4, 1]] = 35 * phi ** 2 + 63 * phi + 27
 
             trans_aux_mass_matrix[[1, 2], [2, 1]] = (35 * phi ** 2 + 77 * phi + 44) * l / 4
 
             trans_aux_mass_matrix[[1, 5], [5, 1]] = -(35 * phi ** 2 + 63 * phi + 26) * l / 4
 
-            trans_aux_mass_matrix[[2, 5], [2, 5]] = (7 * phi ** 2 + 14 * phi + 8) * (l**2 / 4)
-            trans_aux_mass_matrix[[2, 5], [5, 2]] = -(7 * phi ** 2 + 14 * phi + 6) * (l**2 / 4)
+            trans_aux_mass_matrix[[2, 5], [2, 5]] = (7 * phi ** 2 + 14 * phi + 8) * (l ** 2 / 4)
+            trans_aux_mass_matrix[[2, 5], [5, 2]] = -(7 * phi ** 2 + 14 * phi + 6) * (l ** 2 / 4)
 
             trans_aux_mass_matrix[[2, 4], [4, 2]] = (35 * phi ** 2 + 63 * phi + 26) * (l / 4)
 
@@ -135,7 +119,7 @@ class Rail(ElementModelPart):
         phi = self.timoshenko_factor
         l = self.length_rail
 
-        constant = self.material.density * self.section.sec_moment_of_inertia / (30 * (1 + phi)**2 * l)
+        constant = self.material.density * self.section.sec_moment_of_inertia / (30 * (1 + phi) ** 2 * l)
 
         if self.nodal_ndof == 3:
             rot_aux_mass_matrix = np.zeros((6, 6))
@@ -143,10 +127,10 @@ class Rail(ElementModelPart):
             rot_aux_mass_matrix[[1, 4], [1, 4]] = 36
             rot_aux_mass_matrix[[1, 4], [4, 1]] = -36
 
-            rot_aux_mass_matrix[[1, 1, 2, 5], [2, 5, 1, 1]] = -(15*phi-3)*l
+            rot_aux_mass_matrix[[1, 1, 2, 5], [2, 5, 1, 1]] = -(15 * phi - 3) * l
 
-            rot_aux_mass_matrix[[2, 5], [2, 5]] = (10 * phi**2 + 5*phi + 4) * l ** 2
-            rot_aux_mass_matrix[[2, 5], [5, 2]] = (5 * phi**2 - 5*phi - 1) * l ** 2
+            rot_aux_mass_matrix[[2, 5], [2, 5]] = (10 * phi ** 2 + 5 * phi + 4) * l ** 2
+            rot_aux_mass_matrix[[2, 5], [5, 2]] = (5 * phi ** 2 - 5 * phi - 1) * l ** 2
 
             rot_aux_mass_matrix[[2, 4, 4, 5], [4, 2, 5, 4]] = (15 * phi - 3) * l
 
@@ -172,9 +156,9 @@ class Rail(ElementModelPart):
         if self.nodal_ndof == 3:
             self.aux_stiffness_matrix = np.zeros((6, 6))
             self.aux_stiffness_matrix[[0, 3], [0, 3]] = self.section.area / self.section.sec_moment_of_inertia * \
-                                                        (1 + self.timoshenko_factor) * self.length_rail**2
+                                                        (1 + self.timoshenko_factor) * self.length_rail ** 2
             self.aux_stiffness_matrix[[3, 0], [0, 3]] = -self.section.area / self.section.sec_moment_of_inertia * \
-                                                        (1 + self.timoshenko_factor) * self.length_rail**2
+                                                        (1 + self.timoshenko_factor) * self.length_rail ** 2
 
             self.aux_stiffness_matrix[[1, 4], [1, 4]] = 12
             self.aux_stiffness_matrix[[1, 4], [4, 1]] = -12
@@ -213,9 +197,10 @@ class Rail(ElementModelPart):
         self.calculate_length_rail()
         super(Rail, self).initialize()
 
+
 class Sleeper(ElementModelPart):
     def __init__(self):
-        super(Sleeper, self).__init__()
+        super().__init__()
         self.mass = None
         self.distance_between_sleepers = None
         self.height_sleeper = 0.1
@@ -234,7 +219,7 @@ class Sleeper(ElementModelPart):
 
 class RailPad(ElementModelPart):
     def __init__(self):
-        super(RailPad, self).__init__()
+        super().__init__()
         self.stiffness = None
         self.damping = None
         self.aux_stiffness_matrix = None
@@ -248,7 +233,6 @@ class RailPad(ElementModelPart):
         self.aux_stiffness_matrix[1, 0] = -self.stiffness
         self.aux_stiffness_matrix[0, 1] = -self.stiffness
         self.aux_stiffness_matrix[1, 1] = self.stiffness
-
 
     def set_aux_damping_matrix(self):
         self.aux_damping_matrix = np.zeros((2, 2))
@@ -347,8 +331,8 @@ class Ballast:
 #         for i in range(self.__n_sleepers):
 #             node = geometry.Node()
 #             node.index = len(self.nodes) + i
-#             node.rotation_dof = True
-#             node.x_disp_dof = True
+#             node.normal_dof = True
+#             node.z_rot_dof = True
 #             node.y_disp_dof = True
 #             node.coordinates = self.rail.coordinates[i]
 #             rail_nodes.append(node)
@@ -372,8 +356,8 @@ class Ballast:
 #         for i in range(self.__n_sleepers):
 #             node = geometry.Node()
 #             node.index = len(self.nodes) + i
-#             node.rotation_dof = False
-#             node.x_disp_dof = False
+#             node.normal_dof = False
+#             node.z_rot_dof = False
 #             node.y_disp_dof = True
 #             node.coordinates = np.array([self.rail.coordinates[i][0],
 #                                          self.rail.coordinates[i][1]-self.sleeper.height_sleeper])

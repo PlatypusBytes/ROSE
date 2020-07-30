@@ -1,8 +1,8 @@
 from src import utils
 
 from src.model_part import ElementModelPart, ConstraintModelPart, ModelPart
-from src.boundary_conditions import CauchyCondition
-from src.geometry import Mesh
+from src.boundary_conditions import LoadCondition
+from src.geometry import Mesh, Node
 
 from scipy import sparse
 import numpy as np
@@ -35,7 +35,7 @@ class GlobalSystem:
         self.velocities = None
         self.accelerations = None
 
-    def __update_nodal_dofs(self, node, model_part):
+    def __update_nodal_dofs(self, node: Node, model_part: ModelPart):
         """
         Checks if dof on model part is true, if so, the nodal dof is updated
 
@@ -43,8 +43,8 @@ class GlobalSystem:
         :param model_part:
         :return:
         """
-        node.rotation_dof = model_part.rotation_dof if model_part.rotation_dof else node.rotation_dof
-        node.x_disp_dof = model_part.x_disp_dof if model_part.x_disp_dof else node.x_disp_dof
+        node.normal_dof = model_part.normal_dof if model_part.normal_dof else node.normal_dof
+        node.z_rot_dof = model_part.z_rot_dof if model_part.z_rot_dof else node.z_rot_dof
         node.y_disp_dof = model_part.y_disp_dof if model_part.y_disp_dof else node.y_disp_dof
 
     def initialise_model_parts(self):
@@ -59,7 +59,7 @@ class GlobalSystem:
                 for node in model_part.nodes:
                     self.__update_nodal_dofs(node, model_part)
 
-    def __add_aux_matrices_to_global(self, model_part):
+    def __add_aux_matrices_to_global(self, model_part: ElementModelPart):
         """
         Add aux matrices of model part to the global matrices. If the model part does not have elements, the model part
         nodes are used as reference
@@ -98,24 +98,24 @@ class GlobalSystem:
             n_nodes_element = 1
 
         if model_part.aux_stiffness_matrix is not None:
-            model_part.aux_stiffness_matrix = utils.reshape_aux_matrix(n_nodes_element, [model_part.x_disp_dof,
+            model_part.aux_stiffness_matrix = utils.reshape_aux_matrix(n_nodes_element, [model_part.z_rot_dof,
                                                                                          model_part.y_disp_dof,
-                                                                                         model_part.rotation_dof],
+                                                                                         model_part.normal_dof],
                                                                        model_part.aux_stiffness_matrix)
 
         if model_part.aux_mass_matrix is not None:
             model_part.aux_mass_matrix = utils.reshape_aux_matrix(n_nodes_element,
-                                                                  [model_part.x_disp_dof, model_part.y_disp_dof,
-                                                                   model_part.rotation_dof],
+                                                                  [model_part.z_rot_dof, model_part.y_disp_dof,
+                                                                   model_part.normal_dof],
                                                                   model_part.aux_mass_matrix)
 
         if model_part.aux_damping_matrix is not None:
             model_part.aux_damping_matrix = utils.reshape_aux_matrix(n_nodes_element,
-                                                                     [model_part.x_disp_dof, model_part.y_disp_dof,
-                                                                      model_part.rotation_dof],
+                                                                     [model_part.z_rot_dof, model_part.y_disp_dof,
+                                                                      model_part.normal_dof],
                                                                      model_part.aux_damping_matrix)
 
-    def __add_condition_to_global(self, condition):
+    def __add_condition_to_global(self, condition: LoadCondition):
         """
         Adds condition to the global force vector
 
@@ -124,12 +124,12 @@ class GlobalSystem:
         """
 
         for i, node in enumerate(condition.nodes):
-            if condition.rotation_dof:
-                self.global_force_vector[node.index_dof[0], :] += condition.moment[i, :]
+            if condition.normal_dof:
+                self.global_force_vector[node.index_dof[0], :] += condition.normal_force[i, :]
             if condition.y_disp_dof:
                 self.global_force_vector[node.index_dof[1], :] += condition.y_force[i, :]
-            if condition.x_disp_dof:
-                self.global_force_vector[node.index_dof[2], :] += condition.x_force[i, :]
+            if condition.z_rot_dof:
+                self.global_force_vector[node.index_dof[2], :] += condition.z_moment[i, :]
 
     def __trim_global_matrices_on_indices(self, row_indices, col_indices):
         """
@@ -175,41 +175,30 @@ class GlobalSystem:
         all_row_indices = []
         all_col_indices = []
         for idx in range(len(self.mesh.nodes) - 1, -1, -1):
-            if not self.mesh.nodes[idx].x_disp_dof:
+            if not self.mesh.nodes[idx].z_rot_dof:
                 all_row_indices.append(self.mesh.nodes[idx].index_dof[2])
                 all_col_indices.append(self.mesh.nodes[idx].index_dof[2])
 
                 self.mesh.nodes[idx].index_dof[2] = None
 
-                # self.__trim_global_matrices_on_indices(row_indices, col_indices)
-
             if not self.mesh.nodes[idx].y_disp_dof:
                 all_row_indices.append(self.mesh.nodes[idx].index_dof[1])
                 all_col_indices.append(self.mesh.nodes[idx].index_dof[1])
-                # row_indices = [self.mesh.nodes[idx].index_dof[1]]
-                # col_indices = [self.mesh.nodes[idx].index_dof[1]]
 
                 self.mesh.nodes[idx].index_dof[1] = None
 
-                # self.__trim_global_matrices_on_indices(row_indices, col_indices)
-
-            if not self.mesh.nodes[idx].rotation_dof:
+            if not self.mesh.nodes[idx].normal_dof:
                 all_row_indices.append(self.mesh.nodes[idx].index_dof[0])
                 all_col_indices.append(self.mesh.nodes[idx].index_dof[0])
-                # row_indices = [self.mesh.nodes[idx].index_dof[0]]
-                # col_indices = [self.mesh.nodes[idx].index_dof[0]]
 
                 self.mesh.nodes[idx].index_dof[0] = None
-
-                # self.__trim_global_matrices_on_indices(row_indices, col_indices)
-
 
         self.__trim_global_matrices_on_indices(all_row_indices, all_col_indices)
         self.__recalculate_dof()
 
     def initialise_global_matrices(self):
         """
-        Inititialses all the global matrices with all element model parts and conditions and constraints
+        Inititialises all the global matrices with all element model parts and conditions and constraints
 
         :return:
         """
@@ -221,12 +210,9 @@ class GlobalSystem:
 
         for model_part in self.model_parts:
             if isinstance(model_part, ElementModelPart):
-
                 self.__reshape_aux_matrices(model_part)
-                t = timet.time()
                 self.__add_aux_matrices_to_global(model_part)
-                print(timet.time() - t)
-            if isinstance(model_part, CauchyCondition):
+            if isinstance(model_part, LoadCondition):
                 self.__add_condition_to_global(model_part)
 
         for model_part in self.model_parts:

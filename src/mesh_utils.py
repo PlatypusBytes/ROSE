@@ -2,33 +2,33 @@ from src.geometry import Node, Element, Mesh
 
 from src.track import Rail, RailPad, Sleeper
 from src.soil import Soil
-from src.model_part import ConstraintModelPart
-from src.boundary_conditions import CauchyCondition
+from src.model_part import ConstraintModelPart, ElementModelPart
+from src.boundary_conditions import LoadCondition
 import itertools
 import numpy as np
 from scipy import interpolate
 from scipy import sparse
 
 
-def add_moving_point_load_to_track(rail_model_part, time, build_up_idxs, moment=None,x_load=None, y_load=None):
+def add_moving_point_load_to_track(rail_model_part: ElementModelPart, time, build_up_idxs, normal_force=None, z_moment=None, y_load=None):
 
     ndim = 2
-    rotation_dof = moment is not None
-    x_disp_dof = x_load is not None
+    normal_dof = normal_force is not None
+    z_rot_dof = z_moment is not None
     y_disp_dof = y_load is not None
 
-    force = CauchyCondition(rotation_dof=rotation_dof, x_disp_dof=x_disp_dof, y_disp_dof=y_disp_dof)
+    force = LoadCondition(normal_dof=normal_dof, z_rot_dof=z_rot_dof, y_disp_dof=y_disp_dof)
     force.nodes = rail_model_part.nodes
     force.elements = rail_model_part.elements
 
-    # todo xload and moment
+    # todo z_rot_dof and normal_force
 
     moving_y_force = np.ones(len(time)) * y_load
     moving_y_force[0:build_up_idxs] = np.linspace(0, y_load, build_up_idxs)
 
     #2d
     if ndim == 2:
-        force.y_force = sparse.csr_matrix((len(force.nodes), len(time)))
+        force.y_force = sparse.lil_matrix((len(force.nodes), len(time)))
         f = interpolate.interp1d([node.coordinates[0] for node in force.nodes],
                                  [node.coordinates[1] for node in force.nodes])
         moving_x_coords = np.linspace(force.nodes[0].coordinates[0], force.nodes[-1].coordinates[0], len(time))
@@ -106,16 +106,8 @@ def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     soil.nodes = points_soil
     soil.elements = elements_soil
 
-
-    return {'rail':rail_model_part,
+    return {'rail': rail_model_part,
             'rail_pad': rail_pad_model_part,
             'sleeper': sleeper_model_part,
             'soil': soil}, mesh
-    # points_rail_pad = [nodes_track[0], Node(0.0, -0.1, 0.0), nodes_track[1], Node(1.0, -0.1, 0.0),
-    #                    nodes_track[2], Node(2.0, -0.1, 0.0)]
 
-    #
-    # elements_rail_pad = [Element([points_rail_pad[0], points_rail_pad[1]]),
-    #                      Element([points_rail_pad[2], points_rail_pad[3]]),
-    #                      Element([points_rail_pad[4], points_rail_pad[5]])]
-    # mesh.add_unique_elements_to_mesh(elements_rail_pad)
