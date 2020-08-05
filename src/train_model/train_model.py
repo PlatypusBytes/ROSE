@@ -22,6 +22,17 @@ class TrainModel(ElementModelPart):
         self.length_cart = None
         self.length_bogie = None
 
+        self.herzian_contact_cof = None
+
+        self.irregularities = None
+        self.static_wheel_load = None
+        self.static_wheel_deformation = None
+
+        self.force_vector = None
+        self.static_force_vector = None
+
+        self.g = 9.81
+
     def set_aux_mass_matrix(self):
         """
         Set mass matrix of train
@@ -113,4 +124,35 @@ class TrainModel(ElementModelPart):
 
         # wheels
         self.aux_damping_matrix[[6, 8, 10, 12], [6, 8, 10, 12]] = self.prim_damping
+
+    def calculate_static_wheel_deformation(self):
+        self.static_wheel_deformation = self.herzian_contact_cof * self.static_wheel_load ** (2/3)
+
+    def __calculate_elastic_wheel_deformation(self, deformation_wheel, deformation_track):
+        elastic_wheel_deformation = self.static_wheel_deformation + deformation_wheel - deformation_track - self.irregularities
+        return elastic_wheel_deformation
+
+    def calculate_wheel_rail_contact_force(self, deformation_wheel, deformation_track):
+        contact_force = (1/self.herzian_contact_cof *
+                         self.__calculate_elastic_wheel_deformation(deformation_wheel, deformation_track))**(3/2)
+        return contact_force
+
+    def set_static_force_vector(self):
+        self.static_force_vector = np.zeros((14, 1))
+        self.static_force_vector[0, 0] = -self.mass_cart * self.g
+        self.static_force_vector[2, 0] = -self.mass_bogie * self.g
+        self.static_force_vector[4, 0] = -self.mass_bogie * self.g
+        self.static_force_vector[[6, 8, 10, 12], [0, 0, 0, 0]] = -self.mass_wheel * self.g
+
+    def set_dynamic_force_vector(self, deformation_wheels, deformation_track):
+
+        assert len(deformation_wheels) == len(deformation_track) == 4
+
+        self.dynamic_forve_vector = np.zeros((14, 1))
+        self.dynamic_forve_vector[[6, 8, 10, 12], [0, 0, 0, 0]] = \
+            self.calculate_wheel_rail_contact_force(deformation_wheels, deformation_track)
+
+    def set_force_vector(self,deformation_wheels, deformation_track):
+        self.force_vector = self.static_force_vector + self.set_dynamic_force_vector(deformation_wheels,
+                                                                                     deformation_track)
 
