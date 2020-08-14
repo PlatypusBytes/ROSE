@@ -18,23 +18,39 @@ class SizeException(Exception):
 class NoDispRotCondition(ConditionModelPart):
     def __init__(self):
         super().__init__()
-        self.normal_dof = False
-        self.z_rot_dof = False
-        self.y_disp_dof = False
+
+    # def normal_dof(self):
+    #     return
+    #     self.normal_dof = False
+    #     self.z_rot_dof = False
+    #     self.y_disp_dof = False
 
 
 class LoadCondition(ConditionModelPart):
     def __init__(self, normal_dof=False, y_disp_dof=False, z_rot_dof=False):
         super().__init__()
-        self.normal_dof = normal_dof
-        self.z_rot_dof = z_rot_dof
-        self.y_disp_dof = y_disp_dof
+
+        self.__normal_dof = normal_dof
+        self.__y_disp_dof = y_disp_dof
+        self.__z_rot_dof = z_rot_dof
 
         self.normal_force = np.array([])
         self.z_moment = np.array([])
         self.y_force = np.array([])
 
         self.time = []
+
+    @property
+    def normal_dof(self):
+        return  self.__normal_dof
+
+    @property
+    def y_disp_dof(self):
+        return self.__y_disp_dof
+
+    @property
+    def z_rot_dof(self):
+        return self.__z_rot_dof
 
     def initialize_matrices(self):
         super().initialize()
@@ -187,7 +203,7 @@ class LineLoadCondition(LoadCondition):
         # calculate centroids
         centroids = np.array(
             [
-                utils.centeroidnp(
+                utils.centeroid_np(
                     np.array([node.coordinates for node in element.nodes])
                 )
                 for element in self.elements
