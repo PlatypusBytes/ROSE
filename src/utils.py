@@ -3,14 +3,26 @@ import numpy as np
 from shapely.geometry import LineString, Polygon
 
 from typing import List
+
 # from src.boundary_conditions import LoadCondition
 from src.geometry import Node, Element
 
+from scipy import sparse
+from scipy.spatial.distance import cdist
+
+import src.utils as utils
+from shapely.geometry import Point
+from scipy.spatial.distance import cdist
+from scipy.spatial import KDTree
+from scipy import sparse
+
+
 def init_aux_matrix(n_nodes, dofs):
-    return np.zeros((n_nodes*sum(dofs), n_nodes*sum(dofs)))
+    return np.zeros((n_nodes * sum(dofs), n_nodes * sum(dofs)))
+
 
 def reshape_aux_matrix(n_nodes, dofs, aux_matrix):
-    new_aux_matrix = np.zeros((n_nodes*len(dofs), n_nodes*len(dofs)))
+    new_aux_matrix = np.zeros((n_nodes * len(dofs), n_nodes * len(dofs)))
 
     dofs = np.asarray(dofs)
     for i in range(n_nodes):
@@ -19,8 +31,12 @@ def reshape_aux_matrix(n_nodes, dofs, aux_matrix):
                 if dofs[k]:
                     for l in range(len(dofs)):
                         if dofs[l]:
-                            new_aux_matrix[i * len(dofs) + k, j * len(dofs) + l] = \
-                                aux_matrix[i * sum(dofs) + sum(dofs[0:k]), j * sum(dofs) + sum(dofs[0:l])]
+                            new_aux_matrix[
+                                i * len(dofs) + k, j * len(dofs) + l
+                            ] = aux_matrix[
+                                i * sum(dofs) + sum(dofs[0:k]),
+                                j * sum(dofs) + sum(dofs[0:l]),
+                            ]
 
     return new_aux_matrix
 
@@ -57,8 +73,12 @@ def delete_from_lil(mat: sparse.lil_matrix, row_indices=[], col_indices=[]):
         return mat
 
 
-def add_aux_matrix_to_global(global_matrix: sparse.lil_matrix, aux_matrix, elements: List[Element],
-                             nodes: List[Node] = None):
+def add_aux_matrix_to_global(
+    global_matrix: sparse.lil_matrix,
+    aux_matrix,
+    elements: List[Element],
+    nodes: List[Node] = None,
+):
     """
 
     :param global_matrix:
@@ -74,24 +94,36 @@ def add_aux_matrix_to_global(global_matrix: sparse.lil_matrix, aux_matrix, eleme
                 # add diagonal
                 for j, id_1 in enumerate(element.nodes[node_nr].index_dof):
                     for k, id_2 in enumerate(element.nodes[node_nr].index_dof):
-                        global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[node_nr].index_dof) * node_nr + j,
-                                                                len(element.nodes[node_nr].index_dof) * node_nr + k]
+                        global_matrix[id_1, id_2] += aux_matrix[
+                            len(element.nodes[node_nr].index_dof) * node_nr + j,
+                            len(element.nodes[node_nr].index_dof) * node_nr + k,
+                        ]
                 # add interaction
-                for node_nr_2 in range(node_nr+1, len(element.nodes)):
+                for node_nr_2 in range(node_nr + 1, len(element.nodes)):
                     for j, id_1 in enumerate(element.nodes[node_nr].index_dof):
                         for k, id_2 in enumerate(element.nodes[node_nr_2].index_dof):
-                            global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[node_nr].index_dof) * node_nr + j,
-                                                                    len(element.nodes[node_nr].index_dof) * (node_nr + node_nr_2) + k]
+                            global_matrix[id_1, id_2] += aux_matrix[
+                                len(element.nodes[node_nr].index_dof) * node_nr + j,
+                                len(element.nodes[node_nr].index_dof)
+                                * (node_nr + node_nr_2)
+                                + k,
+                            ]
                     for j, id_1 in enumerate(element.nodes[node_nr_2].index_dof):
                         for k, id_2 in enumerate(element.nodes[node_nr].index_dof):
-                            global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[node_nr].index_dof) * (node_nr + node_nr_2) + j,
-                                                                    len(element.nodes[node_nr].index_dof) * node_nr + k]
+                            global_matrix[id_1, id_2] += aux_matrix[
+                                len(element.nodes[node_nr].index_dof)
+                                * (node_nr + node_nr_2)
+                                + j,
+                                len(element.nodes[node_nr].index_dof) * node_nr + k,
+                            ]
 
             # add last node
             for j, id_1 in enumerate(element.nodes[-1].index_dof):
                 for k, id_2 in enumerate(element.nodes[-1].index_dof):
-                    global_matrix[id_1, id_2] += aux_matrix[len(element.nodes[-1].index_dof) * (len(element.nodes)-1) + j,
-                                                            len(element.nodes[-1].index_dof) * (len(element.nodes)-1) + k]
+                    global_matrix[id_1, id_2] += aux_matrix[
+                        len(element.nodes[-1].index_dof) * (len(element.nodes) - 1) + j,
+                        len(element.nodes[-1].index_dof) * (len(element.nodes) - 1) + k,
+                    ]
         return global_matrix
 
     elif nodes is not None:
@@ -102,7 +134,12 @@ def add_aux_matrix_to_global(global_matrix: sparse.lil_matrix, aux_matrix, eleme
 
         return global_matrix
 
-def centeroidnp(arr):
+
+def distance_np(coordinates_array1: np.array, coordinates_array2: np.array, axis=0):
+    return np.sqrt(np.sum((coordinates_array1 - coordinates_array2) ** 2, axis=axis))
+
+
+def centeroid_np(arr):
     """
     Calculate centroid of numpy array
     :param arr: numpy array
@@ -115,14 +152,61 @@ def centeroidnp(arr):
     return sum_x / length, sum_y / length, sum_z / length
 
 
+def find_intersecting_point_element(
+    elements, point_coordinates, intersection_tolerance=1e-6
+):
+    # convert elements to shapely elements for intersection
+    shapely_elements = get_shapely_elements(elements)
+
+    # calculate centroids
+    centroids = np.array(
+        [
+            centeroid_np(np.array([node.coordinates for node in element.nodes]))
+            for element in elements
+        ]
+    )
+
+    # set kdtree to quickly search nearest element of the point
+    tree = KDTree(centroids)
+
+    # set shapely point for intersection
+    point = Point(point_coordinates)
+    element_idx = None
+
+    # loop is required because the closest element centroid to the point is not always the centroid of the
+    # intersecting element
+    for i in range(len(elements)):
+        nr_nearest_neighbours = i + 1
+        # find nearest neighbour element of point coordinates
+        nearest_neighbours = tree.query(point_coordinates, k=nr_nearest_neighbours)
+        element_idx = (
+            nearest_neighbours[1]
+            if isinstance(nearest_neighbours[1], np.int32)
+            else nearest_neighbours[1][-1]
+        )
+
+        # check if coordinate is in element
+        if (
+            shapely_elements[element_idx]
+            .buffer(intersection_tolerance)
+            .intersection(point)
+        ):
+            return element_idx
+
+    return element_idx
+
+
 def get_shapely_elements(elements: List[Element]):
     # convert elements to shapely elements for intersection
     shapely_elements = []
     for element in elements:
         if len(element.nodes) == 2:
-            shapely_elements.append(LineString(
-                [node.coordinates for node in element.nodes]))
+            shapely_elements.append(
+                LineString([node.coordinates for node in element.nodes])
+            )
         elif len(element.nodes) > 2:
-            shapely_elements.append(Polygon([node.coordinates for node in element.nodes]))
+            shapely_elements.append(
+                Polygon([node.coordinates for node in element.nodes])
+            )
 
     return shapely_elements
