@@ -115,7 +115,7 @@ def set_up_euler_rail(set_up_material, set_up_euler_section):
 
     rail.calculate_length_rail()
     rail.calculate_mass()
-    rail.calculate_n_dof()
+    # rail.calculate_n_dof()
 
     rail.damping_ratio = 0.0502
     rail.radial_frequency_one = 2
