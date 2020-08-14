@@ -55,9 +55,9 @@ class Solver:
         self.v = np.zeros([len(time), number_equations])
         self.a = np.zeros([len(time), number_equations])
 
-    def finalise(self, t_end_idx):
-        self.u0 = self.u[t_end_idx, :]
-        self.v0 = self.v[t_end_idx, :]
+    def update(self, t_start_idx):
+        self.u0 = self.u[t_start_idx, :]
+        self.v0 = self.v[t_start_idx, :]
 
     def validate_input(self, F, t_start_idx, t_end_idx):
         if len(self.time) != np.shape(F)[1]:
@@ -91,14 +91,16 @@ class NewmarkSolver(Solver):
 
         self.validate_input(F, t_start_idx, t_end_idx)
         # todo correct t_step, as it is not correct, but tests succeed
-        t_step = (self.time[t_end_idx] - self.time[t_start_idx]) / ((t_end_idx - t_start_idx) + 1)
+        t_step = (self.time[t_end_idx] - self.time[t_start_idx]) / (
+            (t_end_idx - t_start_idx) + 1
+        )
 
         # constants for the Newmark integration
         beta = self.beta
         gamma = self.gamma
 
         # initial force conditions: for computation of initial acceleration
-        d_force = F[:, t_start_idx].toarray() #add index of timestep
+        d_force = F[:, t_start_idx].toarray()  # add index of timestep
         d_force = d_force[:, 0]
 
         # initial conditions u, v, a
@@ -115,10 +117,15 @@ class NewmarkSolver(Solver):
         K_till = K + C.dot(gamma / (beta * t_step)) + M.dot(1 / (beta * t_step ** 2))
 
         # define progress bar
-        pbar = tqdm(total=(t_end_idx - t_start_idx), unit_scale=True, unit_divisor=1000, unit="steps")
+        pbar = tqdm(
+            total=(t_end_idx - t_start_idx),
+            unit_scale=True,
+            unit_divisor=1000,
+            unit="steps",
+        )
 
         # iterate for each time step
-        for t in range(t_start_idx+1, t_end_idx+1):
+        for t in range(t_start_idx + 1, t_end_idx + 1):
             # update progress bar
             pbar.update(1)
 
@@ -139,9 +146,18 @@ class NewmarkSolver(Solver):
             du = spsolve(K_till, force_ext)
 
             # velocity calculated through Newmark relation
-            dv = du.dot(gamma / (beta * t_step)) - v.dot(gamma / beta) + a.dot(t_step * (1 - gamma / (2 * beta)))
+            dv = (
+                du.dot(gamma / (beta * t_step))
+                - v.dot(gamma / beta)
+                + a.dot(t_step * (1 - gamma / (2 * beta)))
+            )
+
             # acceleration calculated through Newmark relation
-            da = du.dot(1 / (beta * t_step ** 2)) - v.dot(1 / (beta * t_step)) - a.dot(1 / (2 * beta))
+            da = (
+                du.dot(1 / (beta * t_step ** 2))
+                - v.dot(1 / (beta * t_step))
+                - a.dot(1 / (2 * beta))
+            )
 
             # update variables
             u = u + du
@@ -155,13 +171,10 @@ class NewmarkSolver(Solver):
 
         # close the progress bar
         pbar.close()
-
-        self.finalise(t_end_idx)
         return
 
 
 class StaticSolver(Solver):
-
     def __init__(self):
         super(StaticSolver, self).__init__()
 
@@ -188,9 +201,14 @@ class StaticSolver(Solver):
         self.validate_input(F, t_start_idx, t_end_idx)
 
         # define progress bar
-        pbar = tqdm(total=(t_end_idx - t_start_idx), unit_scale=True, unit_divisor=1000, unit="steps")
+        pbar = tqdm(
+            total=(t_end_idx - t_start_idx),
+            unit_scale=True,
+            unit_divisor=1000,
+            unit="steps",
+        )
 
-        for t in range(t_start_idx+1, t_end_idx+1):
+        for t in range(t_start_idx + 1, t_end_idx + 1):
             # update progress bar
             pbar.update(1)
 
@@ -208,7 +226,6 @@ class StaticSolver(Solver):
 
         # close the progress bar
         pbar.close()
-        self.finalise(t_end_idx)
         return
 
     def save_data(self):
@@ -217,10 +234,12 @@ class StaticSolver(Solver):
         """
 
         # construct dic structure
-        data = {"displacement": self.u,
-                "velocity": self.v,
-                "acceleration": self.a,
-                "time": self.time}
+        data = {
+            "displacement": self.u,
+            "velocity": self.v,
+            "acceleration": self.a,
+            "time": self.time,
+        }
 
         # dump data
         with open(os.path.join(self.output_folder, "data.pickle"), "wb") as f:
