@@ -19,7 +19,7 @@ def mass_matrix(H_discretisation, rho):
     mass = sparse.lil_matrix((H_discretisation.shape[0], H_discretisation.shape[0]))
     for i in range(mass.shape[0] - 1):
         mass_aux = aux * rho * discretisation[i] / 6
-        mass[i:i + 2, i:i + 2] += mass_aux
+        mass[i : i + 2, i : i + 2] += mass_aux
 
     return mass
 
@@ -37,7 +37,7 @@ def stiff_matrix(H_discretisation, kappa):
     stiff = sparse.lil_matrix((H_discretisation.shape[0], H_discretisation.shape[0]))
     for i in range(stiff.shape[0] - 1):
         stiff_aux = aux * kappa / discretisation[i]
-        stiff[i:i + 2, i:i + 2] += stiff_aux
+        stiff[i : i + 2, i : i + 2] += stiff_aux
 
     return stiff
 
@@ -74,8 +74,7 @@ def main(omega=range(50, 100, 10), out_fold="./"):
     # poisson = 0.3  # poisson ratio
     discretisation = 0.1  # element size
     # settings
-    settings_newmark = {"gamma": 0.5,
-                        "beta": 0.25}
+    settings_newmark = {"gamma": 0.5, "beta": 0.25}
 
     # solid discretisation
     H_discre = np.linspace(0, L, int(np.ceil(L / discretisation) + 1))
@@ -101,7 +100,15 @@ def main(omega=range(50, 100, 10), out_fold="./"):
         F[0, :] = np.sin(w * time)
         # newmark solver
         res = solver.Solver(K.shape[0])
-        res.newmark(settings_newmark, M.tocsc(), C.tocsc(), K.tocsc(), F.tocsc(), time[1] - time[0], time[-1])
+        res.newmark(
+            settings_newmark,
+            M.tocsc(),
+            C.tocsc(),
+            K.tocsc(),
+            F.tocsc(),
+            time[1] - time[0],
+            time[-1],
+        )
         # add the maximum displacement
         max_disp.append(np.max(res.u))
 
@@ -110,8 +117,10 @@ def main(omega=range(50, 100, 10), out_fold="./"):
     ax[0].set_position([0.08, 0.11, 0.40, 0.8])
     ax[1].set_position([0.55, 0.11, 0.40, 0.8])
 
-    ax[0].plot(omega, max_disp, color='k')
-    ax[1].plot(omega, [1 / i for i in max_disp], color='k')  # check if it should be 1 or the sin force
+    ax[0].plot(omega, max_disp, color="k")
+    ax[1].plot(
+        omega, [1 / i for i in max_disp], color="k"
+    )  # check if it should be 1 or the sin force
     ax[0].set_xlabel(r"$\omega$")
     ax[1].set_xlabel(r"$\omega$")
     ax[0].set_ylabel("Displacement")
@@ -123,8 +132,7 @@ def main(omega=range(50, 100, 10), out_fold="./"):
 
     # save data and dump to dump json
     with open(os.path.join(out_fold, "fem.json"), "w") as f:
-        json.dump({"omega": [i for i in omega],
-                   "displacement": max_disp}, f, indent=2)
+        json.dump({"omega": [i for i in omega], "displacement": max_disp}, f, indent=2)
     return
 
 

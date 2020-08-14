@@ -6,6 +6,7 @@ import copy
 from scipy import sparse
 from src.model_part import ElementModelPart
 
+
 class Soil(ElementModelPart):
     def __init__(self):
         super(Soil, self).__init__()
@@ -37,7 +38,6 @@ class Soil(ElementModelPart):
         self.aux_damping_matrix[0, 1] = -self.damping
         self.aux_damping_matrix[1, 1] = self.damping
 
-
     def set_1_d_geometry(self, top_nodes, bottom_nodes):
         self.nodes = np.append(self.nodes, top_nodes)
         self.nodes = np.append(self.nodes, bottom_nodes)
@@ -51,9 +51,3 @@ class Soil(ElementModelPart):
             soil_elements.append(element)
 
         self.elements = np.append(self.elements, soil_elements)
-
-
-
-
-
-
