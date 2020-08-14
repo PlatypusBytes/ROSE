@@ -3,7 +3,7 @@ import numpy as np
 
 
 class Node:
-    def __init__(self,x,y,z):
+    def __init__(self, x, y, z):
         self.index = None
         self.index_dof = np.array([None, None, None])
         self.coordinates = [x, y, z]
@@ -11,7 +11,35 @@ class Node:
         self.z_rot_dof = False
         self.y_disp_dof = False
 
+        self.displacements = None
+        self.velocities = None
+        self.accelerations = None
+
         self.model_parts = []
+
+    def assign_result(self, displacements, velocities, accelerations):
+        ndof = 3  # todo increase for 3d
+
+        self.displacements = np.zeros((displacements.shape[0], ndof))
+        self.velocities = np.zeros((velocities.shape[0], ndof))
+        self.accelerations = np.zeros((accelerations.shape[0], ndof))
+
+        dof_idx = 0
+        if self.normal_dof:
+            self.displacements[:, 0] = displacements[:, dof_idx]
+            self.velocities[:, 0] = velocities[:, dof_idx]
+            self.accelerations[:, 0] = accelerations[:, dof_idx]
+            dof_idx += 1
+        if self.y_disp_dof:
+            self.displacements[:, 1] = displacements[:, dof_idx]
+            self.velocities[:, 1] = velocities[:, dof_idx]
+            self.accelerations[:, 1] = accelerations[:, dof_idx]
+            dof_idx += 1
+        if self.z_rot_dof:
+            self.displacements[:, 2] = displacements[:, dof_idx]
+            self.velocities[:, 2] = velocities[:, dof_idx]
+            self.accelerations[:, 2] = accelerations[:, dof_idx]
+            dof_idx += 1
 
     def __eq__(self, other: Node):
         abs_tol = 1e-9
@@ -19,8 +47,14 @@ class Node:
             if abs(coordinate - other.coordinates[idx]) > abs_tol:
                 return False
 
-        self.index_dof = [other.index_dof[idx] if other.index_dof[idx] is not None else self.index_dof[idx] for idx in
-                          range(len(self.index_dof))]
+        self.index_dof = np.array(
+            [
+                other.index_dof[idx]
+                if other.index_dof[idx] is not None
+                else self.index_dof[idx]
+                for idx in range(len(self.index_dof))
+            ]
+        )
         self.normal_dof = self.normal_dof + other.normal_dof
         self.z_rot_dof = self.z_rot_dof + other.z_rot_dof
         self.y_disp_dof = self.y_disp_dof + other.y_disp_dof
@@ -30,6 +64,7 @@ class Node:
     @property
     def ndof(self):
         return self.normal_dof + self.z_rot_dof + self.y_disp_dof
+
 
 class Element:
     def __init__(self, nodes):
@@ -50,6 +85,7 @@ class Element:
         self.model_parts.append(model_part)
         for node in self.nodes:
             node.model_parts.append(model_part)
+
 
 class Mesh:
     def __init__(self):
