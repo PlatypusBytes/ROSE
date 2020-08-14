@@ -20,7 +20,9 @@ class Section:
     def __init__(self):
         self.area = None  # [m^2]
         self.sec_moment_of_inertia = None  # [m^4]
-        self.shear_factor = 0  # shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
+        self.shear_factor = (
+            0  # shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
+        )
 
 
 class Rail(ElementModelPart):
@@ -43,6 +45,8 @@ class Rail(ElementModelPart):
         self.aux_mass_matrix = None
         self.aux_stiffness_matrix = None
         self.aux_damping_matrix = None
+
+        self.aux_force_vector = None
 
         self.nodal_ndof = 3
 
@@ -69,9 +73,17 @@ class Rail(ElementModelPart):
 
     def calculate_timoshenko_factor(self):
         if self.section.shear_factor > 0:
-            self.timoshenko_factor = 12 * self.material.youngs_modulus * self.section.sec_moment_of_inertia / (
-                    self.length_rail ** 2 * self.material.shear_modulus *
-                    self.section.area * self.section.shear_factor)
+            self.timoshenko_factor = (
+                12
+                * self.material.youngs_modulus
+                * self.section.sec_moment_of_inertia
+                / (
+                    self.length_rail ** 2
+                    * self.material.shear_modulus
+                    * self.section.area
+                    * self.section.shear_factor
+                )
+            )
 
     def calculate_n_dof(self):
         # self.n_nodes = self.__n_sleepers
@@ -85,7 +97,9 @@ class Rail(ElementModelPart):
         phi = self.timoshenko_factor
         l = self.length_rail
 
-        constant = self.material.density * self.section.area * l / (210 * (1 + phi) ** 2)
+        constant = (
+            self.material.density * self.section.area * l / (210 * (1 + phi) ** 2)
+        )
 
         if self.nodal_ndof == 3:
             trans_aux_mass_matrix = np.zeros((6, 6))
@@ -96,18 +110,32 @@ class Rail(ElementModelPart):
             trans_aux_mass_matrix[[1, 4], [1, 4]] = 70 * phi ** 2 + 147 * phi + 78
             trans_aux_mass_matrix[[1, 4], [4, 1]] = 35 * phi ** 2 + 63 * phi + 27
 
-            trans_aux_mass_matrix[[1, 2], [2, 1]] = (35 * phi ** 2 + 77 * phi + 44) * l / 4
+            trans_aux_mass_matrix[[1, 2], [2, 1]] = (
+                (35 * phi ** 2 + 77 * phi + 44) * l / 4
+            )
 
-            trans_aux_mass_matrix[[1, 5], [5, 1]] = -(35 * phi ** 2 + 63 * phi + 26) * l / 4
+            trans_aux_mass_matrix[[1, 5], [5, 1]] = (
+                -(35 * phi ** 2 + 63 * phi + 26) * l / 4
+            )
 
-            trans_aux_mass_matrix[[2, 5], [2, 5]] = (7 * phi ** 2 + 14 * phi + 8) * (l ** 2 / 4)
-            trans_aux_mass_matrix[[2, 5], [5, 2]] = -(7 * phi ** 2 + 14 * phi + 6) * (l ** 2 / 4)
+            trans_aux_mass_matrix[[2, 5], [2, 5]] = (7 * phi ** 2 + 14 * phi + 8) * (
+                l ** 2 / 4
+            )
+            trans_aux_mass_matrix[[2, 5], [5, 2]] = -(7 * phi ** 2 + 14 * phi + 6) * (
+                l ** 2 / 4
+            )
 
-            trans_aux_mass_matrix[[2, 4], [4, 2]] = (35 * phi ** 2 + 63 * phi + 26) * (l / 4)
+            trans_aux_mass_matrix[[2, 4], [4, 2]] = (35 * phi ** 2 + 63 * phi + 26) * (
+                l / 4
+            )
 
-            trans_aux_mass_matrix[[4, 5], [5, 4]] = -(35 * phi ** 2 + 77 * phi + 44) * (l / 4)
+            trans_aux_mass_matrix[[4, 5], [5, 4]] = -(35 * phi ** 2 + 77 * phi + 44) * (
+                l / 4
+            )
 
-            trans_aux_mass_matrix = utils.reshape_aux_matrix(2, [True, True, True], trans_aux_mass_matrix)
+            trans_aux_mass_matrix = utils.reshape_aux_matrix(
+                2, [True, True, True], trans_aux_mass_matrix
+            )
             return trans_aux_mass_matrix.dot(constant)
         return None
 
@@ -119,7 +147,11 @@ class Rail(ElementModelPart):
         phi = self.timoshenko_factor
         l = self.length_rail
 
-        constant = self.material.density * self.section.sec_moment_of_inertia / (30 * (1 + phi) ** 2 * l)
+        constant = (
+            self.material.density
+            * self.section.sec_moment_of_inertia
+            / (30 * (1 + phi) ** 2 * l)
+        )
 
         if self.nodal_ndof == 3:
             rot_aux_mass_matrix = np.zeros((6, 6))
@@ -134,7 +166,9 @@ class Rail(ElementModelPart):
 
             rot_aux_mass_matrix[[2, 4, 4, 5], [4, 2, 5, 4]] = (15 * phi - 3) * l
 
-            rot_aux_mass_matrix = utils.reshape_aux_matrix(2, [True, True, True], rot_aux_mass_matrix)
+            rot_aux_mass_matrix = utils.reshape_aux_matrix(
+                2, [True, True, True], rot_aux_mass_matrix
+            )
             return rot_aux_mass_matrix.dot(constant)
         return None
 
@@ -143,7 +177,10 @@ class Rail(ElementModelPart):
         timoshenko straight beam auxiliar mass matrix
         :return:
         """
-        self.aux_mass_matrix = self.__set_translational_aux_mass_matrix() + self.__set_rotational_aux_mass_matrix()
+        self.aux_mass_matrix = (
+            self.__set_translational_aux_mass_matrix()
+            + self.__set_rotational_aux_mass_matrix()
+        )
 
     def set_aux_stiffness_matrix(self):
         """
@@ -155,29 +192,49 @@ class Rail(ElementModelPart):
 
         if self.nodal_ndof == 3:
             self.aux_stiffness_matrix = np.zeros((6, 6))
-            self.aux_stiffness_matrix[[0, 3], [0, 3]] = self.section.area / self.section.sec_moment_of_inertia * \
-                                                        (1 + self.timoshenko_factor) * self.length_rail ** 2
-            self.aux_stiffness_matrix[[3, 0], [0, 3]] = -self.section.area / self.section.sec_moment_of_inertia * \
-                                                        (1 + self.timoshenko_factor) * self.length_rail ** 2
+            self.aux_stiffness_matrix[[0, 3], [0, 3]] = (
+                self.section.area
+                / self.section.sec_moment_of_inertia
+                * (1 + self.timoshenko_factor)
+                * self.length_rail ** 2
+            )
+            self.aux_stiffness_matrix[[3, 0], [0, 3]] = (
+                -self.section.area
+                / self.section.sec_moment_of_inertia
+                * (1 + self.timoshenko_factor)
+                * self.length_rail ** 2
+            )
 
             self.aux_stiffness_matrix[[1, 4], [1, 4]] = 12
             self.aux_stiffness_matrix[[1, 4], [4, 1]] = -12
 
             self.aux_stiffness_matrix[[1, 1, 2, 5], [2, 5, 1, 1]] = 6 * self.length_rail
-            self.aux_stiffness_matrix[[2, 4, 4, 5], [4, 2, 5, 4]] = -6 * self.length_rail
+            self.aux_stiffness_matrix[[2, 4, 4, 5], [4, 2, 5, 4]] = (
+                -6 * self.length_rail
+            )
 
-            self.aux_stiffness_matrix[[2, 5], [2, 5]] = (4 + self.timoshenko_factor) * self.length_rail ** 2
-            self.aux_stiffness_matrix[[2, 5], [5, 2]] = (2 - self.timoshenko_factor) * self.length_rail ** 2
+            self.aux_stiffness_matrix[[2, 5], [2, 5]] = (
+                4 + self.timoshenko_factor
+            ) * self.length_rail ** 2
+            self.aux_stiffness_matrix[[2, 5], [5, 2]] = (
+                2 - self.timoshenko_factor
+            ) * self.length_rail ** 2
 
             self.aux_stiffness_matrix = self.aux_stiffness_matrix.dot(constant)
-            self.aux_stiffness_matrix = utils.reshape_aux_matrix(2, [True, True, True], self.aux_stiffness_matrix)
+            self.aux_stiffness_matrix = utils.reshape_aux_matrix(
+                2, [True, True, True], self.aux_stiffness_matrix
+            )
 
     def __calculate_rayleigh_damping_factors(self):
         """
         Calculate rayleigh damping coefficients
         :return:
         """
-        constant = 2 * self.damping_ratio / (self.radial_frequency_one + self.radial_frequency_two)
+        constant = (
+            2
+            * self.damping_ratio
+            / (self.radial_frequency_one + self.radial_frequency_two)
+        )
         a0 = self.radial_frequency_one * self.radial_frequency_two * constant
         a1 = constant
         return a0, a1
@@ -188,13 +245,70 @@ class Rail(ElementModelPart):
         :return:
         """
         a0, a1 = self.__calculate_rayleigh_damping_factors()
-        self.aux_damping_matrix = self.aux_mass_matrix.dot(a0) + self.aux_stiffness_matrix.dot(a1)
+        self.aux_damping_matrix = self.aux_mass_matrix.dot(
+            a0
+        ) + self.aux_stiffness_matrix.dot(a1)
+
+    def initialize_shape_functions(self):
+        self._normal_shape_functions = np.zeros(2)
+        self._y_shape_functions = np.zeros(4)
+        self._z_rot_shape_functions = np.zeros(4)
+
+    @property
+    def normal_shape_functions(self):
+        return self._normal_shape_functions
+
+    @property
+    def y_shape_functions(self):
+        return self._y_shape_functions
+
+    @property
+    def z_rot_shape_functions(self):
+        return self._z_rot_shape_functions
+
+    def set_normal_shape_functions(self, x):
+        self._normal_shape_functions[0] = 1 - x / self.length_rail
+        self._normal_shape_functions[1] = x / self.length_rail
+
+    def set_y_shape_functions(self, x):
+        constant = 1 / (1 + self.timoshenko_factor)
+        self._y_shape_functions[0] = constant * (
+            1
+            + 2 * (x / self.length_rail) ** 3
+            - 3 * (x / self.length_rail) ** 2
+            + self.timoshenko_factor * (1 - x / self.length_rail)
+        )
+        self._y_shape_functions[1] = constant * (
+            x
+            + (x ** 3 / self.length_rail ** 2)
+            - 2 * (x ** 2 / self.length_rail)
+            + self.timoshenko_factor
+            / 2
+            * (x / self.length_rail - (x / self.length_rail) ** 2)
+        )
+        self._y_shape_functions[2] = constant * (
+            -2 * (x / self.length_rail) ** 3
+            + 3 * (x / self.length_rail) ** 2
+            + self.timoshenko_factor * (x / self.length_rail)
+        )
+        self._y_shape_functions[3] = constant * (
+            (x ** 3 / self.length_rail ** 2)
+            - ((x ** 2) / self.length_rail)
+            + self.timoshenko_factor
+            / 2
+            * ((x / self.length_rail) ** 2 - (x / self.length_rail))
+        )
+
+    def set_z_rot_shape_functions(self, x):
+        pass
 
     def initialize(self):
         self.calculate_timoshenko_factor()
         self.calculate_mass()
         self.calculate_n_dof()
         self.calculate_length_rail()
+
+        self.initialize_shape_functions()
         super(Rail, self).initialize()
 
 
@@ -273,11 +387,19 @@ class Support:
         self.damping_ratio_matrix = None
 
     def initialise_matrices(self):
-        self.linear_stiffness_matrix = np.ones((1, self.__n_sleepers)) * self.linear_stiffness
-        self.non_linear_stiffness_matrix = np.ones((1, self.__n_sleepers)) * self.non_linear_stiffness
-        self.non_linear_exponent_matrix = np.ones((1, self.__n_sleepers)) * self.non_linear_exponent
+        self.linear_stiffness_matrix = (
+            np.ones((1, self.__n_sleepers)) * self.linear_stiffness
+        )
+        self.non_linear_stiffness_matrix = (
+            np.ones((1, self.__n_sleepers)) * self.non_linear_stiffness
+        )
+        self.non_linear_exponent_matrix = (
+            np.ones((1, self.__n_sleepers)) * self.non_linear_exponent
+        )
         self.initial_voids_matrix = np.ones((1, self.__n_sleepers)) * self.initial_voids
-        self.tensile_stiffness_ballast_matrix = np.ones((1, self.__n_sleepers)) * self.tensile_stiffness_ballast
+        self.tensile_stiffness_ballast_matrix = (
+            np.ones((1, self.__n_sleepers)) * self.tensile_stiffness_ballast
+        )
         self.damping_ratio_matrix = np.ones((1, self.__n_sleepers)) * self.damping_ratio
 
 
