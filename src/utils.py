@@ -155,6 +155,15 @@ def centeroid_np(arr):
 def find_intersecting_point_element(
     elements, point_coordinates, intersection_tolerance=1e-6
 ):
+    """
+    Finds index of the element in an element array which intersects with a given point
+
+    :param elements:
+    :param point_coordinates:
+    :param intersection_tolerance:
+    :return:
+    """
+
     # convert elements to shapely elements for intersection
     shapely_elements = get_shapely_elements(elements)
 
@@ -196,17 +205,23 @@ def find_intersecting_point_element(
     return element_idx
 
 
-def get_shapely_elements(elements: List[Element]):
-    # convert elements to shapely elements for intersection
-    shapely_elements = []
-    for element in elements:
-        if len(element.nodes) == 2:
-            shapely_elements.append(
-                LineString([node.coordinates for node in element.nodes])
-            )
-        elif len(element.nodes) > 2:
-            shapely_elements.append(
-                Polygon([node.coordinates for node in element.nodes])
-            )
+def __create_shapely_element(element: Element):
+    """
+    Convert element to shapely element
+    :param element:
+    :return:
+    """
+    if len(element.nodes) == 2:
+        return LineString([node.coordinates for node in element.nodes])
+    elif len(element.nodes) > 2:
+        return Polygon([node.coordinates for node in element.nodes])
 
-    return shapely_elements
+
+def get_shapely_elements(elements: List[Element]):
+    """
+    Convert elements to shapely elements for intersection
+    :param elements:
+    :return:
+    """
+    return [__create_shapely_element(element) for element in elements]
+
