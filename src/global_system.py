@@ -26,6 +26,7 @@ class GlobalSystem:
 
         self.solver = None
         self.time = None
+        self.stage_time_ids = None
 
         self.model_parts = []  # type: List[ModelPart]
 
@@ -43,9 +44,15 @@ class GlobalSystem:
         :param model_part:
         :return:
         """
-        node.normal_dof = model_part.normal_dof if model_part.normal_dof else node.normal_dof
-        node.z_rot_dof = model_part.z_rot_dof if model_part.z_rot_dof else node.z_rot_dof
-        node.y_disp_dof = model_part.y_disp_dof if model_part.y_disp_dof else node.y_disp_dof
+        node.normal_dof = (
+            model_part.normal_dof if model_part.normal_dof else node.normal_dof
+        )
+        node.z_rot_dof = (
+            model_part.z_rot_dof if model_part.z_rot_dof else node.z_rot_dof
+        )
+        node.y_disp_dof = (
+            model_part.y_disp_dof if model_part.y_disp_dof else node.y_disp_dof
+        )
 
     def initialise_model_parts(self):
         """
@@ -74,15 +81,27 @@ class GlobalSystem:
 
         if model_part.aux_stiffness_matrix is not None:
             self.global_stiffness_matrix = utils.add_aux_matrix_to_global(
-                self.global_stiffness_matrix, model_part.aux_stiffness_matrix, model_part.elements, node_references)
+                self.global_stiffness_matrix,
+                model_part.aux_stiffness_matrix,
+                model_part.elements,
+                node_references,
+            )
 
         if model_part.aux_mass_matrix is not None:
             self.global_mass_matrix = utils.add_aux_matrix_to_global(
-                self.global_mass_matrix, model_part.aux_mass_matrix, model_part.elements, node_references)
+                self.global_mass_matrix,
+                model_part.aux_mass_matrix,
+                model_part.elements,
+                node_references,
+            )
 
         if model_part.aux_damping_matrix is not None:
             self.global_damping_matrix = utils.add_aux_matrix_to_global(
-                self.global_damping_matrix, model_part.aux_damping_matrix, model_part.elements, node_references)
+                self.global_damping_matrix,
+                model_part.aux_damping_matrix,
+                model_part.elements,
+                node_references,
+            )
 
     def __reshape_aux_matrices(self, model_part: ElementModelPart):
         """
@@ -98,22 +117,25 @@ class GlobalSystem:
             n_nodes_element = 1
 
         if model_part.aux_stiffness_matrix is not None:
-            model_part.aux_stiffness_matrix = utils.reshape_aux_matrix(n_nodes_element, [model_part.z_rot_dof,
-                                                                                         model_part.y_disp_dof,
-                                                                                         model_part.normal_dof],
-                                                                       model_part.aux_stiffness_matrix)
+            model_part.aux_stiffness_matrix = utils.reshape_aux_matrix(
+                n_nodes_element,
+                [model_part.z_rot_dof, model_part.y_disp_dof, model_part.normal_dof],
+                model_part.aux_stiffness_matrix,
+            )
 
         if model_part.aux_mass_matrix is not None:
-            model_part.aux_mass_matrix = utils.reshape_aux_matrix(n_nodes_element,
-                                                                  [model_part.z_rot_dof, model_part.y_disp_dof,
-                                                                   model_part.normal_dof],
-                                                                  model_part.aux_mass_matrix)
+            model_part.aux_mass_matrix = utils.reshape_aux_matrix(
+                n_nodes_element,
+                [model_part.z_rot_dof, model_part.y_disp_dof, model_part.normal_dof],
+                model_part.aux_mass_matrix,
+            )
 
         if model_part.aux_damping_matrix is not None:
-            model_part.aux_damping_matrix = utils.reshape_aux_matrix(n_nodes_element,
-                                                                     [model_part.z_rot_dof, model_part.y_disp_dof,
-                                                                      model_part.normal_dof],
-                                                                     model_part.aux_damping_matrix)
+            model_part.aux_damping_matrix = utils.reshape_aux_matrix(
+                n_nodes_element,
+                [model_part.z_rot_dof, model_part.y_disp_dof, model_part.normal_dof],
+                model_part.aux_damping_matrix,
+            )
 
     def __add_condition_to_global(self, condition: LoadCondition):
         """
@@ -125,11 +147,17 @@ class GlobalSystem:
 
         for i, node in enumerate(condition.nodes):
             if condition.normal_dof:
-                self.global_force_vector[node.index_dof[0], :] += condition.normal_force[i, :]
+                self.global_force_vector[
+                    node.index_dof[0], :
+                ] += condition.normal_force[i, :]
             if condition.y_disp_dof:
-                self.global_force_vector[node.index_dof[1], :] += condition.y_force[i, :]
+                self.global_force_vector[node.index_dof[1], :] += condition.y_force[
+                    i, :
+                ]
             if condition.z_rot_dof:
-                self.global_force_vector[node.index_dof[2], :] += condition.z_moment[i, :]
+                self.global_force_vector[node.index_dof[2], :] += condition.z_moment[
+                    i, :
+                ]
 
     def __trim_global_matrices_on_indices(self, row_indices, col_indices):
         """
@@ -139,17 +167,21 @@ class GlobalSystem:
         :return:
         """
 
-        self.global_stiffness_matrix = utils.delete_from_lil(self.global_stiffness_matrix,
-                                                             row_indices=row_indices,
-                                                             col_indices=col_indices)
-        self.global_mass_matrix = utils.delete_from_lil(self.global_mass_matrix,
-                                                        row_indices=row_indices,
-                                                        col_indices=col_indices)
-        self.global_damping_matrix = utils.delete_from_lil(self.global_damping_matrix,
-                                                           row_indices=row_indices,
-                                                           col_indices=col_indices)
+        self.global_stiffness_matrix = utils.delete_from_lil(
+            self.global_stiffness_matrix,
+            row_indices=row_indices,
+            col_indices=col_indices,
+        )
+        self.global_mass_matrix = utils.delete_from_lil(
+            self.global_mass_matrix, row_indices=row_indices, col_indices=col_indices
+        )
+        self.global_damping_matrix = utils.delete_from_lil(
+            self.global_damping_matrix, row_indices=row_indices, col_indices=col_indices
+        )
 
-        self.global_force_vector = utils.delete_from_lil(self.global_force_vector, row_indices=row_indices)
+        self.global_force_vector = utils.delete_from_lil(
+            self.global_force_vector, row_indices=row_indices
+        )
 
     def __recalculate_dof(self):
         """
@@ -203,9 +235,15 @@ class GlobalSystem:
         :return:
         """
 
-        self.global_stiffness_matrix = sparse.lil_matrix((self.total_n_dof, self.total_n_dof))
-        self.global_damping_matrix = sparse.lil_matrix((self.total_n_dof, self.total_n_dof))
-        self.global_mass_matrix = sparse.lil_matrix((self.total_n_dof, self.total_n_dof))
+        self.global_stiffness_matrix = sparse.lil_matrix(
+            (self.total_n_dof, self.total_n_dof)
+        )
+        self.global_damping_matrix = sparse.lil_matrix(
+            (self.total_n_dof, self.total_n_dof)
+        )
+        self.global_mass_matrix = sparse.lil_matrix(
+            (self.total_n_dof, self.total_n_dof)
+        )
         self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)))
 
         for model_part in self.model_parts:
@@ -218,7 +256,6 @@ class GlobalSystem:
         for model_part in self.model_parts:
             if isinstance(model_part, ConstraintModelPart):
                 model_part.set_constraint_condition()
-
 
         self.trim_all_global_matrices()
 
@@ -241,6 +278,21 @@ class GlobalSystem:
 
         self.total_n_dof = ndof
 
+    def set_stage_time_ids(self):
+        # find indices of unique time steps
+        diff = np.diff(self.time)
+        new_dt_idxs = sorted(np.unique(diff.round(decimals=7), return_index=True)[1])
+        self.stage_time_ids = np.append(new_dt_idxs, len(self.time) - 1)
+
+    def update_model_parts(self):
+        """
+        Updates all model parts
+        :return:
+        """
+
+        for model_part in self.model_parts:
+            model_part.update()
+
     def initialise(self):
         """
         Initialises model parts, degrees of freedom, global matrices and solver
@@ -251,9 +303,15 @@ class GlobalSystem:
         self.initialise_ndof()
         self.initialise_global_matrices()
 
+        self.set_stage_time_ids()
+
         self.solver.initialise(self.total_n_dof, self.time)
 
-    def calculate(self):
+    def update(self, start_time_id, end_time_id):
+        self.update_model_parts()
+        self.solver.update(start_time_id)
+
+    def calculate_stage(self, start_time_id, end_time_id):
         """
         Calculates the global system
         :return:
@@ -265,21 +323,15 @@ class GlobalSystem:
         K = self.global_stiffness_matrix.tocsc()
         F = self.global_force_vector.tocsc()
 
-        # find indices of unique time steps
-        diff = np.diff(self.time)
-        new_dt_idxs = sorted(np.unique(diff.round(decimals=7), return_index=True)[1])
-
         # run_stages with Newmark solver
         if isinstance(self.solver, NewmarkSolver):
-            for i in range(len(new_dt_idxs) - 1):
-                self.solver.calculate(M, C, K, F, new_dt_idxs[i], new_dt_idxs[i + 1])
-            self.solver.calculate(M, C, K, F, new_dt_idxs[-1], len(self.time) - 1)
+            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
 
         # run_stages with Static solver
         if isinstance(self.solver, StaticSolver):
-            for i in range(len(new_dt_idxs) - 1):
-                self.solver.calculate(K, F, new_dt_idxs[i], new_dt_idxs[i + 1])
-            self.solver.calculate(K, F, new_dt_idxs[-1], len(self.time) - 1)
+            self.solver.calculate(K, F, start_time_id, end_time_id)
+
+        self.assign_results_to_nodes()
 
     def finalise(self):
 
@@ -289,17 +341,43 @@ class GlobalSystem:
 
         self.time = self.solver.time
 
+    def _assign_result_to_node(self, node):
+        node_ids_dofs = list(node.index_dof[node.index_dof != None])
+        node.assign_result(
+            self.solver.u[:, node_ids_dofs],
+            self.solver.v[:, node_ids_dofs],
+            self.solver.a[:, node_ids_dofs],
+        )
+        return node
+
+    def assign_results_to_nodes(self):
+        t = timet.time()
+
+        # for node in self.mesh.nodes:
+        #     node_ids_dofs = list(node.index_dof[node.index_dof != None])
+        #     node.assign_result(self.solver.u[:, node_ids_dofs],
+        #                        self.solver.v[:, node_ids_dofs], self.solver.a[:, node_ids_dofs])
+
+        self.mesh.nodes = list(
+            map(lambda node: self._assign_result_to_node(node), self.mesh.nodes)
+        )
+
+        print(timet.time() - t)
+
     def main(self):
 
         self.initialise()
-        self.calculate()
+
+        # calculate stages
+        for i in range(len(self.stage_time_ids) - 1):
+            self.update(self.stage_time_ids[i], self.stage_time_ids[i + 1])
+            self.calculate_stage(self.stage_time_ids[i], self.stage_time_ids[i + 1])
+
         self.finalise()
 
-
     # def plot_geometry(self):
-        # for element in self.mesh.elements:
-        #     for
-
+    # for element in self.mesh.elements:
+    #     for
 
     # todo check what is required below
     #
@@ -403,6 +481,7 @@ class GlobalSystem:
     #     self.track.rail_pads = rail_pads
     #
     #     self.track.initialise_track()
+
 
 # def delete_from_global_matrices(global_stiffness_matrix, global_mass_matrix, global_damping_matrix, global_b_matrix,
 #                                 row_indices, col_indices):
