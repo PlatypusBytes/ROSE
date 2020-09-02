@@ -10,23 +10,89 @@ from src.geometry import Node, Element
 from scipy import sparse
 from scipy.spatial.distance import cdist
 
-import src.utils as utils
 from shapely.geometry import Point
 from scipy.spatial.distance import cdist
 from scipy.spatial import KDTree
 from scipy import sparse
+from scipy import interpolate
+
+def filter_data_outside_range(
+    data: np.array, locations: np.array, lower_limit: float, upper_limit: float
+):
+    # Set force at 0 when its located outside the range
+    data[locations > upper_limit] = 0
+    data[locations < lower_limit] = 0
+    locations[locations > upper_limit] = upper_limit
+    locations[locations < lower_limit] = lower_limit
+
+    return data, locations
 
 
-def init_aux_matrix(n_nodes, dofs):
-    return np.zeros((n_nodes * sum(dofs), n_nodes * sum(dofs)))
+def calculate_cumulative_distance_of_coordinates(coordinates: np.array):
+    """
+    Calculates cumulative distance between a sorted coordinate array
+    :param coordinates:
+    :return:
+    """
+    return np.append(
+        0,
+        np.cumsum(
+            distance_np(
+                coordinates[:-1, :], coordinates[1:, :], axis=1
+            )
+        ),
+    )
 
 
-def reshape_aux_matrix(n_nodes, dofs, aux_matrix):
-    new_aux_matrix = np.zeros((n_nodes * len(dofs), n_nodes * len(dofs)))
+def interpolate_cumulative_distance_on_nodes(
+    cumulative_distances: np.array, coordinates: np.array, new_cumulative_distances: np.array
+):
+    """
+    Interpolate cumulative distances on coordinates
+
+    :param cumulative_distances:
+    :param coordinates:
+    :param new_cumulative_distances:
+    :return:
+    """
+
+    # set interpolation functions
+    fx = interpolate.interp1d(cumulative_distances, coordinates[:, 0])
+    fy = interpolate.interp1d(cumulative_distances, coordinates[:, 1])
+    fz = interpolate.interp1d(cumulative_distances, coordinates[:, 2])
+
+    # interpolate
+    new_x_coords = fx(new_cumulative_distances)
+    new_y_coords = fy(new_cumulative_distances)
+    new_z_coords = fz(new_cumulative_distances)
+
+    return np.array([new_x_coords, new_y_coords, new_z_coords]).transpose()
+
+# def init_aux_matrix(n_nodes, dofs):
+#     """
+#     Initialises
+#     :param n_nodes:
+#     :param dofs:
+#     :return:
+#     """
+#     return np.zeros((n_nodes * sum(dofs), n_nodes * sum(dofs)))
+
+
+def reshape_aux_matrix(n_nodes_element, dofs, aux_matrix):
+    """
+    Reshapes aux matrix of the model part based on the total possible degrees of freedom (active and unactive). This
+    function is required to easily fill the global matrices
+
+    :param n_nodes: number of nodes per element
+    :param dofs: list of degrees of freedoms
+    :param aux_matrix: current auxiliar matrix
+    :return:
+    """
+    new_aux_matrix = np.zeros((n_nodes_element * len(dofs), n_nodes_element * len(dofs)))
 
     dofs = np.asarray(dofs)
-    for i in range(n_nodes):
-        for j in range(n_nodes):
+    for i in range(n_nodes_element):
+        for j in range(n_nodes_element):
             for k in range(len(dofs)):
                 if dofs[k]:
                     for l in range(len(dofs)):
@@ -73,6 +139,7 @@ def delete_from_lil(mat: sparse.lil_matrix, row_indices=[], col_indices=[]):
         return mat
 
 
+
 def add_aux_matrix_to_global(
     global_matrix: sparse.lil_matrix,
     aux_matrix,
@@ -80,53 +147,49 @@ def add_aux_matrix_to_global(
     nodes: List[Node] = None,
 ):
     """
+    Adds aux matrix to the global matrix.
 
     :param global_matrix:
     :param aux_matrix:
     :param elements:
     :return:
     """
-    if nodes is None:
-        nodes = []
     if elements:
         for element in elements:
+            # loop over each node in modelpart element except the last node
             for node_nr in range(len(element.nodes) - 1):
-                # add diagonal
+                # add diagonal part of aux matrix to the global matrix
                 for j, id_1 in enumerate(element.nodes[node_nr].index_dof):
                     for k, id_2 in enumerate(element.nodes[node_nr].index_dof):
-                        global_matrix[id_1, id_2] += aux_matrix[
-                            len(element.nodes[node_nr].index_dof) * node_nr + j,
-                            len(element.nodes[node_nr].index_dof) * node_nr + k,
-                        ]
-                # add interaction
+                        row_index = len(element.nodes[node_nr].index_dof) * node_nr + j
+                        col_index = len(element.nodes[node_nr].index_dof) * node_nr + k
+                        global_matrix[id_1, id_2] += aux_matrix[row_index, col_index]
+
                 for node_nr_2 in range(node_nr + 1, len(element.nodes)):
+                    # add top right part of aux matrix to the global matrix
                     for j, id_1 in enumerate(element.nodes[node_nr].index_dof):
                         for k, id_2 in enumerate(element.nodes[node_nr_2].index_dof):
-                            global_matrix[id_1, id_2] += aux_matrix[
-                                len(element.nodes[node_nr].index_dof) * node_nr + j,
-                                len(element.nodes[node_nr].index_dof)
-                                * (node_nr + node_nr_2)
-                                + k,
-                            ]
+                            row_index = len(element.nodes[node_nr].index_dof) * node_nr + j
+                            col_index = len(element.nodes[node_nr].index_dof) * (node_nr + node_nr_2) + k
+                            global_matrix[id_1, id_2] += aux_matrix[row_index, col_index]
+
+                    # add bottom left part of the aux matrix to the global matrix
                     for j, id_1 in enumerate(element.nodes[node_nr_2].index_dof):
                         for k, id_2 in enumerate(element.nodes[node_nr].index_dof):
-                            global_matrix[id_1, id_2] += aux_matrix[
-                                len(element.nodes[node_nr].index_dof)
-                                * (node_nr + node_nr_2)
-                                + j,
-                                len(element.nodes[node_nr].index_dof) * node_nr + k,
-                            ]
+                            row_index = len(element.nodes[node_nr].index_dof) * (node_nr + node_nr_2) + j
+                            col_index = len(element.nodes[node_nr].index_dof) * node_nr + k
+                            global_matrix[id_1, id_2] += aux_matrix[row_index, col_index]
 
-            # add last node
+            # add last node of the aux matrix to the global matrix
             for j, id_1 in enumerate(element.nodes[-1].index_dof):
                 for k, id_2 in enumerate(element.nodes[-1].index_dof):
-                    global_matrix[id_1, id_2] += aux_matrix[
-                        len(element.nodes[-1].index_dof) * (len(element.nodes) - 1) + j,
-                        len(element.nodes[-1].index_dof) * (len(element.nodes) - 1) + k,
-                    ]
+                    row_index = len(element.nodes[-1].index_dof) * (len(element.nodes) - 1) + j
+                    col_index = len(element.nodes[-1].index_dof) * (len(element.nodes) - 1) + k
+                    global_matrix[id_1, id_2] += aux_matrix[row_index, col_index]
         return global_matrix
 
-    elif nodes is not None:
+    # add single nodes to the global matrix (for model parts without elements)
+    if nodes is not None:
         for node in nodes:
             for j, id_1 in enumerate(node.index_dof):
                 for k, id_2 in enumerate(node.index_dof):
@@ -136,6 +199,14 @@ def add_aux_matrix_to_global(
 
 
 def distance_np(coordinates_array1: np.array, coordinates_array2: np.array, axis=0):
+    """
+    Calculate distance between 2 coordinate numpy arrays
+
+    :param coordinates_array1:
+    :param coordinates_array2:
+    :param axis:
+    :return:
+    """
     return np.sqrt(np.sum((coordinates_array1 - coordinates_array2) ** 2, axis=axis))
 
 

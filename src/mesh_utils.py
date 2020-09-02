@@ -6,7 +6,7 @@ from src.model_part import ConstraintModelPart, ElementModelPart
 from src.boundary_conditions import LineLoadCondition
 import itertools
 import numpy as np
-from scipy import interpolate
+
 from scipy import sparse
 from scipy.spatial.distance import cdist
 
@@ -20,31 +20,22 @@ from typing import Union
 INTERSECTION_TOLERANCE = 1e-6
 
 
-def filter_data_outside_range(
-    data: np.array, locations: np.array, lower_limit: float, upper_limit: float
-):
-    # remove force if it is located outside of the mesh
-    data[locations > upper_limit] = 0
-    data[locations < lower_limit] = 0
-    locations[locations > upper_limit] = upper_limit
-    locations[locations < lower_limit] = lower_limit
 
-    return data, locations
+def set_load_vector_as_function_of_time(time, load, build_up_idxs, load_locations, lower_limit_location: float, upper_limit_location):
+    # set normal force location as a function of time
+    moving_load = np.ones(len(time)) * load
+    #
+    moving_load[0:build_up_idxs] = np.linspace(
+        0, load, build_up_idxs
+    )
+    moving_load, cum_distances_force = utils.filter_data_outside_range(
+        moving_load,
+        load_locations,
+        lower_limit_location,
+        upper_limit_location,
+    )
 
-
-def interpolate_cumulative_distance_on_nodes(
-    cum_distances_nodes, nodal_coordinates, cum_distances_force
-):
-
-    fx = interpolate.interp1d(cum_distances_nodes, nodal_coordinates[:, 0])
-    fy = interpolate.interp1d(cum_distances_nodes, nodal_coordinates[:, 1])
-    fz = interpolate.interp1d(cum_distances_nodes, nodal_coordinates[:, 2])
-
-    moving_x_coords = fx(cum_distances_force)
-    moving_y_coords = fy(cum_distances_force)
-    moving_z_coords = fz(cum_distances_force)
-
-    return np.array([moving_x_coords, moving_y_coords, moving_z_coords]).transpose()
+    return moving_load, cum_distances_force
 
 
 def add_moving_point_load_to_track(
@@ -124,44 +115,32 @@ def add_moving_point_load_to_track(
         element_idxs[idx] = i
 
     # set the load vector as a function of time
+    #todo check what happens when more than 1 for type is added, e.g. both normal force and y force
+
+    # set normal force vector as a function of time
     moving_normal_force = None
     if normal_force is not None:
-        moving_normal_force = np.ones(len(time)) * normal_force
-        moving_normal_force[0:build_up_idxs] = np.linspace(
-            0, normal_force, build_up_idxs
-        )
-        moving_normal_force, cum_distances_force = filter_data_outside_range(
-            moving_normal_force,
-            cum_distances_force,
-            cum_distances_nodes[0],
-            cum_distances_nodes[-1],
-        )
+        moving_normal_force, cum_distances_force = set_load_vector_as_function_of_time(
+            time, normal_force, build_up_idxs, cum_distances_force, cum_distances_nodes[0], cum_distances_nodes[-1])
 
+    # set y force vector as a function of time
     moving_y_force = None
     if y_load is not None:
-        moving_y_force = np.ones(len(time)) * y_load
-        moving_y_force[0:build_up_idxs] = np.linspace(0, y_load, build_up_idxs)
-        moving_y_force, cum_distances_force = filter_data_outside_range(
-            moving_y_force,
-            cum_distances_force,
-            cum_distances_nodes[0],
-            cum_distances_nodes[-1],
-        )
+        moving_y_force, cum_distances_force = set_load_vector_as_function_of_time(
+            time, y_load, build_up_idxs, cum_distances_force, cum_distances_nodes[0], cum_distances_nodes[-1])
+
+    # set z moment vector as a function of time
     moving_z_moment = None
     if z_moment is not None:
-        moving_z_moment = np.ones(len(time)) * z_moment
-        moving_z_moment[0:build_up_idxs] = np.linspace(0, z_moment, build_up_idxs)
-        moving_z_moment, cum_distances_force = filter_data_outside_range(
-            moving_z_moment,
-            cum_distances_force,
-            cum_distances_nodes[0],
-            cum_distances_nodes[-1],
-        )
+        moving_z_moment, cum_distances_force = set_load_vector_as_function_of_time(
+            time, z_moment, build_up_idxs, cum_distances_force, cum_distances_nodes[0], cum_distances_nodes[-1])
 
-    moving_coords = interpolate_cumulative_distance_on_nodes(
+    # interpolate force distances on nodes
+    moving_coords = utils.interpolate_cumulative_distance_on_nodes(
         cum_distances_nodes, nodal_coordinates, cum_distances_force
     )
 
+    # set load
     force.set_moving_point_load(
         rail_model_part,
         moving_coords,
@@ -176,13 +155,22 @@ def add_moving_point_load_to_track(
 
 
 def add_no_displacement_boundary_to_bottom(bottom_model_part):
+    """
+    Adds constraint boundary condition to the bottom nodes of a model part
+    :param bottom_model_part:
+    :return:
+    """
+    # index of vertical dimension; 1 for 2D; 2 for 3D
     vert_idx = 1  # 2d %todo, make this ndim dependent
     elements = bottom_model_part.elements
+
+    # get bottom nodes of model part
     bot_nodes = [
-        sorted(element.nodes, key=lambda x: x.coordinates[vert_idx])[0]
+        sorted(element.nodes, key=lambda node: node.coordinates[vert_idx])[0]
         for element in elements
     ]
 
+    # set constraint condition
     no_disp_boundary_condition = ConstraintModelPart()
     no_disp_boundary_condition.nodes = bot_nodes
 
@@ -190,19 +178,32 @@ def add_no_displacement_boundary_to_bottom(bottom_model_part):
 
 
 def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
+    """
+    Creates mesh of an horizontal track. Where the top of the track lies at z=0; the sleeper thickness is 0.1m.
+
+    :param n_sleepers:
+    :param sleeper_distance:
+    :param soil_depth:
+    :return:
+    """
+    # define constants
+    track_level = 0.0
+    sleeper_thickness = 0.1
+
+    # initialise mesh
     mesh = Mesh()
 
-    # add track
-    nodes_track = [Node(i * sleeper_distance, 0.0, 0.0) for i in range(n_sleepers)]
+    # add track nodes and elements to mesh
+    nodes_track = [Node(i * sleeper_distance, track_level, 0.0) for i in range(n_sleepers)]
     mesh.add_unique_nodes_to_mesh(nodes_track)
     elements_track = [
         Element([nodes_track[i], nodes_track[i + 1]]) for i in range(n_sleepers - 1)
     ]
     mesh.add_unique_elements_to_mesh(elements_track)
 
-    # add railpad
+    # add railpad nodes and elements to mesh
     points_rail_pad = [
-        [nodes_track[i], Node(i * sleeper_distance, -0.1, 0.0)]
+        [nodes_track[i], Node(i * sleeper_distance, -sleeper_thickness, 0.0)]
         for i in range(n_sleepers)
     ]
     points_rail_pad = list(itertools.chain.from_iterable(points_rail_pad))
@@ -214,11 +215,11 @@ def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     ]
     mesh.add_unique_elements_to_mesh(elements_rail_pad)
 
-    # add sleeper
+    # add sleeper nodes to mesh
     nodes_sleeper = [points_rail_pad[i * 2 + 1] for i in range(n_sleepers)]
     mesh.add_unique_nodes_to_mesh(nodes_sleeper)
 
-    # add soil
+    # add soil nodes and elements to mesh
     points_soil = [
         [
             points_rail_pad[i * 2 + 1],
@@ -238,31 +239,37 @@ def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     ]
     mesh.add_unique_elements_to_mesh(elements_soil)
 
-    # add no displacement boundary condition
+    # add no displacement boundary condition to mesh
     no_disp_boundary_condition_nodes = [
         points_soil[i * 2 + 1] for i in range(n_sleepers)
     ]
     mesh.add_unique_nodes_to_mesh(no_disp_boundary_condition_nodes)
 
+    # reorder node and element indices
     mesh.reorder_element_ids()
     mesh.reorder_node_ids()
 
+    # initialise rail model part
     rail_model_part = Rail()
     rail_model_part.elements = elements_track
     rail_model_part.nodes = nodes_track
     rail_model_part.length_rail = sleeper_distance
 
+    # initialise railpad model part
     rail_pad_model_part = RailPad()
     rail_pad_model_part.elements = elements_rail_pad
     rail_pad_model_part.nodes = points_rail_pad
 
+    # initialise sleeper model part
     sleeper_model_part = Sleeper()
     sleeper_model_part.nodes = nodes_sleeper
 
+    # initialise soil model part
     soil = Soil()
     soil.nodes = points_soil
     soil.elements = elements_soil
 
+    # return dictionary of model parts present in horizontal track
     return (
         {
             "rail": rail_model_part,
