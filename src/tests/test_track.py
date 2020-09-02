@@ -1,12 +1,9 @@
 import pytest
 
-from src.geometry import Node, Element
+from src.geometry import Element
 
 from src.track import *
-from src.soil import Soil
 from src.global_system import *
-import matplotlib.pyplot as plt
-from one_dimensional.solver import Solver
 
 
 class TestTrack:

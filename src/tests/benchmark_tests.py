@@ -119,17 +119,12 @@ class TestTrack:
         # get max displacement in middle node of the beam
         max_disp = min(global_system.displacements[:, 151])
 
-        # plt.plot(global_system.displacements[:, 151])
-        # plt.show()
-
         # assert max displacement
         assert max_disp == pytest.approx(expected_max_displacement, rel=1e-2)
 
     def test_train_on_infinite_euler_beam_without_damping(self):
         """
-        Test a point load on ann infinitely long euler beam on a winkler foundation without damping.
-        Test succeeds if the numerically calculated max displacement is approximately the analytically calculated max
-        displacement. ref: https://www.mae.ust.hk/~meqpsun/Notes/CHAPTER4.pdf
+        todo Work in progress
         :return:
         """
 
