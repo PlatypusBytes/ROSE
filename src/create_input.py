@@ -4,7 +4,7 @@ from src.soil import *
 from src.boundary_conditions import NoDispRotCondition, LoadCondition
 from src.model_part import ConditionModelPart, ConstraintModelPart
 from one_dimensional.solver import Solver, NewmarkSolver
-from src.plot_utils import plot_2d_geometry
+from src.plot_utils import plot_2d_geometry, create_animation
 from src.mesh_utils import *
 
 from src.global_system import GlobalSystem
@@ -107,9 +107,14 @@ def main():
     global_system.main()
 
     # fig = plot_2d_geometry(mesh.elements)
-    # fig.show()
+
+
 
     plt.plot(global_system.time, global_system.displacements[:, 151], linestyle="-")
+
+    # get vertical displacement on rail model part
+    y_displacements_rail = np.array([node.displacements[:, 1] for node in global_system.model_parts[0].nodes])
+    # create_animation('test.html',time, y_displacements_rail)
 
     plt.xlabel("time")
     plt.ylabel("displacement")

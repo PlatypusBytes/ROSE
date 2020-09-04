@@ -7,15 +7,24 @@ class Node:
         self.index = None
         self.index_dof = np.array([None, None, None])
         self.coordinates = [x, y, z]
-        self.normal_dof = False
-        self.z_rot_dof = False
-        self.y_disp_dof = False
+        self.normal_dof = True
+        self.z_rot_dof = True
+        self.y_disp_dof = True
 
         self.displacements = None
         self.velocities = None
         self.accelerations = None
 
         self.model_parts = []
+
+    def set_dof(self, dof_idx, is_active):
+        if dof_idx == 0:
+            self.normal_dof = is_active
+        elif dof_idx == 1:
+            self.y_disp_dof = is_active
+        elif dof_idx == 2:
+            self.z_rot_dof = is_active
+
 
     def assign_result(self, displacements, velocities, accelerations):
         ndof = 3  # todo increase for 3d

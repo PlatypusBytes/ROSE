@@ -36,24 +36,6 @@ class GlobalSystem:
         self.velocities = None
         self.accelerations = None
 
-    def __update_nodal_dofs(self, node: Node, model_part: ModelPart):
-        """
-        Checks if dof on model part is active, if so, the nodal dof is updated
-
-        :param node:
-        :param model_part:
-        :return:
-        """
-        node.normal_dof = (
-            model_part.normal_dof if model_part.normal_dof else node.normal_dof
-        )
-        node.z_rot_dof = (
-            model_part.z_rot_dof if model_part.z_rot_dof else node.z_rot_dof
-        )
-        node.y_disp_dof = (
-            model_part.y_disp_dof if model_part.y_disp_dof else node.y_disp_dof
-        )
-
     def initialise_model_parts(self):
         """
         Initialises all model parts
@@ -63,11 +45,6 @@ class GlobalSystem:
         for model_part in self.model_parts:
             # initialise model part
             model_part.initialize()
-
-            # update nodal dof for all element model parts
-            if isinstance(model_part, ElementModelPart):
-                for node in model_part.nodes:
-                    self.__update_nodal_dofs(node, model_part)
 
     def __add_aux_matrices_to_global(self, model_part: ElementModelPart):
         """
@@ -84,14 +61,13 @@ class GlobalSystem:
         else:
             node_references = model_part.nodes
 
-
         # add aux stiffness matrix to global stiffness matrix
         if model_part.aux_stiffness_matrix is not None:
             self.global_stiffness_matrix = utils.add_aux_matrix_to_global(
                 self.global_stiffness_matrix,
                 model_part.aux_stiffness_matrix,
                 model_part.elements,
-                node_references,
+                model_part, node_references,
             )
 
         # add aux mass matrix to global mass matrix
@@ -100,7 +76,7 @@ class GlobalSystem:
                 self.global_mass_matrix,
                 model_part.aux_mass_matrix,
                 model_part.elements,
-                node_references,
+                model_part, node_references,
             )
 
         # add aux damping matrix to global damping matrix
@@ -109,7 +85,7 @@ class GlobalSystem:
                 self.global_damping_matrix,
                 model_part.aux_damping_matrix,
                 model_part.elements,
-                node_references,
+                model_part, node_references,
             )
 
     def __reshape_aux_matrices(self, model_part: ElementModelPart):
@@ -130,7 +106,7 @@ class GlobalSystem:
         if model_part.aux_stiffness_matrix is not None:
             model_part.aux_stiffness_matrix = utils.reshape_aux_matrix(
                 n_nodes_element,
-                [model_part.z_rot_dof, model_part.y_disp_dof, model_part.normal_dof],
+                [model_part.normal_dof, model_part.y_disp_dof, model_part.z_rot_dof],
                 model_part.aux_stiffness_matrix,
             )
 
@@ -138,7 +114,7 @@ class GlobalSystem:
         if model_part.aux_mass_matrix is not None:
             model_part.aux_mass_matrix = utils.reshape_aux_matrix(
                 n_nodes_element,
-                [model_part.z_rot_dof, model_part.y_disp_dof, model_part.normal_dof],
+                [model_part.normal_dof, model_part.y_disp_dof, model_part.z_rot_dof],
                 model_part.aux_mass_matrix,
             )
 
@@ -146,7 +122,7 @@ class GlobalSystem:
         if model_part.aux_damping_matrix is not None:
             model_part.aux_damping_matrix = utils.reshape_aux_matrix(
                 n_nodes_element,
-                [model_part.z_rot_dof, model_part.y_disp_dof, model_part.normal_dof],
+                [model_part.normal_dof, model_part.y_disp_dof, model_part.z_rot_dof],
                 model_part.aux_damping_matrix,
             )
 
@@ -178,7 +154,7 @@ class GlobalSystem:
                     i, :
                 ]
 
-    def __trim_global_matrices_on_indices(self, row_indices, col_indices):
+    def __trim_global_matrices_on_indices(self, row_indices: List, col_indices: List):
         """
         Removes items in global stiffness, mass, damping and force vector on row and column indices
         :param row_indices:
@@ -202,7 +178,7 @@ class GlobalSystem:
             self.global_force_vector, row_indices=row_indices
         )
 
-    def __recalculate_dof(self):
+    def __recalculate_dof(self, removed_indices: np.array):
         """
         Recalculates the total number of degree of freedoms and the index of the nodal dof in the global matrices
         :return:
@@ -210,47 +186,61 @@ class GlobalSystem:
         i = 0
         for node in self.mesh.nodes:
             for idx, index_dof in enumerate(node.index_dof):
-                if index_dof is None:
+                if index_dof in removed_indices:
                     i -= 1
+                    node.index_dof[idx] = None
+                    node.set_dof(idx, False)
                 else:
                     node.index_dof[idx] = index_dof + i
 
         self.total_n_dof = self.total_n_dof + i
 
-    def trim_all_global_matrices(self):
+    def __get_constrained_indices(self):
         """
-        Checks which degrees of freedom are false and removes from global matrices
-
+        Gets indices of constrained dofs in global matrices. A dof is defined as constrained when the dof == False
         :return:
         """
-        all_row_indices = []
-        all_col_indices = []
+
+        constrained_indices = []
+        # check which nodes are constrained
         for idx in range(len(self.mesh.nodes) - 1, -1, -1):
-
-            # check if z rotation dof is obsolete
-            if not self.mesh.nodes[idx].z_rot_dof:
-                all_row_indices.append(self.mesh.nodes[idx].index_dof[2])
-                all_col_indices.append(self.mesh.nodes[idx].index_dof[2])
-
-                self.mesh.nodes[idx].index_dof[2] = None
-
-            # check if y displacement dof is obsolete
-            if not self.mesh.nodes[idx].y_disp_dof:
-                all_row_indices.append(self.mesh.nodes[idx].index_dof[1])
-                all_col_indices.append(self.mesh.nodes[idx].index_dof[1])
-
-                self.mesh.nodes[idx].index_dof[1] = None
 
             # check if normal displacement dof is obsolete
             if not self.mesh.nodes[idx].normal_dof:
-                all_row_indices.append(self.mesh.nodes[idx].index_dof[0])
-                all_col_indices.append(self.mesh.nodes[idx].index_dof[0])
+                constrained_indices.append(self.mesh.nodes[idx].index_dof[0])
 
-                self.mesh.nodes[idx].index_dof[0] = None
+            # check if y displacement dof is obsolete
+            if not self.mesh.nodes[idx].y_disp_dof:
+                constrained_indices.append(self.mesh.nodes[idx].index_dof[1])
+
+            # check if z rotation dof is obsolete
+            if not self.mesh.nodes[idx].z_rot_dof:
+                constrained_indices.append(self.mesh.nodes[idx].index_dof[2])
+
+        return constrained_indices
+
+    def trim_all_global_matrices(self):
+        """
+        Checks which degrees of freedom are obsolete and removes from global matrices
+
+        :return:
+        """
+
+        # gets indices without mass
+        massless_indices = list(np.flip(np.where(np.isclose(self.global_mass_matrix.diagonal(), 0))[0]))
+
+        # gets indices which are constrained
+        constrained_row_indices = self.__get_constrained_indices()
+
+        # combine massless and constrained indices
+        obsolete_indices = sorted(list(np.unique(constrained_row_indices + massless_indices)), reverse=True)
 
         # remove obsolete rows and columns from global matrices
-        self.__trim_global_matrices_on_indices(all_row_indices, all_col_indices)
-        self.__recalculate_dof()
+        self.__trim_global_matrices_on_indices(list(obsolete_indices), list(obsolete_indices))
+
+        # recalculate dof numbering
+        if len(obsolete_indices) > 0:
+            self.__recalculate_dof(np.array(obsolete_indices))
 
     def initialise_global_matrices(self):
         """
