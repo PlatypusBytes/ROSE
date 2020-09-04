@@ -6,7 +6,6 @@ from typing import List
 
 # from src.boundary_conditions import LoadCondition
 from src.geometry import Node, Element
-from src.model_part import ElementModelPart
 from scipy import sparse
 from scipy.spatial.distance import cdist
 
@@ -150,7 +149,7 @@ def calculate_rotation(node1: Node, node2: Node):
     return rot
 
 
-def rotate_aux_matrix(element: Element, model_part: ElementModelPart, aux_matrix: np.array):
+def rotate_aux_matrix(element: Element, model_part, aux_matrix: np.array):
     """
     Rotates aux matrix based on rotation of element
     :param element:
