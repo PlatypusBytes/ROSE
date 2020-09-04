@@ -165,7 +165,7 @@ def rotate_aux_matrix(element, model_part, aux_matrix):
         rot_matrix = model_part.rotation_matrix
 
         if rot_matrix is not None:
-            return rot_matrix.transpose().dot(aux_matrix.dot(rot_matrix))
+            return rot_matrix.dot(aux_matrix.dot(rot_matrix.transpose()))
 
     return aux_matrix
 

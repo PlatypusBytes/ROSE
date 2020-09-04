@@ -122,6 +122,7 @@ class TestTrack:
         # assert max displacement
         assert max_disp == pytest.approx(expected_max_displacement, rel=1e-2)
 
+    @pytest.mark.skip(reason="work in progress")
     def test_train_on_infinite_euler_beam_without_damping(self):
         """
         todo Work in progress

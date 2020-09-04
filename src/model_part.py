@@ -137,6 +137,7 @@ class ElementModelPart(ModelPart):
 class RodElementModelPart(ElementModelPart):
     def __init__(self):
         super().__init__()
+        self.mass = None
         self.stiffness = None
         self.damping = None
         self.length_element = None
@@ -163,19 +164,30 @@ class RodElementModelPart(ElementModelPart):
         self.__rotation_matrix [[1, 4], [0, 3]] = -np.sin(rotation)
         self.__rotation_matrix [[2, 5], [2, 5]] = 1
 
+    def set_aux_mass_matrix(self):
+        if self.mass is not None:
+            self.aux_mass_matrix = np.zeros((2, 2))
+            self.aux_mass_matrix[0, 0] = 2
+            self.aux_mass_matrix[1, 0] = 1
+            self.aux_mass_matrix[0, 1] = 1
+            self.aux_mass_matrix[1, 1] = 2
+            self.aux_mass_matrix = self.aux_mass_matrix.dot(self.mass/6)
+
     def set_aux_stiffness_matrix(self):
-        self.aux_stiffness_matrix = np.zeros((2, 2))
-        self.aux_stiffness_matrix[0, 0] = self.stiffness
-        self.aux_stiffness_matrix[1, 0] = -self.stiffness
-        self.aux_stiffness_matrix[0, 1] = -self.stiffness
-        self.aux_stiffness_matrix[1, 1] = self.stiffness
+        if self.stiffness is not None:
+            self.aux_stiffness_matrix = np.zeros((2, 2))
+            self.aux_stiffness_matrix[0, 0] = self.stiffness
+            self.aux_stiffness_matrix[1, 0] = -self.stiffness
+            self.aux_stiffness_matrix[0, 1] = -self.stiffness
+            self.aux_stiffness_matrix[1, 1] = self.stiffness
 
     def set_aux_damping_matrix(self):
-        self.aux_damping_matrix = np.zeros((2, 2))
-        self.aux_damping_matrix[0, 0] = self.damping
-        self.aux_damping_matrix[1, 0] = -self.damping
-        self.aux_damping_matrix[0, 1] = -self.damping
-        self.aux_damping_matrix[1, 1] = self.damping
+        if self.damping is not None:
+            self.aux_damping_matrix = np.zeros((2, 2))
+            self.aux_damping_matrix[0, 0] = self.damping
+            self.aux_damping_matrix[1, 0] = -self.damping
+            self.aux_damping_matrix[0, 1] = -self.damping
+            self.aux_damping_matrix[1, 1] = self.damping
 
     def initialize_shape_functions(self):
         self._normal_shape_functions = np.zeros(2)
