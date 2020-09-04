@@ -135,7 +135,6 @@ class GlobalSystem:
         """
 
         for i, node in enumerate(condition.nodes):
-
             # add load condition on normal displacement dof
             if condition.normal_dof:
                 self.global_force_vector[
