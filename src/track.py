@@ -3,52 +3,18 @@ from scipy import sparse
 from src import utils, geometry
 import time
 from src.model_part import ElementModelPart, RodElementModelPart, TimoshenkoBeamElementModelPart
+import logging
 
-
-class Material:
-    def __init__(self):
-        self.youngs_modulus = None
-        self.poisson_ratio = None
-        self.density = None
-
-    @property
-    def shear_modulus(self):
-        return self.youngs_modulus / (2 * (1 + self.poisson_ratio))
-
-
-class Section:
-    def __init__(self):
-        self.area = None  # [m^2]
-        self.sec_moment_of_inertia = None  # [m^4]
-        self.shear_factor = (
-            0  # shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
-        )
+class InvalidRailException(Exception):
+    def __init__(self, message):
+        logging.error(message)
+        super().__init__(message)
 
 
 class Rail(TimoshenkoBeamElementModelPart):
     def __init__(self):
         super().__init__()
-
-        self.material = Material()
-        self.section = Section()
-
         self.length_rail = None
-        self.mass = None
-
-        # self.timoshenko_factor = 0  # ???
-        # self.ndof = None
-
-        # self.damping_ratio = None
-        # self.radial_frequency_one = None
-        # self.radial_frequency_two = None
-
-        # self.aux_force_vector = None
-
-        # self.nodal_ndof = 3
-
-        # self.normal_dof = True
-        # self.z_rot_dof = True
-        # self.y_disp_dof = True
 
     def calculate_length_rail(self):
 
@@ -58,26 +24,20 @@ class Rail(TimoshenkoBeamElementModelPart):
 
         distances = np.sqrt(np.square(xdiff) + np.square(ydiff) + np.square(zdiff))
 
-        if not np.all(np.isclose(distances[0], distances)):
-            print("distance between sleepers is not equal")
-            raise
+        if distances.size > 0:
+            if not np.all(np.isclose(distances[0], distances)):
+                raise InvalidRailException("distance between sleepers is not equal")
 
-        self.length_rail = distances[0]
-        self.length_element = self.length_rail
-
-    # def calculate_mass(self):
-    #     self.mass = self.section.area * self.material.density
+            self.length_rail = distances[0]
+            self.length_element = self.length_rail
 
     def calculate_n_dof(self):
         # self.n_nodes = self.__n_sleepers
         pass
         # self.ndof = len(self.nodes) * self.nodal_ndof
 
-    def set_z_rot_shape_functions(self, x):
-        # todo set z_rot shape functions
-        pass
-
     def initialize(self):
+        self.validate_input()
         self.calculate_length_rail()
         super(Rail, self).initialize()
 

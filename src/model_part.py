@@ -1,5 +1,9 @@
 import numpy as np
 import src.utils as utils
+import logging
+
+class ParameterNotDefinedException(Exception):
+    pass
 
 # todo move this class
 class Material:
@@ -7,6 +11,14 @@ class Material:
         self.youngs_modulus = None
         self.poisson_ratio = None
         self.density = None
+
+    def validate_input(self):
+        if self.youngs_modulus is None:
+            logging.error("Youngs modulus not defined")
+        if self.poisson_ratio is None:
+            logging.error("Poissons ratio not defined")
+        if self.density is None:
+            logging.error("Density not defined")
 
     @property
     def shear_modulus(self):
@@ -22,6 +34,13 @@ class Section:
             0  # shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
         )
 
+    def validate_input(self):
+        if self.area is None:
+            logging.error("Area not defined")
+        if self.sec_moment_of_inertia is None:
+            logging.error("Second moment of inertia not defined")
+        if self.shear_factor is None:
+            logging.error("Shear factor not defined")
 
 class ModelPart:
     """
@@ -57,6 +76,9 @@ class ModelPart:
     @property
     def z_rot_dof(self):
         return False
+
+    def validate_input(self):
+        pass
 
     def initialize(self):
         self.calculate_total_n_dof()
@@ -213,6 +235,8 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         self.radial_frequency_one = None
         self.radial_frequency_two = None
 
+        self.mass = None
+
     @property
     def normal_dof(self):
         return True
@@ -228,6 +252,22 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
     @property
     def timoshenko_factor(self):
         return self.__timoshenko_factor
+
+    def validate_input(self):
+        if not isinstance(self.material, Material):
+            logging.error("Material not defined")
+        else:
+            self.material.validate_input()
+
+        if not isinstance(self.section, Section):
+            logging.error("Section not defined")
+        else:
+            self.section.validate_input()
+
+        if logging.getLogger()._cache.__contains__(40) or logging.getLogger()._cache.__contains__(50):
+            raise ParameterNotDefinedException(Exception)
+
+
 
     def calculate_mass(self):
         self.mass = self.section.area * self.material.density
