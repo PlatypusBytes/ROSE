@@ -41,10 +41,6 @@ class Rail(TimoshenkoBeamElementModelPart):
         # self.damping_ratio = None
         # self.radial_frequency_one = None
         # self.radial_frequency_two = None
-        #
-        # self.aux_mass_matrix = None
-        # self.aux_stiffness_matrix = None
-        # self.aux_damping_matrix = None
 
         # self.aux_force_vector = None
 
@@ -69,8 +65,8 @@ class Rail(TimoshenkoBeamElementModelPart):
         self.length_rail = distances[0]
         self.length_element = self.length_rail
 
-    def calculate_mass(self):
-        self.mass = self.section.area * self.material.density
+    # def calculate_mass(self):
+    #     self.mass = self.section.area * self.material.density
 
     def calculate_n_dof(self):
         # self.n_nodes = self.__n_sleepers
@@ -82,9 +78,6 @@ class Rail(TimoshenkoBeamElementModelPart):
         pass
 
     def initialize(self):
-        self.calculate_timoshenko_factor()
-        self.calculate_mass()
-       # self.calculate_n_dof()
         self.calculate_length_rail()
         super(Rail, self).initialize()
 
@@ -99,7 +92,6 @@ class Sleeper(ElementModelPart):
     @property
     def y_disp_dof(self):
         return True
-        # self.y_disp_dof = True
 
     def set_aux_stiffness_matrix(self):
         self.aux_stiffness_matrix = np.zeros((1, 1))
@@ -118,8 +110,6 @@ class RailPad(RodElementModelPart):
         self.damping = None
         self.aux_stiffness_matrix = None
         self.aux_damping_matrix = None
-
-        # self.y_disp_dof = True
 
 
 class ContactRailWheel:
