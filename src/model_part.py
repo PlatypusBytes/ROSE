@@ -134,7 +134,7 @@ class ElementModelPart(ModelPart):
     def rotation_matrix(self):
         return self.__rotation_matrix
 
-    def set_rotation_matrix(self, rotation):
+    def set_rotation_matrix(self, rotation, dim):
         pass
 
     def set_normal_shape_functions(self, x):
@@ -174,17 +174,18 @@ class RodElementModelPart(ElementModelPart):
     def rotation_matrix(self):
         return self.__rotation_matrix
 
-    def set_rotation_matrix(self, rotation):
+    def set_rotation_matrix(self, rotation, dim):
         """
         Sets 2D rotation matrix
         :param rotation:
         :return:
         """
-        self.__rotation_matrix = np.zeros((6, 6))
-        self.__rotation_matrix [[0, 1, 3, 4], [0, 1, 3, 4]] = np.cos(rotation)
-        self.__rotation_matrix [[0, 3], [1, 4]] = np.sin(rotation)
-        self.__rotation_matrix [[1, 4], [0, 3]] = -np.sin(rotation)
-        self.__rotation_matrix [[2, 5], [2, 5]] = 1
+        if dim ==2:
+            self.__rotation_matrix = np.zeros((6, 6))
+            self.__rotation_matrix [[0, 1, 3, 4], [0, 1, 3, 4]] = np.cos(rotation)
+            self.__rotation_matrix [[0, 3], [1, 4]] = np.sin(rotation)
+            self.__rotation_matrix [[1, 4], [0, 3]] = -np.sin(rotation)
+            self.__rotation_matrix [[2, 5], [2, 5]] = 1
 
     def set_aux_mass_matrix(self):
         if self.mass is not None:
@@ -264,6 +265,7 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         else:
             self.section.validate_input()
 
+        # todo move exception raising to end of validation
         if logging.getLogger()._cache.__contains__(40) or logging.getLogger()._cache.__contains__(50):
             raise ParameterNotDefinedException(Exception)
 

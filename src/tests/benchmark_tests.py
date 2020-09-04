@@ -1,9 +1,10 @@
-from src.mesh_utils import *
+
 import pytest
 
-from src.track import *
 from src.global_system import *
 from src.train_model.train_model import TrainModel
+from src.model_part import Material, Section
+from src.mesh_utils import *
 
 import matplotlib.pyplot as plt
 

@@ -6,7 +6,7 @@ from typing import List
 
 # from src.boundary_conditions import LoadCondition
 from src.geometry import Node, Element
-
+from src.model_part import ElementModelPart
 from scipy import sparse
 from scipy.spatial.distance import cdist
 
@@ -143,14 +143,14 @@ def calculate_rotation(node1: Node, node2: Node):
         return np.pi/2 * np.sign((node2.coordinates[1] - node1.coordinates[1]))
 
     rot = 0
-    if node2.coordinates[0] > node1.coordinates[0]:
+    if node2.coordinates[0] < node1.coordinates[0]:
         rot += np.pi
 
     rot += np.arctan((node2.coordinates[1] - node1.coordinates[1])/ (node2.coordinates[0] - node1.coordinates[0]))
     return rot
 
 
-def rotate_aux_matrix(element, model_part, aux_matrix):
+def rotate_aux_matrix(element: Element, model_part: ElementModelPart, aux_matrix: np.array):
     """
     Rotates aux matrix based on rotation of element
     :param element:
@@ -161,7 +161,7 @@ def rotate_aux_matrix(element, model_part, aux_matrix):
     # todo make general, now it works for 2 nodes in a 2d space
     if len(element.nodes) == 2:
         rot = calculate_rotation(element.nodes[0], element.nodes[1])
-        model_part.set_rotation_matrix(rot)
+        model_part.set_rotation_matrix(rot, 2)
         rot_matrix = model_part.rotation_matrix
 
         if rot_matrix is not None:
