@@ -26,16 +26,16 @@ class TestRodElement:
         rod_element.set_rotation_matrix(0, 2)
         calculated_rotation_matrix = rod_element.rotation_matrix
 
-        expected_rotation_matrix = [[1, 0, 0, 0, 0, 0],
-                                    [0, 1, 0, 0, 0, 0],
-                                    [0, 0, 1, 0, 0, 0],
-                                    [0, 0, 0, 1, 0, 0],
-                                    [0, 0, 0, 0, 1, 0],
-                                    [0, 0, 0, 0, 0, 1]]
+        expected_rotation_matrix = [[1., 0., 0., 0., 0., 0.],
+                                    [0., 1., 0., 0., 0., 0.],
+                                    [0., 0., 1., 0., 0., 0.],
+                                    [0., 0., 0., 1., 0., 0.],
+                                    [0., 0., 0., 0., 1., 0.],
+                                    [0., 0., 0., 0., 0., 1.]]
 
         for row in range(len(expected_rotation_matrix)):
             for col in range(len(expected_rotation_matrix[row])):
-                assert pytest.approx(expected_rotation_matrix[row][col], calculated_rotation_matrix[row,col] )
+                assert expected_rotation_matrix[row][col] == pytest.approx(calculated_rotation_matrix[row,col])
 
     def test_set_2d_rotation_matrix_90_rot(self):
         rod_element = RodElementModelPart()
@@ -43,16 +43,16 @@ class TestRodElement:
         rod_element.set_rotation_matrix(0.5*np.pi, 2)
         calculated_rotation_matrix = rod_element.rotation_matrix
 
-        expected_rotation_matrix = [[0, -1, 0, 0, 0, 0],
-                                    [1, 0, 0, 0, 0, 0],
+        expected_rotation_matrix = [[0, 1, 0, 0, 0, 0],
+                                    [-1, 0, 0, 0, 0, 0],
                                     [0, 0, 1, 0, 0, 0],
-                                    [0, 0, 0, 0, -1, 0],
-                                    [0, 0, 0, 1, 0, 0],
+                                    [0, 0, 0, 0, 1, 0],
+                                    [0, 0, 0, -1, 0, 0],
                                     [0, 0, 0, 0, 0, 1]]
 
         for row in range(len(expected_rotation_matrix)):
             for col in range(len(expected_rotation_matrix[row])):
-                assert pytest.approx(expected_rotation_matrix[row][col], calculated_rotation_matrix[row,col])
+                assert expected_rotation_matrix[row][col] == pytest.approx(calculated_rotation_matrix[row, col])
 
     def test_set_aux_mass_matrix(self):
         rod_element = RodElementModelPart()
@@ -63,29 +63,29 @@ class TestRodElement:
 
         for row in range(len(expected_mass_matrix)):
             for col in range(len(expected_mass_matrix[row])):
-                assert pytest.approx(expected_mass_matrix[row][col], rod_element.aux_mass_matrix[row,col])
+                assert expected_mass_matrix[row][col] == pytest.approx(rod_element.aux_mass_matrix[row,col])
 
     def test_set_aux_stiffness_matrix(self):
         rod_element = RodElementModelPart()
         rod_element.stiffness = 1
         rod_element.set_aux_stiffness_matrix()
         expected_stiffness_matrix = [[1, -1],
-                                    [1, -1]]
+                                    [-1, 1]]
 
         for row in range(len(expected_stiffness_matrix)):
             for col in range(len(expected_stiffness_matrix[row])):
-                assert pytest.approx(expected_stiffness_matrix[row][col], rod_element.aux_stiffness_matrix[row,col])
+                assert expected_stiffness_matrix[row][col] == pytest.approx(rod_element.aux_stiffness_matrix[row,col])
 
     def test_set_aux_damping_matrix(self):
         rod_element = RodElementModelPart()
         rod_element.damping = 1
         rod_element.set_aux_damping_matrix()
         expected_damping_matrix = [[1, -1],
-                                     [1, -1]]
+                                     [-1, 1]]
 
         for row in range(len(expected_damping_matrix)):
             for col in range(len(expected_damping_matrix[row])):
-                assert pytest.approx(expected_damping_matrix[row][col], rod_element.aux_damping_matrix[row, col])
+                assert expected_damping_matrix[row][col] == pytest.approx(rod_element.aux_damping_matrix[row, col])
 
 class TestTimoshenkoBeamElementModelPart:
 
