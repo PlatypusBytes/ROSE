@@ -87,6 +87,7 @@ class ElementModelPart(ModelPart):
         self._normal_shape_functions = None
         self._y_shape_functions = None
         self._z_rot_shape_functions = None
+        self.__rotation_matrix = None
 
     def initialize(self):
         self.set_aux_stiffness_matrix()
@@ -107,8 +108,12 @@ class ElementModelPart(ModelPart):
     def z_rot_shape_functions(self):
         return self._z_rot_shape_functions
 
+    @property
+    def rotation_matrix(self):
+        return self.__rotation_matrix
 
-
+    def set_rotation_matrix(self, rotation):
+        pass
 
     def set_normal_shape_functions(self, x):
         pass
@@ -136,14 +141,27 @@ class RodElementModelPart(ElementModelPart):
         self.damping = None
         self.length_element = None
 
-    # todo fix this, for now only vertical rod elements are possible
-    # @property
-    # def normal_dof(self):
-    #     return True
+        self.__rotation_matrix = None
 
     @property
-    def y_disp_dof(self):
-        return True
+    def normal_dof(self):
+         return True
+
+    @property
+    def rotation_matrix(self):
+        return self.__rotation_matrix
+
+    def set_rotation_matrix(self, rotation):
+        """
+        Sets 2D rotation matrix
+        :param rotation:
+        :return:
+        """
+        self.__rotation_matrix = np.zeros((6, 6))
+        self.__rotation_matrix [[0, 1, 3, 4], [0, 1, 3, 4]] = np.cos(rotation)
+        self.__rotation_matrix [[0, 3], [1, 4]] = np.sin(rotation)
+        self.__rotation_matrix [[1, 4], [0, 3]] = -np.sin(rotation)
+        self.__rotation_matrix [[2, 5], [2, 5]] = 1
 
     def set_aux_stiffness_matrix(self):
         self.aux_stiffness_matrix = np.zeros((2, 2))

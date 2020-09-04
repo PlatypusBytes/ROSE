@@ -18,7 +18,7 @@ def create_animation(filename,x_data, y_data: np.array, format='html'):
     """
     Creates animation
     :param filename:
-    :param x_data: 
+    :param x_data:
     :param y_data:
     :return:
     """

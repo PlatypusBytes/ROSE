@@ -10,11 +10,13 @@ from src.geometry import Node, Element
 from scipy import sparse
 from scipy.spatial.distance import cdist
 
+import copy
+
 from shapely.geometry import Point
-from scipy.spatial.distance import cdist
 from scipy.spatial import KDTree
 from scipy import sparse
 from scipy import interpolate
+
 
 def filter_data_outside_range(
     data: np.array, locations: np.array, lower_limit: float, upper_limit: float
@@ -67,15 +69,6 @@ def interpolate_cumulative_distance_on_nodes(
     new_z_coords = fz(new_cumulative_distances)
 
     return np.array([new_x_coords, new_y_coords, new_z_coords]).transpose()
-
-# def init_aux_matrix(n_nodes, dofs):
-#     """
-#     Initialises
-#     :param n_nodes:
-#     :param dofs:
-#     :return:
-#     """
-#     return np.zeros((n_nodes * sum(dofs), n_nodes * sum(dofs)))
 
 
 def reshape_aux_matrix(n_nodes_element, dofs, aux_matrix):
@@ -138,26 +131,63 @@ def delete_from_lil(mat: sparse.lil_matrix, row_indices=[], col_indices=[]):
     else:
         return mat
 
+def calculate_rotation(node1: Node, node2: Node):
+    """
+    Calculates rotation between 2 nodes in a 2d space
+    :param node1: first node
+    :param node2: second node
+    :return:
+    """
+    #todo make general, now it works for 2 nodes in a 2d space
+    if np.isclose(node2.coordinates[0] - node1.coordinates[0], 0):
+        return np.pi/2 * np.sign((node2.coordinates[1] - node1.coordinates[1]))
+
+    rot = 0
+    if node2.coordinates[0] > node1.coordinates[0]:
+        rot += np.pi
+
+    rot += np.arctan((node2.coordinates[1] - node1.coordinates[1])/ (node2.coordinates[0] - node1.coordinates[0]))
+    return rot
+
+
+def rotate_aux_matrix(element, model_part, aux_matrix):
+    """
+    Rotates aux matrix based on rotation of element
+    :param element:
+    :param model_part:
+    :param aux_matrix:
+    :return:
+    """
+    # todo make general, now it works for 2 nodes in a 2d space
+    if len(element.nodes) == 2:
+        rot = calculate_rotation(element.nodes[0], element.nodes[1])
+        model_part.set_rotation_matrix(rot)
+        rot_matrix = model_part.rotation_matrix
+
+        if rot_matrix is not None:
+            return rot_matrix.transpose().dot(aux_matrix.dot(rot_matrix))
+
+    return aux_matrix
 
 
 def add_aux_matrix_to_global(
     global_matrix: sparse.lil_matrix,
     aux_matrix,
     elements: List[Element],
+    model_part,
     nodes: List[Node] = None,
 ):
-    """
-    Adds aux matrix to the global matrix.
 
-    :param global_matrix:
-    :param aux_matrix:
-    :param elements:
-    :return:
-    """
     if elements:
+        original_aux_matrix = copy.copy(aux_matrix)
         for element in elements:
+
+            # rotate aux matrix
+            aux_matrix = rotate_aux_matrix(element, model_part, original_aux_matrix)
+
             # loop over each node in modelpart element except the last node
             for node_nr in range(len(element.nodes) - 1):
+
                 # add diagonal part of aux matrix to the global matrix
                 for j, id_1 in enumerate(element.nodes[node_nr].index_dof):
                     for k, id_2 in enumerate(element.nodes[node_nr].index_dof):
