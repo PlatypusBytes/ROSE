@@ -23,7 +23,7 @@ class TestRodElement:
     def test_set_2d_rotation_matrix_0_rot(self):
         rod_element = RodElementModelPart()
 
-        rod_element.set_rotation_matrix(0)
+        rod_element.set_rotation_matrix(0, 2)
         calculated_rotation_matrix = rod_element.rotation_matrix
 
         expected_rotation_matrix = [[1, 0, 0, 0, 0, 0],
@@ -40,7 +40,7 @@ class TestRodElement:
     def test_set_2d_rotation_matrix_90_rot(self):
         rod_element = RodElementModelPart()
 
-        rod_element.set_rotation_matrix(0.5*np.pi)
+        rod_element.set_rotation_matrix(0.5*np.pi, 2)
         calculated_rotation_matrix = rod_element.rotation_matrix
 
         expected_rotation_matrix = [[0, -1, 0, 0, 0, 0],
