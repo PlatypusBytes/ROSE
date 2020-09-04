@@ -229,6 +229,9 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
     def timoshenko_factor(self):
         return self.__timoshenko_factor
 
+    def calculate_mass(self):
+        self.mass = self.section.area * self.material.density
+
     def calculate_timoshenko_factor(self):
         if self.section.shear_factor > 0:
             self.__timoshenko_factor = (
@@ -449,6 +452,8 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         pass
 
     def initialize(self):
+        self.calculate_timoshenko_factor()
+        self.calculate_mass()
         self.initialize_shape_functions()
         super(TimoshenkoBeamElementModelPart, self).initialize()
 
