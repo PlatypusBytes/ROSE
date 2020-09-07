@@ -24,6 +24,12 @@ pipelines:
                 - conda
                 - pip
             script:
-              - conda env update -n rose --file env_rose.yml
-              - pytest -v --cov=rose --cov-report xml:test-reports/coverage.xml --junitxml=test-reports/report_unit.xml tests/ -m "not workinprogress"
+                - conda env update -n rose --file env_rose.yml
+                - conda activate rose
+                - cd src/tests
+                - pytest -v --cov=rose --cov-report xml:test-reports/coverage.xml --junitxml=test-reports/report_unit.xml tests/ -m "not workinprogress"
         
+definitions:
+   caches:
+     conda: ~/.conda/envs/rose
+     codatarballs: /opt/conda/pkgs
