@@ -2,16 +2,14 @@ from src import utils
 
 from src.model_part import ElementModelPart, ConstraintModelPart, ModelPart
 from src.boundary_conditions import LoadCondition
-from src.geometry import Mesh, Node
+from src.geometry import Mesh
 
 from scipy import sparse
 import numpy as np
 
 from typing import List
 
-import time as timet
-
-from one_dimensional.solver import NewmarkSolver, StaticSolver
+from src.solver import NewmarkSolver, StaticSolver
 
 
 class GlobalSystem:

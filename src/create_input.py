@@ -1,10 +1,6 @@
-from src.geometry import *
 # from src.track import *
-from src.soil import *
-from src.boundary_conditions import NoDispRotCondition, LoadCondition
-from src.model_part import ConditionModelPart, ConstraintModelPart, Material, Section
-from one_dimensional.solver import Solver, NewmarkSolver
-from src.plot_utils import plot_2d_geometry, create_animation
+from src.model_part import Material, Section
+from src.solver import NewmarkSolver
 from src.mesh_utils import *
 
 from src.global_system import GlobalSystem
