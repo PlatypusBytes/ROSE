@@ -3,7 +3,7 @@
 # for newmark pg 782
 
 import unittest
-import solver
+import src.solver as solver
 import numpy as np
 from scipy import sparse
 
@@ -114,9 +114,11 @@ class TestNewmark(unittest.TestCase):
 
         # run stages
         for i in range(len(turning_idxs) - 1):
+            res.update(turning_idxs[i])
             res.calculate(
                 self.M, self.C, self.K, self.F, turning_idxs[i], turning_idxs[i + 1]
             )
+        res.update(turning_idxs[-1])
         res.calculate(
             self.M, self.C, self.K, self.F, turning_idxs[-1], len(self.time) - 1
         )
