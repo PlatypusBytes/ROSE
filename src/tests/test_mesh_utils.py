@@ -1,14 +1,8 @@
+from src.mesh_utils import *
 import pytest
 
-from src.track import *
-from src.soil import Soil
-from src.global_system import *
-import matplotlib.pyplot as plt
-from one_dimensional.solver import Solver
-from src.mesh_utils import *
-
-
 class TestMeshUtils:
+    @pytest.mark.workinprogress
     def test_create_horizontal_track(self):
 
         time = np.linspace(0, 10, 1000)
