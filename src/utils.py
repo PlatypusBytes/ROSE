@@ -290,7 +290,7 @@ def find_intersecting_point_element(
         nearest_neighbours = tree.query(point_coordinates, k=nr_nearest_neighbours)
         element_idx = (
             nearest_neighbours[1]
-            if isinstance(nearest_neighbours[1], np.int32)
+            if isinstance(nearest_neighbours[1], (np.int32, np.int64))
             else nearest_neighbours[1][-1]
         )
 
