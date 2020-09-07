@@ -1,0 +1,29 @@
+# This is a sample build configuration for Python.
+# Check our guides at https://confluence.atlassian.com/x/x4UWN for more examples.
+# Only use spaces to indent your .yml configuration.
+# -----
+# You can specify a custom docker image from Docker Hub as your build environment.
+image: continuumio/miniconda3:latest
+
+clone:
+  lfs: true
+
+pipelines:
+  default:
+    - step:
+        name: Install requirements.
+        caches:
+          - conda
+          - pip
+        script: # Modify the commands below to build your repository.
+          - conda env update -n rose --file env_rose.yml
+    - parallel:
+        - step: # Run tests
+            name: Run tests and codecoverage.
+            caches:
+                - conda
+                - pip
+            script:
+              - conda env update -n rose --file env_rose.yml
+              - pytest -v --cov=rose --cov-report xml:test-reports/coverage.xml --junitxml=test-reports/report_unit.xml tests/ -m "not workinprogress"
+        

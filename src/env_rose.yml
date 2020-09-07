@@ -3,12 +3,12 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - coverage=4.5
   - matplotlib=3.2
   - numpy=1.19
   - scipy=1.5
   - shapely=1.7
   - pytest=5.4.3
+  - pytest-cov=2.10.0
   - pip=20.1
   - python=3.7
   - sphinx=2.1
