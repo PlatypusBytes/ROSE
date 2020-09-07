@@ -26,8 +26,7 @@ pipelines:
             script:
                 - conda env update -n rose --file env_rose.yml
                 - conda activate rose
-                - cd src
-                - pytest -v --cov=rose --cov-report xml:test-reports/coverage.xml --junitxml=test-reports/report_unit.xml tests/ -m "not workinprogress"
+                - pytest -v --cov=rose --cov-report xml:test-reports/coverage.xml --junitxml=test-reports/report_unit.xml src/tests/ -m "not workinprogress"
         
 definitions:
    caches:
