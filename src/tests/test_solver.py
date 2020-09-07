@@ -1,7 +1,7 @@
 # unit test for solver
 # tests based on Bathe
 # for newmark pg 782
-
+import pytest
 import unittest
 import src.solver as solver
 import numpy as np

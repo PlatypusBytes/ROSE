@@ -1,9 +1,3 @@
-import numpy as np
-import pygmsh
-from src.geometry import Node, Element
-from src import utils
-import copy
-from scipy import sparse
 from src.model_part import RodElementModelPart
 
 

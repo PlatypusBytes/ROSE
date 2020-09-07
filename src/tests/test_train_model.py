@@ -1,15 +1,11 @@
 import pytest
 
-from src.track import *
-from src.soil import Soil
-from src.global_system import *
-import matplotlib.pyplot as plt
-from one_dimensional.solver import Solver
-
 from src.train_model.train_model import TrainModel
 
 
 class TestTrainModel:
+
+    @pytest.mark.workinprogress
     def test_cart(self):
 
         train_model = TrainModel()

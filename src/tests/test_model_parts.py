@@ -1,6 +1,6 @@
 import pytest
 
-from src.geometry import Element
+from src.geometry import Element, Node
 
 from src.track import *
 from src.global_system import *
