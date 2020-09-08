@@ -30,7 +30,7 @@ pipelines:
                 - apt-get --yes install zip
                 - zip -r test-reports/coverage.zip test-reports/coverage
                 - pipe: atlassian/bitbucket-upload-file:0.3.1
-                    variables:
+                  variables:
                       BITBUCKET_USERNAME: $BITBUCKET_USERNAME
                       BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
                       FILENAME: "test-reports/coverage.zip"
