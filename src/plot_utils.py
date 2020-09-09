@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.axes as plt_axes
 import numpy as np
 
 
@@ -14,23 +15,28 @@ def plot_2d_geometry(elements):
 
     return fig
 
-def create_animation(filename,x_data, y_data: np.array, format='html'):
+
+def create_animation(filename, x_data, y_data: np.array, format='html',fps=60, fig: plt.Figure = plt.figure(), **kwargs):
     """
-    Creates animation
+
     :param filename:
     :param x_data:
     :param y_data:
+    :param format:
+    :param fps:
+    :param fig:
+    :param kwargs: Line2d properties
     :return:
     """
-    fig = plt.figure()
+    # fig = plt.figure()
 
     ims = []
     ax = fig.gca()
 
     for i in range(len(y_data[0])):
-        ims.append((ax.plot(x_data, list(y_data[:, i]), color='black')[0],))
+        ims.append((ax.plot(x_data, list(y_data[:, i]), color='black', **kwargs)[0],))
 
-    writer = animation.writers[format](fps=60)
+    writer = animation.writers[format](fps=fps)
     im_ani = animation.ArtistAnimation(fig, ims,
                                        blit=True)
     im_ani.save(filename, writer=writer)
