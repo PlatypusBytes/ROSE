@@ -5,15 +5,21 @@ from src.geometry import Element, Node
 from src.track import *
 from src.global_system import *
 import src.model_part as model_part
+from src.exceptions import *
 
 
 class TestTrack:
-    def test_initialise_rail(self):
+    def test_validate_empty_rail(self):
+        """
+        Validate an empty rail, assert if logger contains error messages
+        :return:
+        """
         rail = Rail()
         assert isinstance(rail, TimoshenkoBeamElementModelPart)
 
-        with pytest.raises(model_part.ParameterNotDefinedException):
-            rail.initialize()
+        rail.validate_input()
+        assert logging.getLogger()._cache.__contains__(40)
+
 
     def test_calculate_length_rail(self):
 
