@@ -233,9 +233,99 @@ class TestTrack:
 
         # create_animation('beam.html',x_data,vertical_displacements)
 
+    def test_damped_euler_beam_on_hinch_foundation_dynamic(self):
+        """
+        Tests point on an euler beam which is supported by a hinch on each side of the beam. The calculation is
+        dynamic with damping, solution should converge to the static solution.
+        Vertical deflection for each node is compared with the analytical static solution.
+        :return:
+        """
+
+        length_beam = 0.1
+        n_beams = 101
+
+        # Setup parameters euler beam
+        time = np.linspace(0, 100, 1001)
+        E = 20e7
+        I = 1
+        rho = 2000
+        A = 1
+        L = 10
+        F = -1000
+
+        x_F = 5
+
+        # set and calculated analytical solution
+        beam_analytical = SimpleSupportEulerStatic()
+        beam_analytical.properties(E, I, L, F, x_F)
+        beam_analytical.compute()
+
+        # setup numerical model
+        beam_nodes = [Node(i * length_beam, 0, 0) for i in range(n_beams)]
+        beam_elements = [Element([beam_nodes[i], beam_nodes[i + 1]]) for i in range(n_beams - 1)]
+
+        mesh = Mesh()
+        mesh.add_unique_nodes_to_mesh(beam_nodes)
+        mesh.add_unique_elements_to_mesh(beam_elements)
+
+        material = Material()
+        material.youngs_modulus = E  # Pa
+        material.poisson_ratio = 0.0
+        material.density = rho
+
+        section = Section()
+        section.area = A
+        section.sec_moment_of_inertia = I
+        section.shear_factor = 0
+
+        beam = TimoshenkoBeamElementModelPart()
+        beam.nodes = beam_nodes
+        beam.elements = beam_elements
+
+        beam.material = material
+        beam.section = section
+        beam.length_element = length_beam
+        beam.damping_ratio = 1e3
+        beam.radial_frequency_one = 2
+        beam.radial_frequency_two = 500
+
+        beam.initialize()
+
+        foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
+        foundation1.nodes = [beam_nodes[0]]
+
+        foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)
+        foundation2.nodes = [beam_nodes[-1]]
+
+        load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
+        load.y_force = np.ones((1, len(time))) * F
+
+        load.time = time
+        load.nodes = [beam_nodes[50]]
+
+        model_parts = [beam, foundation1, foundation2, load]
+
+        # set solver
+        solver = NewmarkSolver()
+
+        # populate global system
+        global_system = GlobalSystem()
+        global_system.mesh = mesh
+        global_system.time = time
+        global_system.solver = solver
+
+        global_system.model_parts = model_parts
+
+        # calculate
+        global_system.main()
+        vertical_displacements = np.array([node.displacements[:, 1] for node in beam_nodes])
+
+        # assert deflection on each node in the last time step
+        np.testing.assert_allclose(beam_analytical.u, vertical_displacements[:, -1], rtol=1e-5)
+
     def test_euler_beam_on_hinch_foundation_static(self):
         """
-        Tests point on an euler beam which is supported by a hinch on each side of the beam.
+        Tests point on an euler beam which is supported by a hinch on each side of the beam, with a static calculation.
         Vertical deflection for each node is compared with the analytical solution
         :return:
         """
@@ -294,10 +384,10 @@ class TestTrack:
         foundation2.nodes = [beam_nodes[-1]]
 
         load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
-        load.y_force = np.ones((1,len(time))) * F
+        load.y_force = np.ones((1, len(time))) * F
 
         load.time = time
-        load.nodes = [beam_nodes[40]]
+        load.nodes = [beam_nodes[int((n_beams-1) * x_F / L)]]
 
         model_parts = [beam, foundation1, foundation2, load]
 
