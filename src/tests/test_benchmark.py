@@ -6,6 +6,8 @@ from src.train_model.train_model import TrainModel
 from src.model_part import Material, Section, TimoshenkoBeamElementModelPart
 from src.mesh_utils import *
 
+from analytical_solutions.simple_supported import SimpleSupportEulerNoDamping, SimpleSupportEulerStatic
+
 import matplotlib.pyplot as plt
 from src.plot_utils import create_animation
 
@@ -126,17 +128,27 @@ class TestTrack:
 
 
     @pytest.mark.workinprogress
-    def test_euler_beam_on_hinch_foundation(self):
+    def test_euler_beam_on_hinch_foundation_dynamic(self):
 
-        length_beam = 1
-        n_beams = 100
+        length_beam = 0.1
+        n_beams = 101
+
+
+        # Setup parameters euler beam
+        time = np.linspace(0, 10, 1001)
+        E = 20e7
+        I = 1
+        rho = 2000
+        A = 1
+        L = 10
+        F = -1000
+
+        # set and calculated analytical solution
+        beam_analytical = SimpleSupportEulerNoDamping()
+        beam_analytical.properties(E, I, rho, A, L, F, time)
+        beam_analytical.compute()
 
         # setup numerical model
-        # set time in two stages
-        initialisation_time = np.linspace(0, 0.1, 10)
-        calculation_time = np.linspace(initialisation_time[-1], 10, 100)
-        time = np.concatenate((initialisation_time, calculation_time[1:]))
-
         beam_nodes = [Node(i*length_beam,0,0) for i in range(n_beams)]
         beam_elements = [Element([beam_nodes[i], beam_nodes[i+1]]) for i in range(n_beams - 1)]
 
@@ -145,13 +157,13 @@ class TestTrack:
         mesh.add_unique_elements_to_mesh(beam_elements)
 
         material = Material()
-        material.youngs_modulus = 1e9  # Pa
+        material.youngs_modulus = E  # Pa
         material.poisson_ratio = 0.0
-        material.density = 1000
+        material.density = rho
 
         section = Section()
-        section.area = 1e-3
-        section.sec_moment_of_inertia = 1e-5
+        section.area = A
+        section.sec_moment_of_inertia = I
         section.shear_factor = 0
 
         beam = TimoshenkoBeamElementModelPart()
@@ -167,18 +179,20 @@ class TestTrack:
 
         beam.initialize()
 
-        foundation = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
-        foundation.nodes = [beam_nodes[0], beam_nodes[-1]]
+        foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
+        foundation1.nodes = [beam_nodes[0]]
+
+        foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)
+        foundation2.nodes = [beam_nodes[-1]]
+
 
         load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
-        load.y_force = np.ones((1,len(time))) * -18e3
-        load.y_force[0, 0:9] = np.linspace(0, -18e3, 9)
+        load.y_force = np.ones((1,len(time))) * F
+        # load.y_force[0, 0:9] = np.linspace(0, -18e3, 9)
         load.time = time
-        load.nodes = [beam_nodes[49]]
+        load.nodes = [beam_nodes[50]]
 
-
-
-        model_parts = [beam, foundation,load]
+        model_parts = [beam, foundation1,foundation2,load]
 
         # set solver
         solver = NewmarkSolver()
@@ -193,11 +207,118 @@ class TestTrack:
 
         # calculate
         global_system.main()
-
         x_data = np.array([node.coordinates[0] for node in beam_nodes])
-        y_data = np.array([node.displacements[:,1] for node in beam_nodes])
+        vertical_displacements = np.array([node.displacements[:,1] for node in beam_nodes])
+        analytical_displacements = beam_analytical.u
 
-        create_animation('beam.html',x_data,y_data)
+        # y_data[:, i]
+
+        plt.plot(time,vertical_displacements[50,:])
+        plt.plot(time,beam_analytical.u[50,:], marker='x')
+        plt.show()
+
+        import src.signal_proc as sp
+
+        f,a,p,s = sp.fft_sig(vertical_displacements[2,:],int(1/0.01), nb_points=2**14)
+        f2, a2, p2, s2 = sp.fft_sig(beam_analytical.u[2,:], int(1 / 0.01), nb_points=2**14)
+
+        plt.plot(f, a)
+        plt.plot(f2, a2, marker='x')
+        plt.show()
+
+        test = 1+1
+
+        #
+        # y_data = np.array([node.displacements[:,1] for node in beam_nodes])
+
+        # create_animation('beam.html',x_data,vertical_displacements)
+
+    def test_euler_beam_on_hinch_foundation_static(self):
+        """
+        Tests point on an euler beam which is supported by a hinch on each side of the beam.
+        Vertical deflection for each node is compared with the analytical solution
+        :return:
+        """
+        length_beam = 0.1
+        n_beams = 101
+
+        # Setup parameters euler beam
+        time = np.linspace(0, 2, 3)
+        E = 20e7
+        I = 1
+
+        L = 10
+        F = -1000
+        x_F = 4
+
+        # set and calculated analytical solution
+        beam_analytical = SimpleSupportEulerStatic()
+        beam_analytical.properties(E, I, L, F, x_F)
+        beam_analytical.compute()
+
+        # setup numerical model
+        beam_nodes = [Node(i*length_beam,0,0) for i in range(n_beams)]
+        beam_elements = [Element([beam_nodes[i], beam_nodes[i+1]]) for i in range(n_beams - 1)]
+
+        mesh = Mesh()
+        mesh.add_unique_nodes_to_mesh(beam_nodes)
+        mesh.add_unique_elements_to_mesh(beam_elements)
+
+        material = Material()
+        material.youngs_modulus = E  # Pa
+        material.poisson_ratio = 0.0
+        material.density = 1000
+
+        section = Section()
+        section.area = 1
+        section.sec_moment_of_inertia = I
+        section.shear_factor = 0
+
+        beam = TimoshenkoBeamElementModelPart()
+        beam.nodes = beam_nodes
+        beam.elements = beam_elements
+
+        beam.material = material
+        beam.section = section
+        beam.length_element = length_beam
+        beam.damping_ratio = 0.0000
+        beam.radial_frequency_one = 2
+        beam.radial_frequency_two = 500
+
+        beam.initialize()
+
+        foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
+        foundation1.nodes = [beam_nodes[0]]
+
+        foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)
+        foundation2.nodes = [beam_nodes[-1]]
+
+        load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
+        load.y_force = np.ones((1,len(time))) * F
+
+        load.time = time
+        load.nodes = [beam_nodes[40]]
+
+        model_parts = [beam, foundation1, foundation2, load]
+
+        # set solver
+        solver = StaticSolver()
+
+        # populate global system
+        global_system = GlobalSystem()
+        global_system.mesh = mesh
+        global_system.time = time
+        global_system.solver = solver
+
+        global_system.model_parts = model_parts
+
+        # calculate
+        global_system.main()
+
+        vertical_displacements = np.array([node.displacements[:, 1] for node in beam_nodes])
+
+        # assert displacement on each node
+        np.testing.assert_allclose(beam_analytical.u, vertical_displacements[:, -1])
 
 
     @pytest.mark.workinprogress
