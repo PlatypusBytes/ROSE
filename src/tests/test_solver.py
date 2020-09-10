@@ -30,12 +30,12 @@ class TestNewmark(unittest.TestCase):
         self.u0 = np.zeros(2)
         self.v0 = np.zeros(2)
 
-        self.n_steps = 13
+        self.n_steps = 12
         self.t_step = 0.28
         self.t_total = self.n_steps * self.t_step
 
         self.time = np.linspace(
-            0, self.t_total, int(np.ceil((self.t_total - 0) / self.t_step))
+            0, self.t_total, int(np.ceil((self.t_total - 0) / self.t_step)+1)
         )
 
         self.number_eq = 2
@@ -58,7 +58,7 @@ class TestNewmark(unittest.TestCase):
 
         res.initialise(self.number_eq, self.time)
 
-        res.calculate(self.M, self.C, self.K, self.F, 0, self.n_steps - 1)
+        res.calculate(self.M, self.C, self.K, self.F, 0, self.n_steps)
         # check solution
         np.testing.assert_array_almost_equal(
             np.round(res.u, 2),
@@ -97,10 +97,10 @@ class TestNewmark(unittest.TestCase):
 
         new_t_step = 0.5
         new_n_steps = 5
-        new_t_start = self.time[-1]
-        new_t_total = new_t_step * new_n_steps + new_t_start
+        new_t_start = self.time[-1] + new_t_step
+        new_t_total = new_t_step * (new_n_steps-1) + new_t_start
         self.time = np.concatenate(
-            (self.time, np.linspace(new_t_start, new_t_total, new_n_steps)[1:])
+            (self.time, np.linspace(new_t_start, new_t_total, new_n_steps))
         )
 
         diff = np.diff(self.time)
@@ -152,7 +152,7 @@ class TestNewmark(unittest.TestCase):
         np.testing.assert_array_almost_equal(
             np.round(res.u[13:, :], 2),
             np.round(
-                np.array([[-0.31, 2.56], [-1.28, 2.70], [-0.91, 2.31], [0.52, 1.81],]),
+                np.array([[-0.31, 2.56], [-1.28, 2.70], [-0.91, 2.31], [0.52, 1.81], [2.04, 2.08]]),
                 2,
             ),
         )
@@ -203,7 +203,7 @@ class TestNewmark(unittest.TestCase):
     def test_solver_static(self):
         res = solver.StaticSolver()
         res.initialise(self.number_eq, self.time)
-        res.calculate(self.K, self.F, 0, self.n_steps - 1)
+        res.calculate(self.K, self.F, 0, self.n_steps)
         # check static solution
         np.testing.assert_array_almost_equal(
             np.round(res.u, 2),

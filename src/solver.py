@@ -93,8 +93,7 @@ class NewmarkSolver(Solver):
         self.validate_input(F, t_start_idx, t_end_idx)
         # todo correct t_step, as it is not correct, but tests succeed
         t_step = (self.time[t_end_idx] - self.time[t_start_idx]) / (
-            (t_end_idx - t_start_idx) + 1
-        )
+            (t_end_idx - t_start_idx))
 
         # constants for the Newmark integration
         beta = self.beta
