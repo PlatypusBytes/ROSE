@@ -42,7 +42,7 @@ class LoadCondition(ConditionModelPart):
 
     @property
     def normal_dof(self):
-        return  self.__normal_dof
+        return self.__normal_dof
 
     @property
     def y_disp_dof(self):
