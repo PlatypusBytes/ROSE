@@ -1,6 +1,77 @@
 import numpy as np
 import json
 
+class SimpleSupportEulerStatic:
+    def __init__(self, ele_size=0.1):
+        """
+        Initialise the object
+
+        :param ele_size: element size (default 0.1m)
+        """
+        self.element_size = ele_size  # element size
+        self.EI = []  # bending stiffness of the beam
+        self.length = []  # length of the beam
+        self.force = []  # force
+        self.x = []  # discretisation of the beam
+        self.x_load = []  # coordinate of the point load
+
+        self.u = []  # vertical displacement
+
+        self.result = {}  # dictionary for json dump
+        return
+
+    def properties(self, E, I, L, F, x_F):
+        """
+        Assigns properties
+
+        :param E: Young modulus
+        :param I: Inertia
+        :param L: Length
+        :param F: Force
+        :param x_F: # coordinate of the point load
+        """
+        self.EI = E * I
+        self.length = L
+        self.force = F
+        self.x_load = x_F
+
+        self.x = np.linspace(0, self.length, int(np.ceil(self.length / self.element_size) + 1))
+        self.u = np.zeros((len(self.x)))
+
+        return
+
+    def compute(self):
+        """
+        Computes the displacement solution
+        """
+
+        a = self.x_load
+        b = self.length - a
+
+        for idx, coord in enumerate(self.x):
+            if 0 <= coord <= self.x_load:
+                self.u[idx] = self.force * b * coord / (6*self.length * self.EI) * (self.length**2 - b**2 - coord**2)
+            elif coord <=self.length:
+                self.u[idx] = self.force * a * (self.length - coord) / (6 * self.length * self.EI) * (
+                            self.length ** 2 - a ** 2 - (self.length - coord) ** 2)
+
+        return
+
+    def write_results(self, output="./results.json"):
+        """
+        Writes and saves output in a json file
+
+        :param output: path to write json file (default "./results.json")
+        """
+        # create dictionary for results
+        self.result = {"coordinates": self.x.tolist(),
+                       f"deflection ": self.u.tolist()}
+
+        # dump results
+        with open(output, "w") as f:
+            json.dump(self.result, f, indent=2)
+
+        return
 
 class SimpleSupportEulerNoDamping:
     """
@@ -231,10 +302,17 @@ class SimpleSupportEulerNoDamping:
 
 
 if __name__ == "__main__":
+
+    # sss = SimpleSupportEulerStatic()
+    # sss.properties(20e6, 1, 10, -1000, 5)
+    # sss.compute()
+    # sss.write_results()
+
     ss = SimpleSupportEulerNoDamping()
     ss.properties(20e6, 1, 2000, 1, 10, -1000, np.linspace(0, 10, 1001))
     ss.compute()
     ss.write_results()
+
 
     # import sys
     # sys.path.append("../src")
