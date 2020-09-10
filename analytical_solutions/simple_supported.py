@@ -28,7 +28,7 @@ class SimpleSupportEulerNoDamping:
 
         self.u = []  # vertical displacement
 
-        self.results = {}  # dictionary for json dump
+        self.result = {}  # dictionary for json dump
         return
 
     def properties(self, E, I, rho, A, L, F, time):
@@ -111,14 +111,14 @@ class SimpleSupportEulerNoDamping:
 
         # dump results
         with open(output, "w") as f:
-            json.dump(self.res, f, indent=2)
+            json.dump(self.result, f, indent=2)
 
         return
 
 
-class SimpleSupportDamping:
+class SimpleSupportEulerNoDamping:
     """
-    Analytical solution for a pulse load in the middle of a simple supported beam.
+    Analytical solution for a pulse load in the middle of a simple supported beam (Euler beam).
     With Damping.
 
     """
@@ -142,7 +142,7 @@ class SimpleSupportDamping:
 
         self.u = []  # vertical displacement
 
-        self.results = {}  # dictionary for json dump
+        self.result = {}  # dictionary for json dump
         return
 
     def properties(self, E, I, rho, A, L, F, time):
@@ -225,7 +225,7 @@ class SimpleSupportDamping:
 
         # dump results
         with open(output, "w") as f:
-            json.dump(self.res, f, indent=2)
+            json.dump(self.result, f, indent=2)
 
         return
 
