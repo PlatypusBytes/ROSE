@@ -6,11 +6,11 @@ from src.geometry import Mesh
 
 from scipy import sparse
 import numpy as np
-
+import logging
 from typing import List
 
 from src.solver import NewmarkSolver, StaticSolver
-
+from src.exceptions import *
 
 class GlobalSystem:
     def __init__(self):
@@ -33,6 +33,13 @@ class GlobalSystem:
         self.displacements = None
         self.velocities = None
         self.accelerations = None
+
+    def validate_input(self):
+        for model_part in self.model_parts:
+            model_part.validate_input()
+
+        if logging.getLogger()._cache.__contains__(40) or logging.getLogger()._cache.__contains__(50):
+            raise ParameterNotDefinedException(Exception)
 
     def initialise_model_parts(self):
         """
@@ -395,6 +402,7 @@ class GlobalSystem:
 
     def main(self):
 
+        self.validate_input()
         self.initialise()
 
         # calculate stages
