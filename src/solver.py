@@ -4,9 +4,8 @@ import os
 import pickle
 from tqdm import tqdm
 
-
-class TimeException(Exception):
-    pass
+from src.exceptions import *
+import logging
 
 
 def init(m_global, c_global, k_global, force_ini, u, v):
@@ -61,10 +60,12 @@ class Solver:
 
     def validate_input(self, F, t_start_idx, t_end_idx):
         if len(self.time) != np.shape(F)[1]:
+            logging.error("Solver error: Solver time is not equal to force vector time")
             raise TimeException("Solver time is not equal to force vector time")
 
         diff = np.diff(self.time[t_start_idx:t_end_idx])
         if not np.all(np.isclose(diff, diff[0])):
+            logging.error("Solver error: Time steps differ in current stage")
             raise TimeException("Time steps differ in current stage")
 
 
