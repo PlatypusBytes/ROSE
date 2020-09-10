@@ -42,7 +42,7 @@ class LoadCondition(ConditionModelPart):
 
     @property
     def normal_dof(self):
-        return  self.__normal_dof
+        return self.__normal_dof
 
     @property
     def y_disp_dof(self):
@@ -196,7 +196,6 @@ class LineLoadCondition(LoadCondition):
             return
 
         # else search for each timestep on which element in the mesh the point lies
-
         # convert elements to shapely elements for intersection
         shapely_elements = utils.get_shapely_elements(self.elements)
 
@@ -224,7 +223,7 @@ class LineLoadCondition(LoadCondition):
                 )
                 element_idx = (
                     nearest_neighbours[1]
-                    if isinstance(nearest_neighbours[1], np.int32)
+                    if isinstance(nearest_neighbours[1], (np.int32, np.int64))
                     else nearest_neighbours[1][-1]
                 )
 

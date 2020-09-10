@@ -1,9 +1,7 @@
 import numpy as np
 import src.utils as utils
 import logging
-
-class ParameterNotDefinedException(Exception):
-    pass
+from typing import List
 
 # todo move this class
 class Material:
@@ -78,6 +76,12 @@ class ModelPart:
         return False
 
     def validate_input(self):
+        if not isinstance(self.nodes, (List, np.ndarray)):
+            logging.error("Nodes in model part are not defined in a list or ndarray")
+
+        if not isinstance(self.elements, (List, np.ndarray)):
+            logging.error("Nodes in model part are not defined in a list or ndarray")
+
         pass
 
     def initialize(self):
@@ -174,6 +178,16 @@ class RodElementModelPart(ElementModelPart):
     def rotation_matrix(self):
         return self.__rotation_matrix
 
+    def validate_input(self):
+        if self.stiffness is None:
+            logging.error("Stiffness of rod element is not defined")
+
+        if len(self.elements) == 0:
+            logging.error("Rod model part does not contain elements")
+
+        if len(self.nodes) == 0:
+            logging.error("Rod model part does not contain nodes")
+
     def set_rotation_matrix(self, rotation, dim):
         """
         Sets 2D rotation matrix
@@ -265,9 +279,12 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         else:
             self.section.validate_input()
 
-        # todo move exception raising to end of validation
-        if logging.getLogger()._cache.__contains__(40) or logging.getLogger()._cache.__contains__(50):
-            raise ParameterNotDefinedException(Exception)
+        if len(self.elements) == 0:
+            logging.error("Timoshenko beam model part does not contain elements")
+
+        if len(self.nodes) == 0:
+            logging.error("Timoshenko beam model part does not contain nodes")
+
 
 
 

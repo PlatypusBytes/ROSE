@@ -3,10 +3,11 @@ import pytest
 
 from src.global_system import *
 from src.train_model.train_model import TrainModel
-from src.model_part import Material, Section
+from src.model_part import Material, Section, TimoshenkoBeamElementModelPart
 from src.mesh_utils import *
 
 import matplotlib.pyplot as plt
+from src.plot_utils import create_animation
 
 
 class TestTrack:
@@ -122,6 +123,287 @@ class TestTrack:
 
         # assert max displacement
         assert max_disp == pytest.approx(expected_max_displacement, rel=1e-2)
+
+
+    @pytest.mark.workinprogress
+    def test_euler_beam_on_hinch_foundation(self):
+
+        length_beam = 1
+        n_beams = 100
+
+        # setup numerical model
+        # set time in two stages
+        initialisation_time = np.linspace(0, 0.1, 10)
+        calculation_time = np.linspace(initialisation_time[-1], 10, 100)
+        time = np.concatenate((initialisation_time, calculation_time[1:]))
+
+        beam_nodes = [Node(i*length_beam,0,0) for i in range(n_beams)]
+        beam_elements = [Element([beam_nodes[i], beam_nodes[i+1]]) for i in range(n_beams - 1)]
+
+        mesh = Mesh()
+        mesh.add_unique_nodes_to_mesh(beam_nodes)
+        mesh.add_unique_elements_to_mesh(beam_elements)
+
+        material = Material()
+        material.youngs_modulus = 1e9  # Pa
+        material.poisson_ratio = 0.0
+        material.density = 1000
+
+        section = Section()
+        section.area = 1e-3
+        section.sec_moment_of_inertia = 1e-5
+        section.shear_factor = 0
+
+        beam = TimoshenkoBeamElementModelPart()
+        beam.nodes = beam_nodes
+        beam.elements = beam_elements
+
+        beam.material = material
+        beam.section = section
+        beam.length_element = length_beam
+        beam.damping_ratio = 0.0000
+        beam.radial_frequency_one = 2
+        beam.radial_frequency_two = 500
+
+        beam.initialize()
+
+        foundation = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
+        foundation.nodes = [beam_nodes[0], beam_nodes[-1]]
+
+        load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
+        load.y_force = np.ones((1,len(time))) * -18e3
+        load.y_force[0, 0:9] = np.linspace(0, -18e3, 9)
+        load.time = time
+        load.nodes = [beam_nodes[49]]
+
+
+
+        model_parts = [beam, foundation,load]
+
+        # set solver
+        solver = NewmarkSolver()
+
+        # populate global system
+        global_system = GlobalSystem()
+        global_system.mesh = mesh
+        global_system.time = time
+        global_system.solver = solver
+
+        global_system.model_parts = model_parts
+
+        # calculate
+        global_system.main()
+
+        x_data = np.array([node.coordinates[0] for node in beam_nodes])
+        y_data = np.array([node.displacements[:,1] for node in beam_nodes])
+
+        create_animation('beam.html',x_data,y_data)
+
+
+    @pytest.mark.workinprogress
+    def test_euler_beam_on_varying_foundation(self):
+
+        # calculate analytical solution
+        stiffness_spring = 2.75e5
+        distance_springs = 1
+        winkler_mod = stiffness_spring / distance_springs
+
+        youngs_mod_beam = 4.41e05
+        intertia_beam = 1
+        y_load = -18e3
+
+        distance_springs = 1
+        n_sleepers = 50
+
+        # setup numerical model
+        # set time in two stages
+        initialisation_time = np.linspace(0, 0.1, 100)
+        calculation_time = np.linspace(initialisation_time[-1], 10, 5000)
+        time = np.concatenate((initialisation_time, calculation_time[1:]))
+
+        # set geometry
+        depth_soil = 0.9
+        element_model_parts_1, mesh_1 = create_horizontal_track(
+            n_sleepers, distance_springs, depth_soil
+        )
+        bottom_boundary_1 = add_no_displacement_boundary_to_bottom(
+            element_model_parts_1["soil"]
+        )
+
+        element_model_parts_2, mesh_2 = create_horizontal_track(
+            n_sleepers, distance_springs, depth_soil
+        )
+        bottom_boundary_2 = add_no_displacement_boundary_to_bottom(
+            element_model_parts_2["soil"]
+        )
+
+        for node in mesh_2.nodes:
+            node.coordinates[0] = node.coordinates[0] + (n_sleepers)*distance_springs
+
+        all_mesh = Mesh()
+
+        # fill model parts
+        rail_model_part = element_model_parts_1["rail"]
+        rail_pad_model_part = element_model_parts_1["rail_pad"]
+        sleeper_model_part = element_model_parts_1["sleeper"]
+        soil_1 = element_model_parts_1["soil"]
+
+        rail_model_part.nodes = rail_model_part.nodes + element_model_parts_2["rail"].nodes
+        rail_model_part.elements = rail_model_part.elements +\
+                                   [Element([rail_model_part.nodes[-1],element_model_parts_2["rail"].nodes[0]] )] +  element_model_parts_2["rail"].elements
+
+        rail_pad_model_part.nodes = rail_pad_model_part.nodes + element_model_parts_2["rail_pad"].nodes
+        rail_pad_model_part.elements = rail_pad_model_part.elements + element_model_parts_2["rail_pad"].elements
+
+        sleeper_model_part.nodes = sleeper_model_part.nodes + element_model_parts_2["sleeper"].nodes
+        sleeper_model_part.elements = sleeper_model_part.elements + element_model_parts_2["sleeper"].elements
+
+        soil_2 = element_model_parts_2["soil"]
+
+        all_mesh.add_unique_nodes_to_mesh(mesh_1.nodes)
+        all_mesh.add_unique_nodes_to_mesh(mesh_2.nodes)
+
+        all_mesh.add_unique_elements_to_mesh(mesh_1.elements)
+        all_mesh.add_unique_elements_to_mesh(mesh_2.elements)
+
+        all_mesh.reorder_node_ids()
+        all_mesh.reorder_element_ids()
+
+        # set elements
+        material = Material()
+        material.youngs_modulus = youngs_mod_beam  # Pa
+        material.poisson_ratio = 0.0
+        material.density = 0.000001  # 7860
+
+        section = Section()
+        section.area = 1
+        section.sec_moment_of_inertia = 1
+        section.shear_factor = 0
+
+        rail_model_part.section = section
+        rail_model_part.material = material
+        rail_model_part.damping_ratio = 0.0000
+        rail_model_part.radial_frequency_one = 2
+        rail_model_part.radial_frequency_two = 500
+
+        rail_model_part.initialize()
+
+        rail_pad_model_part.mass = 0.000001  # 5
+        rail_pad_model_part.stiffness = stiffness_spring / 0.1
+        rail_pad_model_part.damping = 0  # 12e3
+
+        sleeper_model_part.mass = 0.0000001  # 162.5
+        sleeper_model_part.distance_between_sleepers = distance_springs
+
+        soil_1.stiffness = stiffness_spring / depth_soil  # 300e6
+        soil_1.damping = 0
+
+        soil_2.stiffness = stiffness_spring / depth_soil * 10 # 300e6
+        soil_2.damping = 0
+
+        # set load
+        velocities = np.ones(len(time)) * 10
+        load = add_moving_point_load_to_track(
+            rail_model_part,
+            time,
+            len(initialisation_time),
+            velocities,
+            y_load=y_load,
+            start_coords=np.array([0, 0, 0]),
+        )
+
+        # set solver
+        solver = NewmarkSolver()
+
+        # populate global system
+        global_system = GlobalSystem()
+        global_system.mesh = all_mesh
+        global_system.time = time
+        global_system.solver = solver
+
+        # get all element model parts from dictionary
+        model_parts = [[rail_model_part, rail_pad_model_part, sleeper_model_part, soil_1, soil_2],
+                       list(bottom_boundary_1.values()), list(bottom_boundary_2.values()), list(load.values())
+        ]
+        global_system.model_parts = list(itertools.chain.from_iterable(model_parts))
+
+        # calculate
+        global_system.main()
+
+    @pytest.mark.workinprogress
+    def test_moving_load_on_cantilever_beam(self, set_up_material, set_up_euler_section):
+        nodes_beam = [Node(0.0,0.0,0.0), Node(1.0, 0.0, 0.0)]
+        elements_beam = [Element(nodes_beam)]
+
+        mesh = Mesh()
+        mesh.nodes = nodes_beam
+        mesh.elements = elements_beam
+
+        beam = TimoshenkoBeamElementModelPart()
+        beam.nodes = nodes_beam
+        beam.elements = elements_beam
+
+        beam.section = set_up_euler_section
+        beam.material = set_up_material
+
+        beam.length_element = 1
+        beam.calculate_mass()
+
+        beam.damping_ratio = 0.0
+        beam.radial_frequency_one = 1e-12
+        beam.radial_frequency_two = 1e-12
+
+        # initialise beam matrices
+        beam.initialize()
+
+        # set time
+        # time = np.array([0, 1e3, 2e3, 3e3, 4e3, 5e3])
+        time = np.array([0,2.1333333333,	4.2666666667,	6.4,	8.5333333333,	10.666666667])
+
+        # set moving load
+        force = LineLoadCondition(normal_dof=True, y_disp_dof=True, z_rot_dof=True)
+        force.nodes = nodes_beam
+        force.elements = elements_beam
+        force.time = time
+
+        force.initialize_matrices()
+
+        # set coordinate of moving load per timestep
+        moving_coords = [
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.25, 0.0, 0.0],
+            [0.5, 0.0, 0.0],
+            [0.75, 0.0, 0.0],
+            [1, 0.0, 0.0],
+        ]
+
+        # sets moving load on timoshenko beam
+        force.set_moving_point_load(beam, moving_coords, time, y_force=np.array([1e-2, 1e5, 1e5, 1e5, 1e5, 1e5]))
+
+        no_disp_boundary_condition = ConstraintModelPart()
+        no_disp_boundary_condition.nodes = [nodes_beam[1]]
+
+        # set solver
+        solver = NewmarkSolver()
+
+        # populate global system
+        global_system = GlobalSystem()
+        global_system.mesh = mesh
+        global_system.time = time
+        global_system.solver = solver
+
+        # get all element model parts from dictionary
+        model_parts = [
+            beam, force, no_disp_boundary_condition
+        ]
+
+        global_system.model_parts = model_parts
+
+        # calculate
+        global_system.main()
+
+        y_displacement = global_system.displacements[:,1]
 
     @pytest.mark.skip(reason="work in progress")
     def test_train_on_infinite_euler_beam_without_damping(self):
@@ -251,3 +533,36 @@ class TestTrack:
 
         # assert max displacement
         assert max_disp == pytest.approx(expected_max_displacement, rel=1e-3)
+
+
+@pytest.fixture
+def set_up_material():
+    # Steel
+
+    material = Material()
+    material.youngs_modulus = 1  # Pa
+    material.poisson_ratio = 0.0
+    material.density = 1000
+    return material
+
+    # material = Material()
+    # material.youngs_modulus = 200e9  # Pa
+    # material.poisson_ratio = 0.0
+    # material.density = 8000
+    # return material
+
+
+@pytest.fixture
+def set_up_euler_section():
+
+    section = Section()
+    section.area = 1e-3
+    section.sec_moment_of_inertia = 1
+    section.shear_factor = 0
+    return section
+
+    # section = Section()
+    # section.area = 1e-3
+    # section.sec_moment_of_inertia = 2e-5
+    # section.shear_factor = 0
+    # return section
