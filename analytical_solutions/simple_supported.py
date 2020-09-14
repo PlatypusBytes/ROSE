@@ -116,7 +116,7 @@ class SimpleSupportEulerNoDamping:
         return
 
 
-class SimpleSupportEulerNoDamping:
+class SimpleSupportEulerWithDamping:
     """
     Analytical solution for a pulse load in the middle of a simple supported beam (Euler beam).
     With Damping.
@@ -235,6 +235,11 @@ if __name__ == "__main__":
     ss.properties(20e6, 1, 2000, 1, 10, -1000, np.linspace(0, 10, 1001))
     ss.compute()
     ss.write_results()
+
+    # ss.SimpleSupportEulerWithDamping()
+    # ss.properties(20e6, 1, 2000, 1, 10, -1000, np.linspace(0, 10, 1001))
+    # ss.compute()
+    # ss.write_results()
 
     # import sys
     # sys.path.append("../src")
