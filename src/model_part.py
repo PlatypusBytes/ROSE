@@ -390,13 +390,14 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
 
     def set_aux_mass_matrix(self):
         """
-        timoshenko straight beam auxiliar mass matrix
+        timoshenko straight beam auxiliar mass matrix. If timoshenko factor is equal to 0, no rotational part of the
+        mass matrix is added
         :return:
         """
-        self.aux_mass_matrix = (
-            self.__set_translational_aux_mass_matrix()
-            + self.__set_rotational_aux_mass_matrix()
-        )
+        self.aux_mass_matrix = self.__set_translational_aux_mass_matrix()
+        if self.timoshenko_factor != 0:
+            self.aux_mass_matrix += self.__set_rotational_aux_mass_matrix()
+
 
     def set_aux_stiffness_matrix(self):
         """
