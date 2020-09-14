@@ -122,7 +122,8 @@ class TestTrack:
         global_system.main()
 
         # get max displacement in middle node of the beam
-        max_disp = min(global_system.displacements[:, 151])
+        vertical_displacements_rail = np.array([node.displacements[:,1] for node in global_system.model_parts[0].nodes])
+        max_disp = min(vertical_displacements_rail[50, :])
 
         # assert max displacement
         assert max_disp == pytest.approx(expected_max_displacement, rel=1e-2)
