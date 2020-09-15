@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import root
-from scipy.integrate import cumtrapz
+from scipy.integrate import trapz
 import json
 
 
@@ -10,7 +10,7 @@ class PulseLoadNoDamping:
     No Damping.
 
     """
-    def __init__(self, n=100, ele_size=0.1, int_steps=10000):
+    def __init__(self, n=100, ele_size=0.1, int_steps=100):
         """
         Initialise the object
 
@@ -65,7 +65,7 @@ class PulseLoadNoDamping:
 
     def eigen_freq(self, n):
         """
-        Computes eigen frequency for a cantilever beam
+        Computes eigen *n* frequency for a cantilever beam
 
         :param n: n mode
         :return: eigen frequency
@@ -76,39 +76,54 @@ class PulseLoadNoDamping:
 
         # find coordinates that minimize boundary function
         res = root(self.find_eigen, x0=a_L, tol=1e-16)
-        self.a = res.x[0]
-        self.eig = self.a**2 * np.sqrt(self.EI / (self.mass * self.length**4))
+        self.a = res.x[0] / self.length
+        self.eig = (self.a * self.length)**2 * np.sqrt(self.EI / (self.mass * self.length**4))
         return self.eig
 
     def mode_shape(self):
+        """
+        Computes eigen *n* shape for a cantilever beam
+        """
+        self.eig_shape = np.cos(self.a * self.x) - np.cosh(self.a * self.x) - \
+                         (np.cos(self.a * self.length) + np.cosh(self.a * self.length)) / (np.sin(self.a * self.length) + np.sinh(self.a * self.length)) * \
+                         (np.sin(self.a * self.x) - np.sinh(self.a * self.x))
+        return
 
-        x = self.x
-        self.eig_shape = np.cos(self.a * x) - np.cosh(self.a * x) - (np.cos(self.a * self.length) + np.cosh(self.a * self.length)) / (np.sin(self.a * self.length) + np.sinh(self.a * self.length)) * (np.sin(self.a * x) - np.sinh(self.a * x))
-        mass = self.mass * self.eig_shape ** 2
-        mass = cumtrapz(mass, x, initial=0)
+    def mass_modal(self):
+        """
+        Computes modal mass for n mode
+        """
+        x = np.linspace(0, self.length, int(self.int_steps))
+        aux = np.cos(self.a * x) - np.cosh(self.a * x) - \
+              (np.cos(self.a * self.length) + np.cosh(self.a * self.length)) / (np.sin(self.a * self.length) + np.sinh(self.a * self.length)) * \
+              (np.sin(self.a * x) - np.sinh(self.a * x))
 
-        return mass
+        return self.mass * trapz(aux ** 2, x)
 
     def compute(self):
         """
         Computes the displacement solution
         """
-
-        # computes alpha
-        # self.alpha()
-        self.alpha_n = 1
+        self.alpha_n = 0
         # for each time step
         for idx, t in enumerate(self.time):
             aux = np.zeros(len(self.x))
             # for the desired number of modes
             for n in range(1, self.n):
-                eig = self.eigen_freq(n)
-                mass = self.mode_shape()
-                stiff = eig ** 2 * mass
-                # import matplotlib.pylab as plt
-                # plt.plot(self.eig_shape)
-                alpha_n = np.sign(self.eig_shape[-1])
-                aux += alpha_n * self.force / stiff * (1 - np.cos(self.eig * t)) * self.eig_shape
+                # eigen frequency
+                self.eigen_freq(n)
+                # eigen mode
+                self.mode_shape()
+                # modal mass
+                mass = self.mass_modal()
+                # modal stiffness
+                stiff = self.eig ** 2 * mass
+
+                # compute force
+                force = self.eig_shape[-1] * self.force
+
+                # compute summation of solution
+                aux += force / stiff * (1 - np.cos(self.eig * t)) * self.eig_shape
 
             # add to displacement
             self.u[:, idx] = aux
@@ -141,12 +156,10 @@ class PulseLoadNoDamping:
 
 if __name__ == "__main__":
     ss = PulseLoadNoDamping(ele_size=0.01)
-    ss.properties(200, 1, 3, 1, 1, -1000, np.linspace(0, 1, 1001))
+    ss.properties(20e6, 1e-4, 2000, 0.01, 1, -1000, np.linspace(0, 5, 2001))
     ss.compute()
     ss.write_results()
 
-    # import matplotlib.pylab as plt
-    # plt.plot(ss.time, ss.u[0, :], marker="x")
-    # plt.plot(ss.time, ss.u[5, :])
-    # plt.plot(ss.time, ss.u[10, :], marker="o")
-    # plt.show()
+    import matplotlib.pylab as plt
+    plt.plot(ss.time, ss.u[-1, :], marker="o")
+    plt.show()
