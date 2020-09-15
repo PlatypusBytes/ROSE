@@ -1,5 +1,7 @@
 import numpy as np
 import json
+from scipy.integrate import trapz
+
 
 class SimpleSupportEulerStatic:
     def __init__(self, ele_size=0.1):
@@ -51,7 +53,7 @@ class SimpleSupportEulerStatic:
         for idx, coord in enumerate(self.x):
             if 0 <= coord <= self.x_load:
                 self.u[idx] = self.force * b * coord / (6*self.length * self.EI) * (self.length**2 - b**2 - coord**2)
-            elif coord <=self.length:
+            elif coord <= self.length:
                 self.u[idx] = self.force * a * (self.length - coord) / (6 * self.length * self.EI) * (
                             self.length ** 2 - a ** 2 - (self.length - coord) ** 2)
 
@@ -73,11 +75,11 @@ class SimpleSupportEulerStatic:
 
         return
 
+
 class SimpleSupportEulerNoDamping:
     """
     Analytical solution for a pulse load in the middle of a simple supported beam (Euler beam).
     No Damping.
-
     """
     def __init__(self, n=100, ele_size=0.1):
         """
@@ -164,6 +166,126 @@ class SimpleSupportEulerNoDamping:
                 aux += self.alpha_n[n] / n**4 * (1 - np.cos(self.eigen_freq(n) * t)) * np.sin(n * np.pi * self.x / self.length)
             # add to displacement
             self.u[:, idx] = 2 * self.force * self.length**3 / (np.pi**4 * self.EI) * aux
+
+        return
+
+    def write_results(self, output="./results.json"):
+        """
+        Writes and saves output in a json file
+
+        :param output: path to write json file (default "./results.json")
+        """
+        # create dictionary for results
+        self.result = {"time": self.time.tolist(),
+                       "coordinates": self.x.tolist()}
+        # for each node add results
+        for i, x in enumerate(self.x):
+            self.result.update({f"x-coordinate {x.round(2)}": self.u[i, :].tolist()})
+
+        # dump results
+        with open(output, "w") as f:
+            json.dump(self.result, f, indent=2)
+
+        return
+
+
+class SimpleSupportEulerNoDamping2:
+    """
+    Analytical solution for a pulse load in the middle of a simple supported beam (Euler beam).
+    No Damping.
+
+    """
+    def __init__(self, n=100, ele_size=0.1):
+        """
+        Initialise the object
+
+        :param n: number of modes (default 100)
+        :param ele_size: element size (default 0.1m)
+        """
+        self.element_size = ele_size  # element size
+        self.n = n  # number of modes
+        self.EI = []  # bending stiffness of the beam
+        self.mass = []  # unit mass of the beam
+        self.length = []  # length of the beam
+        self.force = []  # force
+        self.time = []  # time
+        self.x = []  # discretisation of the beam
+
+        self.alpha_n = []  # alpha value for the load
+
+        self.u = []  # vertical displacement
+
+        self.result = {}  # dictionary for json dump
+
+        self.tol = 1e-12
+        return
+
+    def properties(self, E, I, rho, A, L, F, time):
+        """
+        Assigns properties
+
+        :param E: Young modulus
+        :param I: Inertia
+        :param rho: Density
+        :param A: Area
+        :param L: Length
+        :param F: Force
+        :param time: np.array vector
+        """
+        self.EI = E * I
+        self.mass = rho * A
+        self.length = L
+        self.force = F
+        self.time = time
+
+        self.x = np.linspace(0, self.length, int(np.ceil(self.length / self.element_size) + 1))
+
+        self.u = np.zeros((len(self.x), len(self.time)))
+
+        return
+
+    def eigen_freq(self, n):
+        """
+        Computes eigen frequency for a simple supported beam
+
+        :param n: n mode
+        """
+        self.eig = n ** 2 * np.pi ** 2 * np.sqrt(self.EI / (self.mass * self.length ** 4))
+        return
+
+    def mode_shape(self, n):
+        """
+        Computes eigen shape for n mode
+        """
+        self.eig_shape = np.sin(n * np.pi / self.length * self.x)
+        return
+
+    def mass_modal(self):
+        return self.mass * trapz(self.eig_shape ** 2, self.x)
+
+    def compute(self):
+        """
+        Computes the displacement solution
+        """
+
+        # for each time step
+        for idx, t in enumerate(self.time):
+            aux = np.zeros(len(self.x))
+            # for the desired number of modes
+            for n in range(1, self.n):
+                self.eigen_freq(n)
+                self.mode_shape(n)
+                mass = self.mass_modal()
+                stiff = self.eig ** 2 * mass
+
+                alpha_n = self.eig_shape[int(len(self.x) / 2)]
+                # if np.abs(self.eig_shape[int(len(self.x) / 2)]) <= self.tol:
+                #     alpha_n = 0
+
+                aux += alpha_n * self.force / stiff * (1 - np.cos(self.eig * t)) * self.eig_shape
+
+            # add to displacement
+            self.u[:, idx] = aux
 
         return
 
@@ -191,7 +313,6 @@ class SimpleSupportEulerWithDamping:
     """
     Analytical solution for a pulse load in the middle of a simple supported beam (Euler beam).
     With Damping.
-
     """
     def __init__(self, n=100, ele_size=0.1):
         """
@@ -216,7 +337,7 @@ class SimpleSupportEulerWithDamping:
         self.result = {}  # dictionary for json dump
         return
 
-    def properties(self, E, I, rho, A, L, F, time):
+    def properties(self, E, I, rho, A, L, F, damping, time):
         """
         Assigns properties
 
@@ -226,6 +347,7 @@ class SimpleSupportEulerWithDamping:
         :param A: Area
         :param L: Length
         :param F: Force
+        :param qsi: damping
         :param time: np.array vector
         """
         self.EI = E * I
@@ -301,12 +423,24 @@ class SimpleSupportEulerWithDamping:
         return
 
 
+
 if __name__ == "__main__":
 
-    sss = SimpleSupportEulerStatic()
-    sss.properties(20e6, 1, 10, -1000, 5)
+    sss = SimpleSupportEulerNoDamping()
+    sss.properties(20e6, 1, 3, 1, 10, -1000, np.linspace(0, 1, 1000))
     sss.compute()
     sss.write_results()
+
+    import matplotlib.pylab as plt
+    plt.plot(sss.time, sss.u[50, :])
+    # plt.show()
+
+    sss2 = SimpleSupportEulerNoDamping2()
+    sss2.properties(20e6, 1, 3, 1, 10, -1000, np.linspace(0, 1, 1000))
+    sss2.compute()
+    sss2.write_results()
+    plt.plot(sss2.time, sss2.u[50, :], marker="x")
+    plt.show()
 
     # import sys
     # sys.path.append("../src")
