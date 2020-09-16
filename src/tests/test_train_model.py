@@ -1,174 +1,164 @@
 import pytest
 
-from src.train_model.train_model import TrainModel
+from src.train_model.train_model import TrainModel, Cart, Bogie, Wheel
 
 
 class TestTrainModel:
 
-    @pytest.mark.workinprogress
-    def test_cart(self):
+    def test_set_aux_mass_matrix_cart(self, expected_cart_mass_matrix, set_up_cart):
+        """
+        Checks of mass matrix of cart is as expected
+        :param expected_cart_mass_matrix:
+        :param set_up_cart:
+        :return:
+        """
+        cart = set_up_cart
+        cart.set_aux_mass_matrix()
 
-        train_model = TrainModel()
-        train_model.mass_cart = 77000
-        train_model.mass_bogie = 1100
-        train_model.mass_wheel = 1200
-        train_model.inertia_cart = 1.2e6
-        train_model.inertia_bogie = 760
-        train_model.prim_stiffness = 2.14e6
-        train_model.sec_stiffness = 5.32e6
-        train_model.prim_damping = 4.9e4
-        train_model.sec_damping = 7e4
+        calculated_mass_matrix = cart.aux_mass_matrix
 
-        train_model.length_cart = 3
-        train_model.length_bogie = 1
+        for i in range(len(expected_cart_mass_matrix)):
+            for j in range(len(expected_cart_mass_matrix[i])):
+                assert expected_cart_mass_matrix[i][j] == pytest.approx(calculated_mass_matrix[i, j])
+
+    def test_set_aux_stiffness_matrix_cart(self, expected_cart_stiffness_matrix, set_up_cart):
+        """
+        Checks if stiffness matrix of cart is as expected
+
+        :param expected_cart_stiffness_matrix:
+        :param set_up_cart:
+        :return:
+        """
+        cart = set_up_cart
+        cart.set_aux_stiffness_matrix()
+
+        calculated_stiffness_matrix = cart.aux_stiffness_matrix
+
+        for i in range(len(expected_cart_stiffness_matrix)):
+            for j in range(len(expected_cart_stiffness_matrix[i])):
+                assert expected_cart_stiffness_matrix[i][j] == pytest.approx(calculated_stiffness_matrix[i,j])
+
+    def test_set_aux_damping_matrix_cart(self, expected_cart_damping_matrix, set_up_cart):
+        """
+        Checks if stiffness matrix of cart is as expected
+
+        :param expected_cart_stiffness_matrix:
+        :param set_up_cart:
+        :return:
+        """
+        cart = set_up_cart
+        cart.set_aux_damping_matrix()
+
+        calculated_damping_matrix = cart.aux_damping_matrix
+
+        for i in range(len(expected_cart_damping_matrix)):
+            for j in range(len(expected_cart_damping_matrix[i])):
+                assert expected_cart_damping_matrix[i][j] == pytest.approx(calculated_damping_matrix[i, j])
+
+@pytest.fixture
+def expected_cart_stiffness_matrix():
+   k1 = 2.14e6
+   k2 = 5.32e6
+   lt = 3
+   lw = 1
+
+   return [[2*k2,	0.,	        -k2,	    0.,	        0.,	    0.,	    -k2,	    0.,	        0.,	        0.],
+        [0.,	    2*k2*lt**2,	-k2*lt,	    0.,	        0.,	    0.,	    k2*lt,	    0.,	        0.,	        0.],
+        [-k2,	-k2*lt,	        k2+2*k1,	0.,	        -k1,    -k1,	0.,	        0.,	        0.,	        0.],
+        [0.,	    0.,	        0.,	        2*k1*lw**2,	-k1*lw,	k1*lw,	0.,	        0.,	        0.,	        0.],
+        [0.,	    0.,	        -k1,	    -k1*lw,	    k1,	    0.,	    0.,	        0.,	        0.,	        0.],
+        [0.,	    0.,	        -k1,	    k1*lw,	    0.,	    k1,	    0.,	        0.,	        0.,	        0.],
+        [-k2,	k2*lt,	        0.,	        0.,	        0.,	    0.,	    k2+2*k1,	0.,	        -k1,	    -k1],
+        [0.,	    0.,	        0.,	        0.,	        0.,	    0.,	    0.,	        2*k1*lw**2,	-k1*lw,	    k1*lw],
+        [0.,	    0.,	        0.,	        0.,	        0.,	    0.,	    -k1,	    -k1*lw,	    k1,	        0.],
+        [0.,	    0.,	        0.,	        0.,	        0.,	    0.,	    -k1,	    k1*lw,	    0.,	        k1]]
+
+@pytest.fixture
+def expected_cart_damping_matrix():
+   c1 = 4.9e4
+   c2 = 7e4
+   lt = 3
+   lw = 1
+
+   return [[2*c2,	0.,	        -c2,	    0.,	        0.,	    0.,	    -c2,	    0.,	        0.,	        0.],
+        [0.,	    2*c2*lt**2,	-c2*lt,	    0.,	        0.,	    0.,	    c2*lt,	    0.,	        0.,	        0.],
+        [-c2,	-c2*lt,	        c2+2*c1,	0.,	        -c1,    -c1,	0.,	        0.,	        0.,	        0.],
+        [0.,	    0.,	        0.,	        2*c1*lw**2,	-c1*lw,	c1*lw,	0.,	        0.,	        0.,	        0.],
+        [0.,	    0.,	        -c1,	    -c1*lw,	    c1,	    0.,	    0.,	        0.,	        0.,	        0.],
+        [0.,	    0.,	        -c1,	    c1*lw,	    0.,	    c1,	    0.,	        0.,	        0.,	        0.],
+        [-c2,	c2*lt,	        0.,	        0.,	        0.,	    0.,	    c2+2*c1,	0.,	        -c1,	    -c1],
+        [0.,	    0.,	        0.,	        0.,	        0.,	    0.,	    0.,	        2*c1*lw**2,	-c1*lw,	    c1*lw],
+        [0.,	    0.,	        0.,	        0.,	        0.,	    0.,	    -c1,	    -c1*lw,	    c1,	        0.],
+        [0.,	    0.,	        0.,	        0.,	        0.,	    0.,	    -c1,	    c1*lw,	    0.,	        c1]]
 
 
-#
-#     def test_stiffness_matrix_track(self, set_up_rail, set_up_sleeper, set_up_rail_pad, set_up_soil):
-#
-#         utrack = UTrack(3)
-#
-#         utrack.rail = set_up_rail
-#         utrack.sleeper = set_up_sleeper
-#         utrack.rail_pads = set_up_rail_pad
-#         utrack.soil = set_up_soil
-#
-#         utrack.set_geometry()
-#         utrack.calculate_n_dofs()
-#
-#         utrack.set_global_stiffness_matrix()
-#
-#         plt.spy(utrack.global_stiffness_matrix)
-#         plt.show()
-#
-#     def test_stiffness_matrix_global(self, set_up_rail, set_up_sleeper, set_up_rail_pad, set_up_soil):
-#
-#         n_sleepers = 3
-#
-#         global_system = GlobalSystem(n_sleepers)
-#
-#         utrack = UTrack(n_sleepers)
-#         utrack.rail = set_up_rail
-#         utrack.sleeper = set_up_sleeper
-#         utrack.rail_pads = set_up_rail_pad
-#
-#         global_system.track = utrack
-#         global_system.soil = set_up_soil
-#
-#         global_system.set_geometry()
-#
-#         global_system.set_global_stiffness_matrix()
-#
-#         utrack.set_geometry()
-#         utrack.calculate_n_dofs()
-#
-#         utrack.set_global_stiffness_matrix()
-#
-#         plt.spy(utrack.global_stiffness_matrix)
-#         plt.show()
-#
-#
-#     def test_mass_matrix_track(self, set_up_rail, set_up_sleeper, set_up_rail_pad, set_up_soil):
-#         utrack = UTrack(3)
-#
-#         utrack.rail = set_up_rail
-#         utrack.sleeper = set_up_sleeper
-#         utrack.rail_pads = set_up_rail_pad
-#         utrack.soil = set_up_soil
-#
-#         utrack.set_geometry()
-#         utrack.calculate_n_dofs()
-#         utrack.set_global_mass_matrix()
-#
-#         plt.spy(utrack.global_mass_matrix)
-#         plt.show()
-#
-#     def test_damping_matrix_track(self, set_up_rail, set_up_sleeper, set_up_rail_pad, set_up_soil):
-#         utrack = UTrack(3)
-#
-#         utrack.rail = set_up_rail
-#         utrack.sleeper = set_up_sleeper
-#         utrack.rail_pads = set_up_rail_pad
-#         utrack.soil = set_up_soil
-#
-#         utrack.set_geometry()
-#         utrack.calculate_n_dofs()
-#
-#         utrack.set_global_stiffness_matrix()
-#         utrack.set_global_mass_matrix()
-#         utrack.set_global_damping_matrix()
-#
-#         plt.spy(utrack.global_damping_matrix)
-#         plt.show()
-#
-#     def test_force_array(self, set_up_rail, set_up_sleeper, set_up_rail_pad, set_up_soil):
-#         utrack = UTrack(3)
-#
-#         utrack.rail = set_up_rail
-#         utrack.sleeper = set_up_sleeper
-#         utrack.rail_pads = set_up_rail_pad
-#         utrack.soil = set_up_soil
-#
-#
-#         utrack.set_geometry()
-#         utrack.calculate_n_dofs()
-#
-#         utrack.set_force()
-#
-#         utrack.apply_no_disp_boundary_condition()
-#
-#         plt.spy(utrack.force)
-#         plt.show()
-#
-#     def test_calculate_point_load(self, set_up_rail, set_up_sleeper, set_up_rail_pad, set_up_soil):
-#         utrack = UTrack(3)
-#
-#         utrack.rail = set_up_rail
-#         utrack.sleeper = set_up_sleeper
-#         utrack.rail_pads = set_up_rail_pad
-#         utrack.soil = set_up_soil
-#
-#         utrack.calculate_n_dofs()
-#
-#         utrack.set_global_stiffness_matrix()
-#         utrack.set_global_mass_matrix()
-#         utrack.set_global_damping_matrix()
-#
-#         utrack.set_force()
-#
-#         utrack.apply_no_disp_boundary_condition()
-#         solver = Solver(utrack.n_dof_track-3)
-#
-#         settings_newmark = {"gamma": 0.5,
-#                             "beta": 0.25}
-#
-#         time = utrack.time
-#
-#         solver.newmark(settings_newmark, utrack.global_mass_matrix, utrack.global_damping_matrix, utrack.global_stiffness_matrix, utrack.force, time[1] - time[0], time[-1], t_start=time[0])
-#
-#
-#         plt.plot(solver.time, solver.u[:, 1])
-#         plt.plot(solver.time, solver.u[:, 4])
-#         plt.plot(solver.time, solver.u[:, 7])
-#         plt.plot(solver.time, solver.u[:, 9])
-#         plt.plot(solver.time, solver.u[:, 10])
-#         plt.plot(solver.time, solver.u[:, 11])
-#
-#         plt.legend(["1","4","7","9","10","11"])
-#         plt.show()
-#
-#
-#
-#
-#
-# @pytest.fixture
-# def set_up_soil():
-#     soil = Soil()
-#     soil.stiffness = 300e6
-#     soil.damping = 0
-#     return soil
-#
-#
-#
-# # @pytest.fixture()
-# # def set_up_rail():
+@pytest.fixture
+def expected_cart_mass_matrix():
+    mc = 77000
+    ic = 1.2e6
+    mb = 1100
+    ib = 760
+    mw = 1200
+
+    return [[mc,	0.,	        0.,	    0.,	        0.,	    0.,	    0.,	    0.,	    0.,	    0.],
+            [0.,    ic,	        0.,	    0.,	        0.,	    0.,	    0.,	    0.,	    0.,	    0.],
+            [0.,	0.,	        mb,	    0.,	        0.,     0.,	    0.,	    0.,	    0.,	    0.],
+            [0.,	0.,	        0.,	    ib,	        0.,	    0.,	    0.,	    0.,	    0.,	    0.],
+            [0.,	0.,	        0.,	    0.,	        mw,	    0.,	    0.,	    0.,	    0.,	    0.],
+            [0.,	0.,	        0.,	    0.,	        0.,	    mw,	    0.,	    0.,	    0.,	    0.],
+            [0.,	0.,	        0.,	    0.,	        0.,	    0.,	    mb,	    0.,	    0.,	    0.],
+            [0.,	0.,	        0.,	    0.,	        0.,	    0.,	    0.,	    ib,	    0.,     0.],
+            [0.,	0.,	        0.,	    0.,	        0.,	    0.,	    0.,	    0.,	    mw,	    0.],
+            [0.,	0.,	        0.,	    0.,	        0.,	    0.,	    0.,	    0.,	    0.,	    mw]]
+
+
+@pytest.fixture
+def set_up_cart():
+    """
+    Set up cart with 2 bogies and 2 wheel sets per bogie
+    :return:
+    """
+
+    mass_wheel = 1200
+    mass_bogie = 1100
+    mass_cart = 77000
+    inertia_cart = 1.2e6
+    inertia_bogie = 760
+    prim_stiffness = 2.14e6
+    sec_stiffness = 5.32e6
+    prim_damping = 4.9e4
+    sec_damping = 7e4
+
+    length_cart = 3
+    length_bogie = 1
+
+    wheels = [Wheel() for _ in range(4)]
+
+    for wheel in wheels:
+        wheel.mass = mass_wheel
+
+    bogies = [Bogie() for _ in range(2)]
+    bogies[0].wheels = wheels[:2]
+    bogies[1].wheels = wheels[2:]
+    for bogie in bogies:
+        bogie.wheel_distances=[-1, 1]
+        bogie.mass = mass_bogie
+        bogie.inertia = inertia_bogie
+        bogie.stiffness = prim_stiffness  # stiffness between bogie and wheels
+        bogie.damping = prim_damping
+        bogie.length = length_bogie
+        bogie.calculate_total_n_dof()
+
+    cart = Cart()
+    cart.bogies = bogies
+    cart.bogie_distances = [-3, 3]
+    cart.inertia = inertia_cart
+    cart.mass = mass_cart
+    cart.stiffness = sec_stiffness
+    cart.damping = sec_damping
+    cart.length = length_cart
+
+    cart.calculate_total_n_dof()
+
+    return cart
+
