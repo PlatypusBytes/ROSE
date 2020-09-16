@@ -9,6 +9,7 @@ from src.mesh_utils import *
 import src.tests.utils.signal_proc as sp
 
 from analytical_solutions.simple_supported import SimpleSupportEulerNoDamping, SimpleSupportEulerStatic
+from analytical_solutions.cantilever_beam import PulseLoadNoDamping
 
 import matplotlib.pyplot as plt
 
@@ -785,25 +786,34 @@ class TestTrack:
 
         plt.show()
 
-    @pytest.mark.workinprogress
     def test_dynamic_shear_load_on_beam(self):
+        """
+        Test a vertical load on a horizontal cantilever euler beam. Where the load is added at the free end of the beam.
+        Test if the eigen frequency and amplitude are as expected
+        :return:
+        """
         length_rod = 0.01
         n_beams = 101
 
-        # Setup parameters euler beam
-        # time = np.linspace(0, 10, 1001)
-        E = 20e8
-        I = 1
-        A = 1
+        E = 20e6
+        I = 1e-4
+        A = 0.01
         L = (n_beams - 1) * length_rod
         F = -1000
-        rho = 3
+        rho = 2000
 
+        time = np.linspace(0, 5, 2001)
 
-        with open('rod.json') as rod_file:
-            rod_analytical = json.load(rod_file)
+        # analytically calculate first eigenfrequency cantilever beam
+        mass = A * L * rho
 
-        time = rod_analytical['time']
+        eig_freq_const = 1.875
+        first_eig_freq = eig_freq_const**2 * np.sqrt(E*I/(mass *L**4)) / (2*np.pi)
+
+        # analytically calculate load on cantilever beam
+        pulse_load = PulseLoadNoDamping(ele_size=length_rod)
+        pulse_load.properties(E, I, rho, A, L, F, time)
+        pulse_load.compute()
 
         # setup numerical model
         rod_nodes = [Node(i * length_rod, 0, 0) for i in range(n_beams)]
@@ -812,8 +822,6 @@ class TestTrack:
         mesh = Mesh()
         mesh.add_unique_nodes_to_mesh(rod_nodes)
         mesh.add_unique_elements_to_mesh(rod_elements)
-
-
 
         material = Material()
         material.youngs_modulus = E  # Pa
@@ -839,12 +847,13 @@ class TestTrack:
 
         beam.initialize()
 
+        # setup cantilever foundation
         foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=False)
         foundation1.nodes = [rod_nodes[0]]
 
+        # set load at beam end
         load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
         load.y_force = np.ones((1, len(time))) * F
-
         load.time = time
         load.nodes = [rod_nodes[-1]]
 
@@ -864,22 +873,19 @@ class TestTrack:
         # calculate
         global_system.main()
 
-        vert_displacements = np.array([node.displacements[:, 1] for node in rod_nodes])
+        # get numerical frequencies and amplitudes
         vert_velocities = np.array([node.velocities[:, 1] for node in rod_nodes])
 
-        # plt.plot(time, vert_velocities[-1, :], marker='o')
-        # # plt.plot(time, np.array(rod_analytical['v'])[-1, :], marker='x')
-        #
-        # plt.show()
+        freq_num, amplitude_num, _, _ = sp.fft_sig(vert_velocities[-1, :], int(1 / time[1]),
+                                                   nb_points=2 ** 14)
+        freq_ana, amplitude_ana, _, _ = sp.fft_sig(pulse_load.v[-1, :], int(1 / time[1]),
+                                                   nb_points=2 ** 14)
 
-        import src.tests.utils.signal_proc as sp
+        # check if first eigen frequency is as expected
+        assert first_eig_freq == pytest.approx(freq_num[amplitude_num == np.max(amplitude_num)][0], rel=0.01)
 
-        f, a, p, s = sp.fft_sig(vert_velocities[-1, :], int(1 / rod_analytical['time'][1]), nb_points=2 ** 14)
-        # f2, a2, p2, s2 = sp.fft_sig(np.array(rod_analytical['v'])[2, :], int(1 / rod_analytical['time'][1]), nb_points=2 ** 14)
-
-        plt.plot(f, a)
-        # plt.plot(f2, a2, marker='x')
-        plt.show()
+        # check if amplitude is as expected
+        assert max(amplitude_ana) == pytest.approx(max(amplitude_num), rel=0.01)
 
     @pytest.mark.skip(reason="work in progress")
     def test_train_on_infinite_euler_beam_without_damping(self):
