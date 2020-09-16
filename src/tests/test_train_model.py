@@ -55,6 +55,7 @@ class TestTrainModel:
             for j in range(len(expected_cart_damping_matrix[i])):
                 assert expected_cart_damping_matrix[i][j] == pytest.approx(calculated_damping_matrix[i, j])
 
+
 @pytest.fixture
 def expected_cart_stiffness_matrix():
    k1 = 2.14e6
@@ -72,6 +73,7 @@ def expected_cart_stiffness_matrix():
         [0.,	    0.,	        0.,	        0.,	        0.,	    0.,	    0.,	        2*k1*lw**2,	-k1*lw,	    k1*lw],
         [0.,	    0.,	        0.,	        0.,	        0.,	    0.,	    -k1,	    -k1*lw,	    k1,	        0.],
         [0.,	    0.,	        0.,	        0.,	        0.,	    0.,	    -k1,	    k1*lw,	    0.,	        k1]]
+
 
 @pytest.fixture
 def expected_cart_damping_matrix():
