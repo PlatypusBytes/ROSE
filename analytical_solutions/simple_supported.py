@@ -211,14 +211,18 @@ class SimpleSupportEulerWithDamping:
         self.time = []  # time
         self.x = []  # discretisation of the beam
 
-        self.alpha_n = []  # alpha value for the load
+        self.eig = []  # eigen frequency n mode
+        self.eig_d = []  # eigen frequency n mode with damping
+        self.eig_shape = []  # eigen shape n mode
+        self.damp_coef = []  # damping coefficients
+        self.qsi = []  # damping
 
         self.u = []  # vertical displacement
 
         self.result = {}  # dictionary for json dump
         return
 
-    def properties(self, E, I, rho, A, L, F, damping, time):
+    def properties(self, E, I, rho, A, L, F, damp_coef, time):
         """
         Assigns properties
 
@@ -228,7 +232,7 @@ class SimpleSupportEulerWithDamping:
         :param A: Area
         :param L: Length
         :param F: Force
-        :param qsi: damping
+        :param damp_coef: Damping coefficients
         :param time: np.array vector
         """
         self.EI = E * I
@@ -236,6 +240,7 @@ class SimpleSupportEulerWithDamping:
         self.length = L
         self.force = F
         self.time = time
+        self.damp_coef = damp_coef
 
         self.x = np.linspace(0, self.length, int(np.ceil(self.length / self.element_size) + 1))
 
@@ -245,42 +250,50 @@ class SimpleSupportEulerWithDamping:
 
     def eigen_freq(self, n):
         """
-        Computes eigen frequency for a simple supported beam
+        Computes eigen frequency and daping ratio for a simple supported beam, n mode
 
         :param n: n mode
-        :return: eigen frequency
         """
-        return n**2 * np.pi**2 * np.sqrt(self.EI / (self.mass * self.length**4))
+        self.eig = n ** 2 * np.pi ** 2 * np.sqrt(self.EI / (self.mass * self.length ** 4))
+        self.qsi = self.damp_coef[0] / (2 * self.eig) + self.damp_coef[1] * self.eig / 2
+        self.eig_d = self.eig * np.sqrt(1 - self.qsi ** 2)
+        return
 
-    def alpha(self):
+    def mode_shape(self, n):
         """
-        Computes alpha for the *n* mode
-        """
+        Computes eigen *n* shape for a simple supported beam
 
-        self.alpha_n = np.zeros(self.n)
-        # alpha is 1 for n = 1, 5, 9, ...
-        for i in range(1, self.n, 4):
-            self.alpha_n[i] = 1
-        # alpha is -1 for n = 3, 7, 11, ...
-        for i in range(3, self.n, 4):
-            self.alpha_n[i] = -1
+        :param n: n mode
+        """
+        self.eig_shape = np.sin(n * np.pi / self.length * self.x)
         return
 
     def compute(self):
         """
         Computes the displacement solution
         """
-        # computes alpha
-        self.alpha()
-
         # for each time step
         for idx, t in enumerate(self.time):
             aux = np.zeros(len(self.x))
             # for the desired number of modes
             for n in range(1, self.n):
-                aux += self.alpha_n[n] / n**4 * (1 - np.cos(self.eigen_freq(n) * t)) * np.sin(n * np.pi * self.x / self.length)
+                # compute eigen frequency and damping ratio
+                self.eigen_freq(n)
+                # eigen mode
+                self.mode_shape(n)
+                # mass
+                mass = self.mass * self.length / 2
+                # stiffness
+                stiff = self.eig ** 2 * mass
+
+                # compute force: at middle span
+                force = self.eig_shape[int(len(self.x) / 2)] * self.force
+
+                # displacement n mode
+                aux += force / stiff * (1 - np.exp(-self.qsi * self.eig * t) * (np.cos(self.eig_d * t) + self.qsi / (np.sqrt(1 - self.qsi**2)) * np.sin(self.eig_d * t))) * self.eig_shape
+
             # add to displacement
-            self.u[:, idx] = 2 * self.force * self.length**3 / (np.pi**4 * self.EI) * aux
+            self.u[:, idx] = aux
 
         return
 
@@ -307,10 +320,29 @@ class SimpleSupportEulerWithDamping:
 if __name__ == "__main__":
 
     sss = SimpleSupportEulerNoDamping()
-    sss.properties(20e6, 1, 3, 1, 10, -1000, np.linspace(0, 1, 1000))
+    sss.properties(20e6, 1e-4, 2000, 0.01, 20, -1000, np.linspace(0, 200, 1000))
     sss.compute()
     sss.write_results()
 
     import matplotlib.pylab as plt
     plt.plot(sss.time, sss.u[50, :], marker='o')
+
+    # damping parameters:
+    f1 = 0.1
+    d1 = 0.025
+    f2 = 1000
+    d2 = 0.025
+    # damping matrix
+    damp_mat = 1 / 2 * np.array([[1 / (2 * np.pi * f1), 2 * np.pi * f1],
+                                 [1 / (2 * np.pi * f2), 2 * np.pi * f2]])
+    damp_qsi = np.array([d1, d2])
+    # solution
+    coefs = np.linalg.solve(damp_mat, damp_qsi)
+
+    sss = SimpleSupportEulerWithDamping()
+    sss.properties(20e6, 1e-4, 2000, 0.01, 20, -1000, coefs, np.linspace(0, 200, 1000))
+    sss.compute()
+    sss.write_results()
+
+    plt.plot(sss.time, sss.u[50, :])
     plt.show()
