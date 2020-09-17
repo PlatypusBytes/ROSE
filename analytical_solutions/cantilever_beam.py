@@ -74,7 +74,7 @@ class PulseLoadNoDamping:
         # initial guess
         a_L = (2 * n - 1) * np.pi / 2
 
-        # find coordinates that minimize boundary function
+        # find coordinates that minimize function
         res = root(self.find_eigen, x0=a_L, tol=1e-16)
         self.a = res.x[0] / self.length
         self.eig = (self.a * self.length)**2 * np.sqrt(self.EI / (self.mass * self.length**4))
