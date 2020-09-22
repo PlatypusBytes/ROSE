@@ -1,4 +1,5 @@
 import json
+import os.path
 import pytest
 
 from src.global_system import *
@@ -111,11 +112,11 @@ class TestBenchmarkSet2:
                       "v": hor_velocities.tolist()}
 
             # dump results
-            with open('test_data/dynamic_load_on_rod_num.json', "w") as f:
+            with open(os.path.join('test_data', 'dynamic_load_on_rod_num.json'), "w") as f:
                 json.dump(result, f, indent=2)
 
         # retrieve results from file
-        with open('test_data/dynamic_load_on_rod_num.json') as rod_file:
+        with open(os.path.join('test_data', 'dynamic_load_on_rod_num.json')) as rod_file:
             rod_numerical = json.load(rod_file)
 
         # get expected displacement and velocity
@@ -144,7 +145,7 @@ class TestBenchmarkSet2:
         rho = 3
 
         # load data from analytical solution
-        with open('test_data/rod.json') as rod_file:
+        with open(os.path.join('test_data','rod.json')) as rod_file:
             rod_analytical = json.load(rod_file)
 
         time = rod_analytical['time']
@@ -223,16 +224,16 @@ class TestBenchmarkSet2:
                       "v": hor_velocities.tolist()}
 
             # dump results
-            with open('test_data/dynamic_load_on_beam_num.json', "w") as f:
+            with open(os.path.join('test_data', 'dynamic_load_on_beam_num.json'), "w") as f:
                 json.dump(result, f, indent=2)
 
             # retrieve results from file
-        with open('test_data/dynamic_load_on_beam_num.json') as rod_file:
-            rod_numerical = json.load(rod_file)
+        with open(os.path.join('test_data', 'dynamic_load_on_beam_num.json')) as rod_file:
+            beam_numerical = json.load(rod_file)
 
         # get expected displacement and velocity
-        expected_displacement = np.array(rod_numerical['u'])
-        expected_velocity = np.array(rod_numerical['v'])
+        expected_displacement = np.array(beam_numerical['u'])
+        expected_velocity = np.array(beam_numerical['v'])
 
         # assert
         np.testing.assert_array_almost_equal(expected_displacement, hor_displacements)
