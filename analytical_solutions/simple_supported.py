@@ -346,6 +346,7 @@ class SimpleSupportTimoshenkoNoDamping:
         self.eig_shape = []  # eigen shape n mode
 
         self.u = []  # vertical displacement
+        self.v = []  # vertical velocity
 
         self.result = {}  # dictionary for json dump
         return
@@ -379,6 +380,7 @@ class SimpleSupportTimoshenkoNoDamping:
         self.x = np.linspace(0, self.length, int(np.ceil(self.length / self.element_size) + 1))
 
         self.u = np.zeros((len(self.x), len(self.time)))
+        self.v = np.zeros((len(self.x), len(self.time)))
 
         return
 
@@ -414,6 +416,7 @@ class SimpleSupportTimoshenkoNoDamping:
         # for each time step
         for idx, t in enumerate(self.time):
             aux = np.zeros(len(self.x))
+            aux_v = np.zeros(len(self.x))
             # for the desired number of modes
             for n in range(1, self.n):
                 # compute eigen frequency
@@ -425,8 +428,10 @@ class SimpleSupportTimoshenkoNoDamping:
                 force = self.eig_shape[int((len(self.x)-1) / 2)] * self.force
 
                 aux += force / n**4 * (1 - np.cos(self.eig * t)) * self.eig_shape
+                aux_v += force / n ** 4 * self.eig * np.sin(self.eig * t) * self.eig_shape
             # add to displacement
             self.u[:, idx] = 2 * self.length**3 * (1+self.phi) / (np.pi**4 * self.EI) * aux
+            self.v[:, idx] = 2 * self.length ** 3 * (1 + self.phi) / (np.pi ** 4 * self.EI) * aux_v
 
         return
 
