@@ -347,6 +347,7 @@ class TestBenchmarkSet1:
         rmse = np.sqrt(np.mean(rel_error[1:] ** 2))
         assert rmse < 0.01
 
+    @pytest.mark.workinprogress
     def test_undamped_timoshenko_beam_on_hinch_foundation_dynamic(self):
         """
         Tests point on an timoshenko beam which is supported by a hinch on each side of the beam. The calculation is
