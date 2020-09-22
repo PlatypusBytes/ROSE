@@ -2,7 +2,6 @@ import json
 import pytest
 
 from src.global_system import *
-from src.train_model.train_model import TrainModel
 from src.model_part import Material, Section, TimoshenkoBeamElementModelPart, RodElementModelPart
 from src.mesh_utils import *
 
@@ -15,10 +14,10 @@ from analytical_solutions.simple_supported import \
     SimpleSupportEulerWithDamping, \
     SimpleSupportTimoshenkoNoDamping
 from analytical_solutions.cantilever_beam import PulseLoadNoDamping
-
 import matplotlib.pyplot as plt
 
 RENEW_BENCHMARKS = False
+
 
 class TestBenchmarkSet2:
     """
@@ -127,14 +126,16 @@ class TestBenchmarkSet2:
         np.testing.assert_array_almost_equal(expected_displacement, hor_displacements)
         np.testing.assert_array_almost_equal(expected_velocity, hor_velocities)
 
-
-    @pytest.mark.workinprogress
     def test_dynamic_normal_load_on_beam(self):
+        """
+        Test a wave propagation through an euler beam element following a normal pulse load.
+        :return:
+        """
+
         length_rod = 0.01
         n_beams = 101
 
         # Setup parameters euler beam
-        # time = np.linspace(0, 10, 1001)
         E = 20e5
         I = 1
         A = 1
@@ -142,6 +143,7 @@ class TestBenchmarkSet2:
         F = -1000
         rho = 3
 
+        # load data from analytical solution
         with open('test_data/rod.json') as rod_file:
             rod_analytical = json.load(rod_file)
 
@@ -210,7 +212,28 @@ class TestBenchmarkSet2:
         hor_displacements = np.array([node.displacements[:, 0] for node in rod_nodes])
         hor_velocities = np.array([node.velocities[:, 0] for node in rod_nodes])
 
-        plt.plot(time, hor_velocities[-1, :], marker='o')
-        plt.plot(time, np.array(rod_analytical['v'])[-1, :], marker='x')
+        if RENEW_BENCHMARKS:
+            plt.plot(time, hor_velocities[-1, :], marker='o')
+            plt.plot(time, np.array(rod_analytical['v'])[-1, :], marker='x')
+            plt.show()
 
-        plt.show()
+            # create dictionary for results
+            result = {"time": time,
+                      "u": hor_displacements.tolist(),
+                      "v": hor_velocities.tolist()}
+
+            # dump results
+            with open('test_data/dynamic_load_on_beam_num.json', "w") as f:
+                json.dump(result, f, indent=2)
+
+            # retrieve results from file
+        with open('test_data/dynamic_load_on_beam_num.json') as rod_file:
+            rod_numerical = json.load(rod_file)
+
+        # get expected displacement and velocity
+        expected_displacement = np.array(rod_numerical['u'])
+        expected_velocity = np.array(rod_numerical['v'])
+
+        # assert
+        np.testing.assert_array_almost_equal(expected_displacement, hor_displacements)
+        np.testing.assert_array_almost_equal(expected_velocity, hor_velocities)
