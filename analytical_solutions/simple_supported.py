@@ -472,7 +472,7 @@ if __name__ == "__main__":
     # damping parameters:
     f1 = 0.1
     d1 = 0.025
-    f2 = 1000
+    f2 = 500
     d2 = 0.025
     # damping matrix
     damp_mat = 1 / 2 * np.array([[1 / (2 * np.pi * f1), 2 * np.pi * f1],
