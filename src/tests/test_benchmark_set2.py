@@ -352,11 +352,11 @@ class TestBenchmarkSet2:
                       "v": vertical_velocities.tolist()}
 
             # dump results
-            with open(os.path.join(TEST_PATH, 'test_data', 'simply_supported_damped_damped_euler_beam_num.json'), "w") as f:
+            with open(os.path.join(TEST_PATH, 'test_data', 'simply_supported_damped_euler_beam_num.json'), "w") as f:
                 json.dump(result, f, indent=2)
 
         # retrieve results from file
-        with open(os.path.join(TEST_PATH, 'test_data', 'simply_supported_damped_damped_euler_beam_num.json')) as f:
+        with open(os.path.join(TEST_PATH, 'test_data', 'simply_supported_damped_euler_beam_num.json')) as f:
             beam_numerical = json.load(f)
 
         # get expected displacement and velocity
@@ -367,7 +367,6 @@ class TestBenchmarkSet2:
         np.testing.assert_array_almost_equal(expected_displacement, vertical_displacements)
         np.testing.assert_array_almost_equal(expected_velocity, vertical_velocities)
 
-    @pytest.mark.workinprogress
     def test_undamped_timoshenko_beam_on_hinch_foundation_dynamic(self):
         """
         Tests point on an timoshenko beam which is supported by a hinch on each side of the beam. The calculation is
@@ -391,10 +390,6 @@ class TestBenchmarkSet2:
         A = 1
         L = 10
         F = -1000
-
-        beam_analytical = SimpleSupportTimoshenkoNoDamping(n=200, ele_size=length_beam)
-        beam_analytical.properties(E, G, timoshenko_coef, I, rho, A, L, F, time)
-        beam_analytical.compute()
 
         # setup numerical model
         beam_nodes = [Node(i * length_beam, 0, 0) for i in range(n_beams)]
@@ -424,7 +419,6 @@ class TestBenchmarkSet2:
         beam.damping_ratio = 0
         beam.radial_frequency_one = 2
         beam.radial_frequency_two = 5000
-
         beam.initialize()
 
         foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
@@ -456,31 +450,35 @@ class TestBenchmarkSet2:
         global_system.main()
         vertical_displacements = np.array([node.displacements[:, 1] for node in beam_nodes])
         vertical_velocities = np.array([node.velocities[:, 1] for node in beam_nodes])
-        #
-        # plt.plot(time, vertical_displacements[int((n_beams-1)/2), :],marker='x')
-        # plt.plot(time, beam_analytical.u[int((n_beams-1)/2), :])
-        # # plt.plot(time, euler_beam.u[100,:], marker='v')
-        # plt.show()
 
+        # recalculate analytical solution and compare with numerical solution
+        if RENEW_BENCHMARKS:
+            beam_analytical = SimpleSupportTimoshenkoNoDamping(n=100, ele_size=length_beam)
+            beam_analytical.properties(E, G, timoshenko_coef, I, rho, A, L, F, time)
+            beam_analytical.compute()
 
-        # process signal of numerical and analytical solution
-        freq_num, amplitude_num,_,_ = sp.fft_sig(vertical_displacements[int((n_beams-1)/2), :], int(1/ time[1]),
-                                          nb_points=2**14)
-        freq_timo, amplitude_analyt, _, _ = sp.fft_sig(beam_analytical.u[int((n_beams-1)/2), :], int(1 / time[1]),
-                                               nb_points=2**14)
-        # freq_euler, amplitude_analyt_euler, _, _ = sp.fft_sig(euler_beam.u[int((n_beams-1)/2), :], int(1 / time[1]),
-        #                                        nb_points=2**14)
-        rel_error_amp = (amplitude_num[142] - amplitude_analyt[142])/ amplitude_analyt[142]
+            plt.plot(time, vertical_displacements[int((n_beams-1)/2), :],marker='x')
+            plt.plot(time, beam_analytical.u[int((n_beams-1)/2), :])
+            plt.show()
 
-        plt.plot(freq_num, amplitude_num,marker='x')
-        plt.plot(freq_timo, amplitude_analyt,marker='o')
-        # plt.plot(freq_euler, amplitude_analyt_euler, marker='v')
-        plt.show()
+            # create dictionary for results
+            result = {"time": time.tolist(),
+                      "u": vertical_displacements.tolist(),
+                      "v": vertical_velocities.tolist()}
 
-        # assert deflection on each node in the last time step
-        # np.testing.assert_allclose(beam_analytical.u, vertical_displacements[:, -1], rtol=1e-5)
+            # dump results
+            with open(os.path.join(TEST_PATH, 'test_data', 'simply_supported_timoshenko_beam_num.json'),
+                      "w") as f:
+                json.dump(result, f, indent=2)
 
-        rel_error = (vertical_displacements[int((n_beams-1)/2), :] - beam_analytical.u[int((n_beams-1)/2), :])\
-                    /beam_analytical.u[int((n_beams-1)/2), :]
-        rmse = np.sqrt(np.mean(rel_error[1:] ** 2))
-        assert rmse < 0.01
+        # retrieve results from file
+        with open(os.path.join(TEST_PATH, 'test_data', 'simply_supported_timoshenko_beam_num.json')) as f:
+            beam_numerical = json.load(f)
+
+        # get expected displacement and velocity
+        expected_displacement = np.array(beam_numerical['u'])
+        expected_velocity = np.array(beam_numerical['v'])
+
+        # assert
+        np.testing.assert_array_almost_equal(expected_displacement, vertical_displacements)
+        np.testing.assert_array_almost_equal(expected_velocity, vertical_velocities)
