@@ -1,5 +1,6 @@
 import matplotlib.pylab as plt
 import numpy as np
+import json
 import os
 
 
@@ -80,6 +81,22 @@ class OneDimWavePropagation:
 
         return
 
+    def write_results(self, output="./results_temp.json"):
+        """
+        Writes and saves output in a json file
+
+        :param output: path to write json file (default "./results.json")
+        """
+        # create dictionary for results
+        self.result = {"time": self.time.tolist(),
+                       "v": self.v.tolist(),
+                       "u": self.u.tolist()}
+
+        # dump results
+        with open(output, "w") as f:
+            json.dump(self.result, f, indent=2)
+
+        return
 
 if __name__ == '__main__':
     p = OneDimWavePropagation()
