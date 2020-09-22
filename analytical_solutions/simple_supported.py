@@ -162,7 +162,7 @@ class SimpleSupportEulerNoDamping:
                 self.mode_shape(n)
 
                 # compute force: at middle span
-                force = self.eig_shape[int(len(self.x) / 2)] * self.force
+                force = self.eig_shape[int((len(self.x)-1) / 2)] * self.force
 
                 aux += force / n**4 * (1 - np.cos(self.eig * t)) * self.eig_shape
             # add to displacement
@@ -291,7 +291,7 @@ class SimpleSupportEulerWithDamping:
                 stiff = self.eig ** 2 * mass
 
                 # compute force: at middle span
-                force = self.eig_shape[int(len(self.x) / 2)] * self.force
+                force = self.eig_shape[int((len(self.x)-1) / 2)] * self.force
 
                 # displacement n mode
                 aux += force / stiff * (1 - np.exp(-self.qsi * self.eig * t) * (np.cos(self.eig_d * t) + self.qsi / (np.sqrt(1 - self.qsi**2)) * np.sin(self.eig_d * t))) * self.eig_shape
@@ -355,7 +355,7 @@ class SimpleSupportTimoshenkoNoDamping:
         Assigns properties
 
         :param E: Young modulus
-        :param E: Shear modulus
+        :param G: Shear modulus
         :param k: Timoshenko coefficient
         :param I: Inertia
         :param rho: Density
@@ -368,10 +368,11 @@ class SimpleSupportTimoshenkoNoDamping:
         self.E = E
         self.G = G
         self.k = k
-        self.rho = G
+        self.rho = rho
         self.r = np.sqrt(I / A)
         self.mass = rho * A
         self.length = L
+        self.phi = (12 / L ** 2) * (E * I / (k * G * A))
         self.force = F
         self.time = time
 
@@ -421,11 +422,11 @@ class SimpleSupportTimoshenkoNoDamping:
                 self.mode_shape(n)
 
                 # compute force: at middle span
-                force = self.eig_shape[int(len(self.x) / 2)] * self.force
+                force = self.eig_shape[int((len(self.x)-1) / 2)] * self.force
 
                 aux += force / n**4 * (1 - np.cos(self.eig * t)) * self.eig_shape
             # add to displacement
-            self.u[:, idx] = 2 * self.length**3 / (np.pi**4 * self.EI) * aux
+            self.u[:, idx] = 2 * self.length**3 * (1+self.phi) / (np.pi**4 * self.EI) * aux
 
         return
 
