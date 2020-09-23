@@ -41,7 +41,7 @@ class MovingLoad:
 
         # constants
         self.beta = np.sqrt(self.EI / self.rho)
-        self.h = np.sqrt(np.max(self.stiffness) / self.rho)
+        self.h = np.sqrt(self.stiffness[0] / self.rho)
         self.alpha = self.speed / np.sqrt(self.beta * self.h)
         self.F = self.force / (self.rho * self.h ** 1.5 * self.beta ** 0.5)
 
@@ -272,10 +272,31 @@ if __name__ == "__main__":
     import time
     t_ini = time.time()
     p = MovingLoad()
-    p.parameters(np.linspace(-200, 200, 401), 40, 1.28e7, 1, 2000, [400e3, 5*400e3], -100e3)
+    p.parameters(np.linspace(-200, 200, 400), 100, 1.28e7, 1, 120, [400e3, 1*400e3], -100e3)
     p.solve()
     p.write_results(output="./results.json")
     print(f"Time: {time.time() - t_ini}")
 
-    import src.plot_utils as pt
-    pt.create_animation("moving.html", p.result["time"], np.array(p.result["displacement"]))
+    import matplotlib.pylab as plt
+    plt.plot(p.qsi, p.displacement[:, 50], color="k")
+    plt.plot(p.qsi, p.displacement[:, 100], color="k")
+    plt.plot(p.qsi, p.displacement[:, 200], color="k")
+    plt.plot(p.qsi, p.displacement[:, 300], color="k")
+    # plt.show()
+
+
+    p = MovingLoad()
+    p.parameters(np.linspace(-200, 200, 400), 100, 1.28e7, 1, 120, [400e3, 5*400e3], -100e3)
+    p.solve()
+    p.write_results(output="./results.json")
+    print(f"Time: {time.time() - t_ini}")
+
+    import matplotlib.pylab as plt
+    plt.plot(p.qsi, p.displacement[:, 50])
+    plt.plot(p.qsi, p.displacement[:, 100])
+    plt.plot(p.qsi, p.displacement[:, 200])
+    plt.plot(p.qsi, p.displacement[:, 300])
+    plt.show()
+    #
+    # import src.plot_utils as pt
+    # pt.create_animation("moving.html", p.result["time"], np.array(p.result["displacement"]))
