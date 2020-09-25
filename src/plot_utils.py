@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.axes as plt_axes
 import numpy as np
+from typing import Tuple, Union
 
 
 def plot_2d_geometry(elements):
@@ -16,27 +17,54 @@ def plot_2d_geometry(elements):
     return fig
 
 
-def create_animation(filename, x_data, y_data: np.array, format='html',fps=60, fig: plt.Figure = plt.figure(), **kwargs):
+def create_animation(filename, x_data: Union[Tuple, np.array], y_data: Union[Tuple, np.array], format='html',fps=60, fig: plt.Figure = plt.figure(), **kwargs):
     """
 
-    :param filename:
-    :param x_data:
-    :param y_data:
-    :param format:
-    :param fps:
-    :param fig:
+    :param filename: name of the animation file
+    :param x_data: tuple of multiple x_data np arrays or 1 np.array of x_data
+    :param y_data: tuple of multiple y_data np arrays or 1 np.array of y_data
+    :param format: video format
+    :param fps: frames per second
+    :param fig: existing figure with custom axis information or data
     :param kwargs: Line2d properties
     :return:
     """
-    # fig = plt.figure()
-
     ims = []
     ax = fig.gca()
 
-    for i in range(len(y_data[0])):
-        ims.append((ax.plot(x_data, list(y_data[:, i]), color='black', **kwargs)[0],))
+    # set x_data and y_data as tuple
+    if not isinstance(x_data, Tuple):
+        x_data = (x_data,)
+    if not isinstance(y_data, Tuple):
+        y_data = (y_data,)
 
+    # check if y data of each dataset has the same size on axis nr 1
+    assert all(item.shape[1] == y_data[0].shape[1] for item in y_data)
+    # check if the same amount of datasets are used for x_data and y_data
+    assert len(x_data) == len(y_data)
+
+    # set colormap
+    cmap = plt.get_cmap('jet')
+    colors = [cmap(i) for i in np.linspace(0, 1, len(x_data))]
+
+    # loop over data
+    for i in range(len(y_data[0][0])):
+        plts = []
+        # loop over data sets
+        for j in range(len(x_data)):
+            plts.append(ax.plot(x_data[j], list(y_data[j][:, i]), color=colors[j], **kwargs)[0])
+
+        ims.append(tuple(plts))
+
+    # create animation
     writer = animation.writers[format](fps=fps)
     im_ani = animation.ArtistAnimation(fig, ims,
                                        blit=True)
+
+    # save animation
     im_ani.save(filename, writer=writer)
+
+    # close figure
+    fig.clf()
+
+
