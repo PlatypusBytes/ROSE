@@ -5,6 +5,7 @@ from src.global_system import *
 from src.train_model.train_model import TrainModel
 from src.model_part import Material, Section, TimoshenkoBeamElementModelPart, RodElementModelPart
 from src.mesh_utils import *
+from src.plot_utils import *
 
 import src.tests.utils.signal_proc as sp
 
@@ -14,6 +15,7 @@ from analytical_solutions.simple_supported import \
     SimpleSupportEulerWithDamping, \
     SimpleSupportTimoshenkoNoDamping
 from analytical_solutions.cantilever_beam import PulseLoadNoDamping
+
 
 import matplotlib.pyplot as plt
 
@@ -320,135 +322,8 @@ class TestBenchmarkSet1:
         np.testing.assert_allclose(beam_analytical.u, vertical_displacements[:, -1])
 
 
-    @pytest.mark.workinprogress
-    def test_euler_beam_on_varying_foundation(self):
 
-        # calculate analytical solution
-        stiffness_spring = 2.75e5
-        distance_springs = 1
-        winkler_mod = stiffness_spring / distance_springs
 
-        youngs_mod_beam = 4.41e05
-        intertia_beam = 1
-        y_load = -18e3
-
-        distance_springs = 1
-        n_sleepers = 50
-
-        # setup numerical model
-        # set time in two stages
-        initialisation_time = np.linspace(0, 0.1, 100)
-        calculation_time = np.linspace(initialisation_time[-1], 10, 5000)
-        time = np.concatenate((initialisation_time, calculation_time[1:]))
-
-        # set geometry
-        depth_soil = 0.9
-        element_model_parts_1, mesh_1 = create_horizontal_track(
-            n_sleepers, distance_springs, depth_soil
-        )
-        bottom_boundary_1 = add_no_displacement_boundary_to_bottom(
-            element_model_parts_1["soil"]
-        )
-
-        element_model_parts_2, mesh_2 = create_horizontal_track(
-            n_sleepers, distance_springs, depth_soil
-        )
-        bottom_boundary_2 = add_no_displacement_boundary_to_bottom(
-            element_model_parts_2["soil"]
-        )
-
-        for node in mesh_2.nodes:
-            node.coordinates[0] = node.coordinates[0] + (n_sleepers)*distance_springs
-
-        all_mesh = Mesh()
-
-        # fill model parts
-        rail_model_part = element_model_parts_1["rail"]
-        rail_pad_model_part = element_model_parts_1["rail_pad"]
-        sleeper_model_part = element_model_parts_1["sleeper"]
-        soil_1 = element_model_parts_1["soil"]
-
-        rail_model_part.nodes = rail_model_part.nodes + element_model_parts_2["rail"].nodes
-        rail_model_part.elements = rail_model_part.elements +\
-                                   [Element([rail_model_part.nodes[-1],element_model_parts_2["rail"].nodes[0]] )] +  element_model_parts_2["rail"].elements
-
-        rail_pad_model_part.nodes = rail_pad_model_part.nodes + element_model_parts_2["rail_pad"].nodes
-        rail_pad_model_part.elements = rail_pad_model_part.elements + element_model_parts_2["rail_pad"].elements
-
-        sleeper_model_part.nodes = sleeper_model_part.nodes + element_model_parts_2["sleeper"].nodes
-        sleeper_model_part.elements = sleeper_model_part.elements + element_model_parts_2["sleeper"].elements
-
-        soil_2 = element_model_parts_2["soil"]
-
-        all_mesh.add_unique_nodes_to_mesh(mesh_1.nodes)
-        all_mesh.add_unique_nodes_to_mesh(mesh_2.nodes)
-
-        all_mesh.add_unique_elements_to_mesh(mesh_1.elements)
-        all_mesh.add_unique_elements_to_mesh(mesh_2.elements)
-
-        all_mesh.reorder_node_ids()
-        all_mesh.reorder_element_ids()
-
-        # set elements
-        material = Material()
-        material.youngs_modulus = youngs_mod_beam  # Pa
-        material.poisson_ratio = 0.0
-        material.density = 0.000001  # 7860
-
-        section = Section()
-        section.area = 1
-        section.sec_moment_of_inertia = 1
-        section.shear_factor = 0
-
-        rail_model_part.section = section
-        rail_model_part.material = material
-        rail_model_part.damping_ratio = 0.0000
-        rail_model_part.radial_frequency_one = 2
-        rail_model_part.radial_frequency_two = 500
-
-        rail_model_part.initialize()
-
-        rail_pad_model_part.mass = 0.000001  # 5
-        rail_pad_model_part.stiffness = stiffness_spring / 0.1
-        rail_pad_model_part.damping = 0  # 12e3
-
-        sleeper_model_part.mass = 0.0000001  # 162.5
-        sleeper_model_part.distance_between_sleepers = distance_springs
-
-        soil_1.stiffness = stiffness_spring / depth_soil  # 300e6
-        soil_1.damping = 0
-
-        soil_2.stiffness = stiffness_spring / depth_soil * 10 # 300e6
-        soil_2.damping = 0
-
-        # set load
-        velocities = np.ones(len(time)) * 10
-        load = add_moving_point_load_to_track(
-            rail_model_part,
-            time,
-            len(initialisation_time),
-            velocities,
-            y_load=y_load,
-            start_coords=np.array([0, 0, 0]),
-        )
-
-        # set solver
-        solver = NewmarkSolver()
-
-        # populate global system
-        global_system = GlobalSystem()
-        global_system.mesh = all_mesh
-        global_system.time = time
-        global_system.solver = solver
-
-        # get all element model parts from dictionary
-        model_parts = [[rail_model_part, rail_pad_model_part, sleeper_model_part, soil_1, soil_2],
-                       list(bottom_boundary_1.values()), list(bottom_boundary_2.values()), list(load.values())
-        ]
-        global_system.model_parts = list(itertools.chain.from_iterable(model_parts))
-
-        # calculate
-        global_system.main()
 
     @pytest.mark.workinprogress
     def test_moving_load_on_cantilever_beam(self, set_up_material, set_up_euler_section):
