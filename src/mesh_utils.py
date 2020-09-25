@@ -79,7 +79,6 @@ def add_moving_point_load_to_track(
     # if start coords are not given, set the first node as start coordinates
     if start_coords is None:
         start_coords = np.array(force.nodes[0].coordinates)
-
     # get numpy array of nodal coordinates
     nodal_coordinates = np.array([node.coordinates for node in force.nodes])
 
@@ -97,8 +96,13 @@ def add_moving_point_load_to_track(
     )
 
     # calculate cumulative distance of the force location based on force velocity
+
+
     cum_distances_force = (
-        velocities * (time - time[0])
+            np.append(
+                0,
+                np.cumsum((time[1:] - time[:-1]) * velocities[:-1])
+            )
         + utils.distance_np(
             start_coords, np.array(force.elements[element_idx].nodes[0].coordinates)
         )
