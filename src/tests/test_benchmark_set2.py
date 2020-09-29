@@ -512,8 +512,8 @@ class TestBenchmarkSet2:
         # set time in two stages
         calculation_time_steps = 500
 
-        initialisation_time = np.linspace(0, 0.1, 100)
-        calculation_time = np.linspace(initialisation_time[-1], 10, calculation_time_steps)
+        initialisation_time = np.linspace(0, 10, 100)
+        calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 10, calculation_time_steps)
         time = np.concatenate((initialisation_time, calculation_time[1:]))
 
         # set geometry
@@ -608,11 +608,11 @@ class TestBenchmarkSet2:
 
         # set load
         position = np.array([node.coordinates[0] for node in rail_model_part.nodes])
-        velocity = (position[-1] - position[0]) / (time[-1] - time[0])
+        velocity = (position[-1] - position[0]) / (time[-1] - time[len(initialisation_time)])
 
         # set moving load on rail_model_part
         velocities = np.ones(len(time)) * velocity
-        # velocities[0:len(initialisation_time)] = 0
+        velocities[0:len(initialisation_time)] = 0
         load = add_moving_point_load_to_track(
             rail_model_part,
             time,
@@ -650,7 +650,6 @@ class TestBenchmarkSet2:
 
         # recalculate analytical solution and compare with numerical solution
         if RENEW_BENCHMARKS:
-        # if True:
             # calculate analytical solution
             position = np.linspace(rail_model_part.nodes[0].coordinates[0],
                                    rail_model_part.nodes[-1].coordinates[0], calculation_time_steps)
@@ -659,10 +658,10 @@ class TestBenchmarkSet2:
                          y_load)
             p.solve()
 
-            # todo check time discreatisation and force build-up
-            plt.plot(coords,vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 1 / 4 - 5)], color="k")
-            plt.plot(coords,vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 2 / 4 - 5)], color="k")
-            plt.plot(coords, vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 3 / 4 - 5)], color="k")
+            # # todo check time discreatisation and force build-up
+            plt.plot(coords,vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 1 / 4)], color="k")
+            plt.plot(coords,vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 2 / 4)], color="k")
+            plt.plot(coords, vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 3 / 4)], color="k")
             plt.plot(p.position, p.displacement[:, int(len(p.time) * 1/4)], color="r", marker='x')
             plt.plot(p.position, p.displacement[:, int(len(p.time) * 2/4)], color="r", marker='x')
             plt.plot(p.position, p.displacement[:, int(len(p.time) * 3/4)], color="r", marker='x')
