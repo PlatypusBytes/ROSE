@@ -26,9 +26,7 @@ pipelines:
             script:
                 - conda env update -n rose --file env_rose.yml
                 - conda activate rose
-                - pip install pybadges
                 - pytest -v --cov=src --cov-report html:test-reports/coverage src/tests/ -m "not workinprogress"
-                - python -m pybadges --left-text=build --right-text=failure --right-color='#c00' > test-reports/status.svg
                 - apt-get --yes install zip
                 - zip -r test-reports/coverage.zip test-reports/coverage
                 - pipe: atlassian/bitbucket-upload-file:0.3.1
@@ -36,11 +34,6 @@ pipelines:
                       BITBUCKET_USERNAME: $BITBUCKET_USERNAME
                       BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
                       FILENAME: "test-reports/coverage.zip"
-                - pipe: atlassian/bitbucket-upload-file:0.3.1
-                  variables:
-                      BITBUCKET_USERNAME: $BITBUCKET_USERNAME
-                      BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
-                      FILENAME: "test-reports/status.svg"
         
 definitions:
    caches:
