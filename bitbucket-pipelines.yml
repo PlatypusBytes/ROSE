@@ -25,8 +25,8 @@ pipelines:
                 - pip
             script:
                 - conda env update -n rose --file env_rose.yml
-                - pip install pybadges
                 - conda activate rose
+                - pip install pybadges
                 - pytest -v --cov=src --cov-report html:test-reports/coverage src/tests/ -m "not workinprogress"
                 - python -m pybadges --left-text=build --right-text=failure --right-color='#c00' > test-reports/status.svg
                 - apt-get --yes install zip
