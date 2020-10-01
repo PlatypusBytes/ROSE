@@ -230,6 +230,40 @@ class TestNewmark(unittest.TestCase):
         )
         return
 
+    def test_zhai_solver(self):
+        """
+        Check if results following Zhai calculation are close to Newmark results
+        :return:
+        """
+
+        self.n_steps = 12 * 20
+        self.t_step = 0.28 / 20
+        self.t_total = self.n_steps * self.t_step
+
+        # increase number timesteps as Zhai solver is explicit
+        self.time = np.linspace(
+            0, self.t_total, int(np.ceil((self.t_total - 0) / self.t_step) + 1)
+        )
+
+        # reshape force vector
+        F = np.zeros((2, self.n_steps+1))
+        F[1, :] = 10
+        self.F = sparse.csc_matrix(np.array(F))
+
+        # calculate with Newmark solver
+        expected = solver.NewmarkSolver()
+        expected.initialise(self.number_eq, self.time)
+        expected.calculate(self.M, self.C, self.K, self.F, 0, self.n_steps)
+
+        # calculate with Zhai solver
+        res = solver.ZhaiSolver()
+        res.initialise(self.number_eq, self.time)
+        res.calculate(self.M, self.C, self.K, self.F, 0, self.n_steps)
+
+        # assert
+        np.testing.assert_array_almost_equal(np.round(expected.u, 2), np.round(res.u, 2))
+
+
     def test_time_input_exception(self):
         res = solver.StaticSolver()
         n_steps = 500
