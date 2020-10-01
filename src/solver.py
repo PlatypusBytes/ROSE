@@ -6,6 +6,7 @@ from tqdm import tqdm
 
 from src.exceptions import *
 import logging
+import copy
 
 
 def init(m_global, c_global, k_global, force_ini, u, v):
@@ -67,6 +68,188 @@ class Solver:
         if not np.all(np.isclose(diff, diff[0])):
             logging.error("Solver error: Time steps differ in current stage")
             raise TimeException("Time steps differ in current stage")
+
+
+class ZhaiSolver(Solver):
+    def __init__(self):
+        super(ZhaiSolver, self).__init__()
+        self.psi = 0.5
+        self.phi = 0.5
+        self.beta = 0.25
+        self.gamma = 0.5
+        self.load_func = None
+
+        self.number_equations = None
+
+    def calculate_initial_values(self, M, C, K, F, u0, v0):
+        """
+        Calculate inverse mass matrix and initial acceleration
+
+        :param M: global mass matrix
+        :param C: global damping matrix
+        :param K: global stiffness matrix
+        :param F: global force vector at current time step
+        :param u0: initial displacement
+        :param v0:  initial velocity
+        :return:
+        """
+        inv_M = inv(M)
+        a0 = self.evaluate_acceleration(inv_M, C, K, F, u0, v0)
+        return inv_M, a0
+
+
+    def calculate_force(self, du, F, t):
+        """
+        Calculate external force if a load function is given. If no load function is given, force is taken from current
+        load vector
+        :param du:
+        :param F:
+        :param t:
+        :return:
+        """
+        if self.load_func is not None:
+            force = self.load_func(du)
+        else:
+            force = F[:, t]
+            force = force.toarray()[:, 0]
+        return force
+
+    def prediction(self, u, v, a, a_old, dt, is_initial):
+        """
+        Perform prediction for displacement and acceleration
+
+        :param u: displacement
+        :param v: velocity
+        :param a: acceleration
+        :param a_old: acceleration at previous time step
+        :param dt: delta time
+        :param is_initial: bool to indicate current iteration is the initial iteration
+        :return:
+        """
+
+        # set Zhai factors
+        if is_initial:
+            psi = phi = 0
+        else:
+            psi = self.psi
+            phi = self.phi
+
+        # predict displacement and velocity
+        u_new = u + v * dt + (1/2 + psi) * a * dt ** 2 - psi * a_old * dt**2
+        v_new = v + (1 + phi) * a * dt - phi * a_old * dt
+        return u_new, v_new
+
+    def evaluate_acceleration(self, inv_M, C, K, F, u, v):
+        """
+        Calculate acceleration
+
+        :param inv_M: inverse global mass matrix
+        :param C: global damping matrix
+        :param K: Global stiffness matrix
+        :param F: Force vector at current time step
+        :param u: displacement
+        :param v: velocity
+        :return:
+        """
+        a_new = inv_M.dot(F - K.dot(u) - C.dot(v))
+        return a_new
+
+    def newmark_iteration(self, u, v, a, a_new, dt):
+        """
+        Perform Wewmark iteration as corrector for displacement and velocity
+
+        :param u: displacement
+        :param v: velocity
+        :param a: acceleration
+        :param a_new: predicted acceleration
+        :param dt: delta time
+        :return:
+        """
+        u_new = u + v * dt + (1/2 - self.beta) * a * dt ** 2 + self.beta * a_new * dt ** 2
+        v_new = v + (1-self.gamma) * a * dt + self.gamma * a_new * dt
+
+        return u_new, v_new
+
+    def calculate(self, M, C, K, F, t_start_idx, t_end_idx):
+        """
+        Perform calculation with Zhai solver [Zhai 1996]
+
+        :param M: Mass matrix
+        :param C: Damping matrix
+        :param K: Stiffness matrix
+        :param F: External force matrix
+        :param t_start_idx: time index of starting time for the analysis
+        :param t_end_idx: time index of end time for the analysis
+        :return:
+        """
+
+        self.validate_input(F, t_start_idx, t_end_idx)
+
+        t_step = (self.time[t_end_idx] - self.time[t_start_idx]) / (
+            (t_end_idx - t_start_idx))
+
+        # initial force conditions: for computation of initial acceleration
+        force = F[:, t_start_idx].toarray()
+        force = force[:, 0]
+
+        u = self.u0
+        v = self.v0
+        inv_M, a = self.calculate_initial_values(M, C, K, force, u, v)
+
+        self.u[t_start_idx, :] = u
+        self.v[t_start_idx, :] = v
+        self.a[t_start_idx, :] = a
+
+        a_old = np.zeros(self.number_equations)
+
+        # define progress bar
+        pbar = tqdm(
+            total=(t_end_idx - t_start_idx),
+            unit_scale=True,
+            unit_divisor=1000,
+            unit="steps",
+        )
+
+        is_initial = True
+        for t in range(t_start_idx + 1, t_end_idx + 1):
+
+            # check if current timestep is the initial timestep
+            if t > 1:
+                is_initial = False
+
+            # Predict displacement and velocity
+            u_new, v_new = self.prediction(u, v, a, a_old, t_step, is_initial)
+
+            # Calculate predicted external force vector
+            force = self.calculate_force(u, F, t)
+
+            # Calculate predicted acceleration
+            a_new = self.evaluate_acceleration(inv_M, C, K, force, u_new, v_new)
+
+            # Correct displacement and velocity
+            u_new, v_new = self.newmark_iteration(u, v, a, a_new, t_step)
+
+            # Calculate corrected force vector
+            force = self.calculate_force(u_new, F, t)
+
+            # Calculate corrected acceleration
+            a_new = self.evaluate_acceleration(inv_M, C, K, force, u_new, v_new)
+
+            # add to results
+            self.u[t, :] = u_new
+            self.v[t, :] = v_new
+            self.a[t, :] = a_new
+
+            # set vectors for next time step
+            u = copy.deepcopy(u_new)
+            v = copy.deepcopy(v_new)
+
+            a_old = copy.deepcopy(a)
+            a = copy.deepcopy(a_new)
+
+        # close the progress bar
+        pbar.close()
+        return
 
 
 class NewmarkSolver(Solver):
