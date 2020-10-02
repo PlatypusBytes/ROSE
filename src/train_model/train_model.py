@@ -1,15 +1,26 @@
 import numpy as np
 from scipy import sparse
+from copy import deepcopy
+
 from src import utils, geometry
 from src.geometry import Node, Element, Mesh
 import time
 from src.model_part import ElementModelPart
 
+from src.solver import NewmarkSolver, StaticSolver, ZhaiSolver
+
+g = 9.81
 
 class Wheel(ElementModelPart):
     def __init__(self):
         super().__init__()
         self.mass = None
+        self.total_static_load = None
+        self.distances = None
+
+        self.index_dof = [None]
+
+        self.nodes = None
 
     @property
     def y_disp_dof(self):
@@ -19,11 +30,45 @@ class Wheel(ElementModelPart):
         self.aux_mass_matrix = np.zeros((1, 1))
         self.aux_mass_matrix[0] = self.mass
 
+        # self.aux_mass_matrix = utils.reshape_aux_matrix(len(self.nodes),
+        #                        [self.normal_dof, self.y_disp_dof, self.z_rot_dof],
+        #                        self.aux_mass_matrix)
+
+
     def set_aux_stiffness_matrix(self):
         self.aux_stiffness_matrix = np.zeros((1, 1))
+        # self.aux_stiffness_matrix = utils.reshape_aux_matrix(len(self.nodes),
+        #                        [self.normal_dof, self.y_disp_dof, self.z_rot_dof],
+        #                        self.aux_stiffness_matrix)
 
     def set_aux_damping_matrix(self):
         self.aux_damping_matrix = np.zeros((1, 1))
+
+        # self.aux_damping_matrix = utils.reshape_aux_matrix(len(self.nodes),
+        #                        [self.normal_dof, self.y_disp_dof, self.z_rot_dof],
+        #                        self.aux_damping_matrix)
+
+    def set_static_force_vector(self):
+        self.static_force_vector = np.zeros((1, 1))
+        self.static_force_vector[0,0] = -self.mass * g
+
+        # self.static_force_vector = utils.reshape_force_vector(len(self.nodes),
+        #                                                    [self.normal_dof, self.y_disp_dof, self.z_rot_dof],
+        #                                                    self.static_force_vector)
+
+    def set_mesh(self, y=0, z=0):
+        self.nodes = [Node(self.distances[0],0,0)]
+
+    def calculate_active_n_dof(self, index_dof):
+        self.active_n_dof = 1
+
+        self.nodes[0].index_dof[1] = index_dof
+        index_dof += 1
+
+        return index_dof
+
+    def calculate_total_static_load(self, external_load):
+        self.total_static_load = self.static_force_vector[0, 0] + external_load
 
 
 class Bogie(ElementModelPart):
@@ -40,6 +85,11 @@ class Bogie(ElementModelPart):
 
         self.__n_wheels = None
 
+        self.total_static_load = None
+        self.distances = None
+
+        self.index_dof = [None, None]
+
     @property
     def y_disp_dof(self):
         return True
@@ -48,15 +98,39 @@ class Bogie(ElementModelPart):
     def z_rot_dof(self):
         return True
 
+    def set_mesh(self,x, y=1,z=0):
+        self.nodes = [Node(x, y, z)]
+
+        for wheel in self.wheels:
+            wheel.set_mesh()
+            # self.nodes.extend(wheel.nodes)
+
     def __add_wheel_mass_matrix(self, wheel, aux_mass_matrix):
         pass
 
-    def calculate_total_n_dof(self):
-        self.total_n_dof = 2 + len(self.wheels)
+    def calculate_active_n_dof(self, index_dof):
+        self.active_n_dof = 2 + len(self.wheels)
+
+        self.nodes[0].index_dof[1] = index_dof
+        index_dof += 1
+        self.nodes[0].index_dof[2] = index_dof
+        index_dof += 1
+
+        for idx, wheel in enumerate(self.wheels):
+            # self.nodes[idx].index_dof[1] = index_dof
+            # index_dof += 1
+            # self.nodes[idx].index_dof[2] = index_dof
+            # index_dof += 1
+
+            index_dof = wheel.calculate_active_n_dof(index_dof)
+
+        self.active_n_dof = 2 + sum([wheel.active_n_dof for wheel in self.wheels])
+        return index_dof
+
 
     def set_aux_mass_matrix(self):
 
-        self.aux_mass_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
+        self.aux_mass_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
 
         self.aux_mass_matrix[0, 0] = self.mass
         self.aux_mass_matrix[1, 1] = self.inertia
@@ -71,7 +145,7 @@ class Bogie(ElementModelPart):
             l += n_dof_wheel
 
     def set_aux_stiffness_matrix(self):
-        self.aux_stiffness_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
+        self.aux_stiffness_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
         self.aux_stiffness_matrix[0, 0] = len(self.wheels) * self.stiffness
 
         l = 2
@@ -95,7 +169,7 @@ class Bogie(ElementModelPart):
             l += n_dof_wheel
 
     def set_aux_damping_matrix(self):
-        self.aux_damping_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
+        self.aux_damping_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
         self.aux_damping_matrix[0, 0] = len(self.wheels) * self.damping
 
         l = 2
@@ -118,6 +192,26 @@ class Bogie(ElementModelPart):
 
             l += n_dof_wheel
 
+    def set_static_force_vector(self):
+        self.static_force_vector = np.zeros((self.active_n_dof, 1))
+        self.static_force_vector[0, 0] = -self.mass * g
+
+        l=2
+        for i in range(len(self.wheels)):
+            self.wheels[i].set_static_force_vector()
+            n_dof_wheel = self.wheels[i].static_force_vector.shape[0]
+
+            for j in range(n_dof_wheel):
+                self.static_force_vector[l+j, 0] += self.wheels[i].static_force_vector[j, 0]
+            l += n_dof_wheel
+
+    def calculate_total_static_load(self, external_load):
+        self.total_static_load = self.static_force_vector[0, 0] + external_load
+
+        distributed_load = self.total_static_load / len(self.wheels)
+        for wheel in self.wheels:
+            wheel.calculate_total_static_load(distributed_load)
+
 
 class Cart(ElementModelPart):
     def __init__(self):
@@ -133,6 +227,9 @@ class Cart(ElementModelPart):
 
         self.__n_bogies = None
 
+        self.total_static_load = None
+        self.distances = None
+
     @property
     def y_disp_dof(self):
         return True
@@ -141,11 +238,30 @@ class Cart(ElementModelPart):
     def z_rot_dof(self):
         return True
 
-    def calculate_total_n_dof(self):
-        self.total_n_dof = 2 + sum([bogie.total_n_dof for bogie in self.bogies])
+    def set_mesh(self,y=2,z=0):
+        self.nodes = [Node(bogie.distances[0], y, z)  for bogie in self.bogies]
+
+        for bogie in self.bogies:
+            bogie.set_mesh()
+            # self.nodes.extend(bogie.nodes)
+
+    def calculate_active_n_dof(self, index_dof):
+
+        for node in self.nodes:
+            node.index_dof[1] = index_dof
+            index_dof += 1
+            node.index_dof[2] = index_dof
+            index_dof += 1
+
+        for bogie in self.bogies:
+            index_dof = bogie.calculate_active_n_dof(index_dof)
+
+        self.active_n_dof = 2 + sum([bogie.active_n_dof for bogie in self.bogies])
+        return  index_dof
+
 
     def set_aux_mass_matrix(self):
-        self.aux_mass_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
+        self.aux_mass_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
         self.aux_mass_matrix[0, 0] = self.mass
         self.aux_mass_matrix[1, 1] = self.inertia
 
@@ -159,7 +275,7 @@ class Cart(ElementModelPart):
             l += n_dof_bogie
 
     def set_aux_stiffness_matrix(self):
-        self.aux_stiffness_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
+        self.aux_stiffness_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
 
         self.aux_stiffness_matrix[0, 0] = len(self.bogies) * self.stiffness
 
@@ -183,7 +299,7 @@ class Cart(ElementModelPart):
             l += n_dof_bogie
 
     def set_aux_damping_matrix(self):
-        self.aux_damping_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
+        self.aux_damping_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
 
         self.aux_damping_matrix[0, 0] = len(self.bogies) * self.damping
 
@@ -206,15 +322,39 @@ class Cart(ElementModelPart):
                     self.aux_damping_matrix[l + j, l + k] += self.bogies[i].aux_damping_matrix[j, k]
             l += n_dof_bogie
 
+    def set_static_force_vector(self):
+        self.static_force_vector = np.zeros((self.active_n_dof, 1))
+        self.static_force_vector[0, 0] = -self.mass * g
+
+        l = 2
+        for i in range(len(self.bogies)):
+            self.bogies[i].set_static_force_vector()
+            n_dof_bogie = self.bogies[i].static_force_vector.shape[0]
+
+            for j in range(n_dof_bogie):
+                self.static_force_vector[l + j, 0] += self.bogies[i].static_force_vector[j, 0]
+            l += n_dof_bogie
+
+    def calculate_total_static_load(self, external_load):
+        self.total_static_load = self.static_force_vector[0,0] + external_load
+
+        distributed_load = self.total_static_load / len(self.bogies)
+        for bogie in self.bogies:
+            bogie.calculate_total_static_load(distributed_load)
+
 
 class TrainModel(ElementModelPart):
     def __init__(self):
         super().__init__()
         self.carts = None
+        self.cart_distances = None
+
+        self.__bogies = None
+        self.__wheels = None
 
         self.herzian_contact_cof = None
+        self.herzian_power = 3/2
 
-        self.irregularities = None
         self.static_wheel_load = None
         self.static_wheel_deformation = None
 
@@ -222,173 +362,249 @@ class TrainModel(ElementModelPart):
         self.static_force_vector = None
 
         self.g = 9.81
-        self.velocity = None
+        self.velocities = None
+        self.time = None
 
         # todo generalize below
-        self.deformation_wheels = np.zeros((4, 1))
-        self.deformation_track = np.zeros((4, 1))
-        self.irregularities = np.zeros(4)
+        self.deformation_wheels = None #np.zeros((4, 1))
+        self.deformation_track_at_wheels = None #np.zeros((4, 1))
+        self.irregularities_at_wheels = None #np.zeros(4)
+        self.total_static_load = None
+
+        self.contact_dofs = None
+
+        self.solver = None
+
+    @property
+    def bogies(self):
+        return self.__bogies
+
+    @property
+    def wheels(self):
+        return self.__wheels
+
+    def set_mesh(self):
+        for cart in self.carts:
+            cart.set_mesh()
+            # self.nodes.extend(cart.nodes)
 
 
-    # def set_aux_mass_matrix(self):
-    #     """
-    #     Set mass matrix of train
-    #     :return:
-    #     """
-    #     self.aux_mass_matrix = np.zeros((14, 14))
-    #
-    #     self.aux_mass_matrix[0, 0] = self.mass_cart
-    #     self.aux_mass_matrix[1, 1] = self.inertia_cart
-    #     self.aux_mass_matrix[[2, 4], [2, 4]] = self.mass_bogie
-    #     self.aux_mass_matrix[[3, 5], [3, 5]] = self.inertia_bogie
-    #     self.aux_mass_matrix[[6, 8, 10, 12], [6, 8, 10, 12]] = self.mass_wheel
-    #
-    # def set_aux_stiffness_matrix(self):
-    #     """
-    #     Set stiffness matrix of train
-    #     Note that wheels have an added rotational dof with 0 input, this required for adding the train aux matrix
-    #     to the global system.
-    #     :return:
-    #     """
-    #     self.aux_stiffness_matrix = np.zeros((14, 14))
-    #
-    #     # cart displacement
-    #     self.aux_stiffness_matrix[0, 0] = 2 * self.sec_stiffness
-    #     self.aux_stiffness_matrix[[0, 0, 2, 4], [2, 4, 0, 0]] = -self.sec_stiffness
-    #
-    #     # cart rotation
-    #     self.aux_stiffness_matrix[1, 1] = 2 * self.sec_stiffness * self.length_cart ** 2
-    #     self.aux_stiffness_matrix[[1, 2], [2, 1]] = (
-    #             -self.sec_stiffness * self.length_cart
-    #     )
-    #     self.aux_stiffness_matrix[[1, 4], [4, 1]] = (
-    #             self.sec_stiffness * self.length_cart
-    #     )
-    #
-    #     # bogie 1 displacement
-    #     self.aux_stiffness_matrix[2, 2] = self.sec_stiffness + 2 * self.prim_stiffness
-    #     self.aux_stiffness_matrix[[2, 2, 6, 8], [6, 8, 2, 2]] = -self.prim_stiffness
-    #
-    #     # bogie 1 rotation
-    #     self.aux_stiffness_matrix[3, 3] = (
-    #             2 * self.prim_stiffness * self.length_bogie ** 2
-    #     )
-    #     self.aux_stiffness_matrix[[3, 6], [6, 3]] = (
-    #             -self.prim_stiffness * self.length_bogie
-    #     )
-    #     self.aux_stiffness_matrix[[3, 8], [8, 3]] = (
-    #             self.prim_stiffness * self.length_bogie
-    #     )
-    #
-    #     # bogie 2 displacement
-    #     self.aux_stiffness_matrix[4, 4] = self.sec_stiffness + 2 * self.prim_stiffness
-    #     self.aux_stiffness_matrix[[4, 4, 10, 12], [10, 12, 4, 4]] = -self.prim_stiffness
-    #
-    #     # bogie 2 rotation
-    #     self.aux_stiffness_matrix[5, 5] = (
-    #             2 * self.prim_stiffness * self.length_bogie ** 2
-    #     )
-    #     self.aux_stiffness_matrix[[5, 10], [10, 5]] = (
-    #             -self.prim_stiffness * self.length_bogie
-    #     )
-    #     self.aux_stiffness_matrix[[5, 12], [12, 5]] = (
-    #             self.prim_stiffness * self.length_bogie
-    #     )
-    #
-    #     # wheels
-    #     self.aux_stiffness_matrix[[6, 8, 10, 12], [6, 8, 10, 12]] = self.prim_stiffness
+    def __get_bogies(self):
+        self.__bogies = []
+        for cart in self.carts:
+            self.__bogies.extend(cart.bogies)
 
-    # def set_aux_damping_matrix(self):
-    #     """
-    #     Set damping matrix of train
-    #     Note that wheels have an added rotational dof with 0 input, this required for adding the train aux matrix
-    #     to the global system.
-    #     :return:
-    #     """
-    #     self.aux_damping_matrix = np.zeros((14, 14))
-    #
-    #     # cart displacement
-    #     self.aux_damping_matrix[0, 0] = 2 * self.sec_damping
-    #     self.aux_damping_matrix[[0, 0, 2, 4], [2, 4, 0, 0]] = -self.sec_damping
-    #
-    #     # cart rotation
-    #     self.aux_damping_matrix[1, 1] = 2 * self.sec_damping * self.length_cart ** 2
-    #     self.aux_damping_matrix[[1, 2], [2, 1]] = -self.sec_damping * self.length_cart
-    #     self.aux_damping_matrix[[1, 4], [4, 1]] = self.sec_damping * self.length_cart
-    #
-    #     # bogie 1 displacement
-    #     self.aux_damping_matrix[2, 2] = self.sec_damping + 2 * self.prim_damping
-    #     self.aux_damping_matrix[[2, 2, 6, 8], [6, 8, 2, 2]] = -self.prim_damping
-    #
-    #     # bogie 1 rotation
-    #     self.aux_damping_matrix[3, 3] = 2 * self.prim_damping * self.length_bogie ** 2
-    #     self.aux_damping_matrix[[3, 6], [6, 3]] = -self.prim_damping * self.length_bogie
-    #     self.aux_damping_matrix[[3, 8], [8, 3]] = self.prim_damping * self.length_bogie
-    #
-    #     # bogie 2 displacement
-    #     self.aux_damping_matrix[4, 4] = self.sec_damping + 2 * self.prim_damping
-    #     self.aux_damping_matrix[[4, 4, 10, 12], [10, 12, 4, 4]] = -self.prim_damping
-    #
-    #     # bogie 2 rotation
-    #     self.aux_damping_matrix[5, 5] = 2 * self.prim_damping * self.length_bogie ** 2
-    #     self.aux_damping_matrix[[5, 10], [10, 5]] = (
-    #             -self.prim_damping * self.length_bogie
-    #     )
-    #     self.aux_damping_matrix[[5, 12], [12, 5]] = (
-    #             self.prim_damping * self.length_bogie
-    #     )
-    #
-    #     # wheels
-    #     self.aux_damping_matrix[[6, 8, 10, 12], [6, 8, 10, 12]] = self.prim_damping
+    def __get_wheels(self):
+        self.__wheels = []
+        for bogie in self.__bogies:
+            self.__wheels.extend(bogie.wheels)
 
-    # todo generalize functions below
-    def calculate_static_wheel_load(self):
+    def get_train_parts(self):
+        self.__get_bogies()
+        self.__get_wheels()
 
-        cart_load_on_wheel = self.static_force_vector[0, 0] / 4
-        bogie_load_on_wheel = self.static_force_vector[2, 0] / 2
 
-        static_wheel_load = self.static_force_vector[[6, 8, 10, 12], [0, 0, 0, 0]] \
-                            + cart_load_on_wheel + bogie_load_on_wheel
+    def calculate_active_n_dof(self):
+        # self.active_n_dof = sum([cart.active_n_dof for cart in self.carts])
 
-        return static_wheel_load
+        ndof = 0
+        index_dof = 0
+        for cart in self.carts:
+            index_dof = cart.calculate_active_n_dof(index_dof)
 
-    def calculate_static_wheel_deformation(self):
-        self.static_wheel_deformation = self.herzian_contact_cof * self.calculate_static_wheel_load() ** (2 / 3)
-        pass
+        self.active_n_dof = sum([cart.active_n_dof for cart in self.carts])
+        #     for node in cart.nodes:
+        #         node.index[1] = index_dof
+        #         index_dof += 1
+        #
+        #
+        # for node in self.nodes:
+        #     node.index_dof[0] = index_dof
+        #     index_dof += 1
+        #     node.index_dof[1] = index_dof
+        #     index_dof += 1
+        #     node.index_dof[2] = index_dof
+        #     index_dof += 1
+        #     ndof = ndof + len(node.index_dof)
 
-    def __calculate_elastic_wheel_deformation(self):
-        elastic_wheel_deformation = (
-                self.static_wheel_deformation
-                + self.deformation_wheels
-                - self.deformation_track
-                - self.irregularities
-        )
-        return elastic_wheel_deformation
+        # self.active_n_dof = ndof
+        #
+        # global_idx = 0
+        # for cart in self.carts:
+        #     for idx, cart_idx in enumerate(cart.index_dof):
+        #         cart.index_dof[idx] = global_idx
+        #         global_idx +=1
+        #     for bogie in self.bogies:
 
-    def calculate_wheel_rail_contact_force(self):
-        contact_force = (
-                                1 / self.herzian_contact_cof * self.__calculate_elastic_wheel_deformation()
-                        ) ** (3 / 2)
-        return contact_force
+
+
+    def set_aux_mass_matrix(self):
+        """
+        Set mass matrix of train
+        :return:
+        """
+
+        self.aux_mass_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
+        l = 0
+        for cart in self.carts:
+            cart.set_aux_mass_matrix()
+            n_dof_cart = cart.aux_mass_matrix.shape[0]
+            for j in range(n_dof_cart):
+                for k in range(n_dof_cart):
+                    self.aux_mass_matrix[l + j, l + k] += cart.aux_mass_matrix[j, k]
+            l += n_dof_cart
+
+    def set_aux_stiffness_matrix(self):
+        """
+        Set stiffness matrix of train
+        :return:
+        """
+
+        self.aux_stiffness_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
+        l = 0
+        for cart in self.carts:
+            cart.set_aux_stiffness_matrix()
+            n_dof_cart = cart.aux_stiffness_matrix.shape[0]
+            for j in range(n_dof_cart):
+                for k in range(n_dof_cart):
+                    self.aux_stiffness_matrix[l + j, l + k] += cart.aux_stiffness_matrix[j, k]
+
+            l += n_dof_cart
+
+    def set_aux_damping_matrix(self):
+        """
+        Set damping matrix of train
+        :return:
+        """
+
+        self.aux_damping_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
+        l = 0
+        for cart in self.carts:
+            cart.set_aux_damping_matrix()
+            n_dof_cart = cart.aux_damping_matrix.shape[0]
+            for j in range(n_dof_cart):
+                for k in range(n_dof_cart):
+                    self.aux_damping_matrix[l + j, l + k] += cart.aux_damping_matrix[j, k]
+
+            l += n_dof_cart
+
 
     def set_static_force_vector(self):
-        self.static_force_vector = np.zeros((14, 1))
-        self.static_force_vector[0, 0] = -self.mass_cart * self.g
-        self.static_force_vector[2, 0] = -self.mass_bogie * self.g
-        self.static_force_vector[4, 0] = -self.mass_bogie * self.g
-        self.static_force_vector[[6, 8, 10, 12], [0, 0, 0, 0]] = (
-                -self.mass_wheel * self.g
+        """
+        Set static force vector of train
+        :return:
+        """
+
+        self.static_force_vector = np.zeros((self.active_n_dof, 1))
+
+        l = 0
+        for cart in self.carts:
+
+            # set static force vector of cart
+            cart.set_static_force_vector()
+            n_dof_cart = cart.static_force_vector.shape[0]
+
+            # add static force vector of cart to train
+            for j in range(n_dof_cart):
+                self.static_force_vector[l + j, 0] += cart.static_force_vector[j, 0]
+            l += n_dof_cart
+
+    def calculate_total_static_load(self, external_load=0):
+
+        self.total_static_load = external_load
+        distributed_load = self.total_static_load / len(self.carts)
+        for cart in self.carts:
+            cart.calculate_total_static_load(distributed_load)
+
+
+    # todo generalize functions below
+    # def calculate_static_wheel_load(self):
+    #
+    #     cart_load_on_wheel = self.static_force_vector[0, 0] / 4
+    #     bogie_load_on_wheel = self.static_force_vector[2, 0] / 2
+    #
+    #     static_wheel_load = self.static_force_vector[[6, 8, 10, 12], [0, 0, 0, 0]] \
+    #                         + cart_load_on_wheel + bogie_load_on_wheel
+    #
+    #     return static_wheel_load
+
+    def calculate_static_wheel_deformation(self):
+        self.calculate_total_static_load()
+
+        static_wheel_loads = np.array([wheel.total_static_load for wheel in self.wheels])
+        self.static_wheel_deformation = self.herzian_contact_cof * np.sign(static_wheel_loads) * abs(static_wheel_loads) ** (1/self.herzian_power)
+
+    def __calculate_elastic_wheel_deformation(self, t):
+        # elastic_wheel_deformation = (
+        #         # self.static_wheel_deformation
+        #         + self.deformation_wheels
+        #         - self.deformation_track_at_wheels
+        #         - self.irregularities_at_wheels[:, t]
+        # )
+
+        elastic_wheel_deformation = (
+            # self.static_wheel_deformation
+                - self.irregularities_at_wheels[:, t]
         )
 
-    def set_dynamic_force_vector(self):
+        return elastic_wheel_deformation
 
-        self.dynamic_force_vector = np.zeros((14, 1))
-        self.dynamic_force_vector[
-            [6, 8, 10, 12], [0, 0, 0, 0]
-        ] = self.calculate_wheel_rail_contact_force()
 
-    def set_force_vector(self):
-        self.force_vector = self.static_force_vector + self.set_dynamic_force_vector()
+    def get_deformation_wheels(self):
+        self.deformation_wheels = np.zeros(len(self.wheels))
+
+    def get_deformation_track_at_wheels(self, track=None):
+        # todo get deformation from track
+
+        self.deformation_track_at_wheels = np.zeros(len(self.wheels))
+
+    def get_irregularities_track_at_wheels(self):
+
+        amplitude = 0.001
+        self.irregularities_at_wheels = np.array([np.cos(wheel.distances * 2 * np.pi * 1) * amplitude for wheel in self.wheels])
+
+
+    def calculate_wheel_rail_contact_force(self, t, du_wheels):
+
+        elastic_wheel_deformation = self.__calculate_elastic_wheel_deformation(t)
+
+        contact_force = np.nan_to_num((1 / self.herzian_contact_cof * (elastic_wheel_deformation - du_wheels)
+                        ) ** self.herzian_power)
+
+
+        return contact_force
+
+    def update_force_vector(self,du, t):
+        du_wheels = du[self.contact_dofs]
+        self.force_vector[self.contact_dofs,t] += self.calculate_wheel_rail_contact_force(t, du_wheels)
+        F = self.force_vector[:,t]
+        return F
+
+    def get_contact_dofs(self):
+        wheel_dofs = []
+        for wheel in self.wheels:
+            for node in wheel.nodes:
+                for idx_dof in node.index_dof:
+                    if idx_dof is not None:
+                        wheel_dofs.append(idx_dof)
+
+        self.contact_dofs = wheel_dofs
+
+    def initialize_force_vector(self):
+        # self.dynamic_force_vector = np.zeros((self.active_n_dof, len(self.time)))
+        self.force_vector = np.zeros((self.active_n_dof, len(self.time)))
+        self.set_static_force_vector()
+
+        self.force_vector += self.static_force_vector
+
+    # def set_dynamic_force_vector(self, t):
+    #
+    #     # self.dynamic_force_vector[self.contact_dofs, t] = self.calculate_wheel_rail_contact_force(t)
+    #     self.dynamic_force_vector[self.contact_dofs,:] = self.calculate_wheel_rail_contact_force(t)
+
+    # def set_force_vector(self):
+    #     # self.force_vector = self.static_force_vector + self.dynamic_force_vector
+    #     self.force_vector = self.dynamic_force_vector
 
     def create_cart(self, center_x=0):
         cart_nodes = [
@@ -450,11 +666,88 @@ class TrainModel(ElementModelPart):
         self.nodes = list(mesh.nodes)
         self.elements = list(mesh.elements)
 
+    def calculate_distances(self):
+
+        dt = np.diff(self.time)
+        distances = np.cumsum(np.append(0, self.velocities[:-1] * dt))
+
+        for i, cart in enumerate(self.carts):
+            cart.distances = np.zeros(len(self.time))
+            cart.distances = distances + self.cart_distances[i]
+
+            cart.nodes = [Node(distances[0], 0, 0)]
+
+            for j, bogie in enumerate(cart.bogies):
+                bogie.distances = np.zeros(len(self.time))
+                bogie.distances = cart.distances + cart.bogie_distances[j]
+
+                bogie.nodes = [Node(cart.distances[0], 0, 0)]
+                for k, wheel in enumerate(bogie.wheels):
+                    wheel.distances = np.zeros(len(self.time))
+                    wheel.distances = bogie.distances + bogie.wheel_distances[k]
+                    wheel.nodes = [Node(bogie.distances[0], 0, 0)]
+
+
     def initialize(self):
         super().initialize()
         self.set_static_force_vector()
         self.calculate_static_wheel_deformation()
 
-    def update(self):
-        super().update()
-        self.set_force_vector()
+    # def update(self):
+    #     super().update()
+    #     self.set_force_vector()
+
+    def calculate_initial_displacement(self, wheel_displacements):
+        # transfer matrices to compressed sparsed column matrices
+        K = sparse.lil_matrix(deepcopy(self.aux_stiffness_matrix))
+        F = sparse.lil_matrix(deepcopy(self.force_vector))
+
+        wheel_dofs = [wheel.nodes[0].index_dof[1] for wheel in self.wheels]
+        ini_solver = StaticSolver()
+        ini_solver.initialise(self.active_n_dof - len(wheel_dofs), self.time)
+        K = utils.delete_from_lil(
+            K, row_indices=wheel_dofs, col_indices=wheel_dofs).tocsc()
+        F = utils.delete_from_lil(
+            F, row_indices=wheel_dofs).tocsc()
+        ini_solver.calculate(K, F, 0, 1)
+
+
+        # todo take into account initial differential settlements between wheels, for now max displacement of wheel is taken
+        mask = np.ones(self.solver.u[0,:].shape, bool)
+        mask[wheel_dofs] = False
+        self.solver.u[0,mask] = ini_solver.u[1,:] + max(wheel_displacements)
+        self.solver.u[0, wheel_dofs] = wheel_displacements
+        pass
+
+    def calculate_stage(self, start_time_id, end_time_id):
+        """
+        Calculates the global system
+        :return:
+        """
+
+        # transfer matrices to compressed sparsed column matrices
+        M = sparse.csc_matrix(self.aux_mass_matrix)
+        C = sparse.csc_matrix(self.aux_damping_matrix)
+        K = sparse.csc_matrix(self.aux_stiffness_matrix)
+        F = sparse.csc_matrix(self.force_vector)
+
+
+        if isinstance(self.solver, ZhaiSolver):
+            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
+
+        # run_stages with Newmark solver
+        if isinstance(self.solver, NewmarkSolver):
+            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
+
+        # run_stages with Static solver
+        if isinstance(self.solver, StaticSolver):
+            self.solver.calculate(K, F, start_time_id, end_time_id)
+
+    def update_stage(self, start_time_id, end_time_id):
+        """
+        Updates model parts and solver
+        :param start_time_id:
+        :param end_time_id:
+        :return:
+        """
+        self.solver.update(start_time_id)

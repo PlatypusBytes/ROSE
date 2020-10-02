@@ -9,7 +9,7 @@ import numpy as np
 import logging
 from typing import List
 
-from src.solver import NewmarkSolver, StaticSolver
+from src.solver import NewmarkSolver, StaticSolver, ZhaiSolver
 from src.exceptions import *
 
 class GlobalSystem:
@@ -348,12 +348,15 @@ class GlobalSystem:
         Calculates the global system
         :return:
         """
-
         # transfer matrices to compressed sparsed column matrices
         M = self.global_mass_matrix.tocsc()
         C = self.global_damping_matrix.tocsc()
         K = self.global_stiffness_matrix.tocsc()
         F = self.global_force_vector.tocsc()
+
+        # run_stages with Zhai solver
+        if isinstance(self.solver, ZhaiSolver):
+            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
 
         # run_stages with Newmark solver
         if isinstance(self.solver, NewmarkSolver):
