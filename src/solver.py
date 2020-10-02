@@ -65,18 +65,25 @@ class Solver:
             raise TimeException("Solver time is not equal to force vector time")
 
         diff = np.diff(self.time[t_start_idx:t_end_idx])
-        if not np.all(np.isclose(diff, diff[0])):
-            logging.error("Solver error: Time steps differ in current stage")
-            raise TimeException("Time steps differ in current stage")
+        if diff.size >0:
+            if not np.all(np.isclose(diff, diff[0])):
+                logging.error("Solver error: Time steps differ in current stage")
+                raise TimeException("Time steps differ in current stage")
 
 
 class ZhaiSolver(Solver):
     def __init__(self):
         super(ZhaiSolver, self).__init__()
+        # self.psi = 0.5
+        # self.phi = 0.5
+        # self.beta = 0.25
+        # self.gamma = 0.5
+
         self.psi = 0.5
         self.phi = 0.5
-        self.beta = 0.25
-        self.gamma = 0.5
+        self.beta = 1/6
+        self.gamma = 1/6
+
         self.load_func = None
 
         self.number_equations = None
@@ -108,7 +115,7 @@ class ZhaiSolver(Solver):
         :return:
         """
         if self.load_func is not None:
-            force = self.load_func(du)
+            force = self.load_func(du, t)
         else:
             force = F[:, t]
             force = force.toarray()[:, 0]
