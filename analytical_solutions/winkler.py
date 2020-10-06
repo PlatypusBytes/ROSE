@@ -4,12 +4,19 @@ import json
 
 
 class MovingLoad:
-    def __init__(self):
+    def __init__(self, nb_terms=100, a=0.05):
+        """
+        Initialise
+
+        :param nb_terms: number of terms for Fourier solution
+        :param a: small value for the integration around the pole
+        """
         self.EI = []
         self.speed = []
         self.rho = []
         self.stiffness = []  # stiffness
         self.time = []  # time
+        self.force = []  # force
         self.tau = []  # dimensionless time
         self.qsi = []  # dimensionless position
         self.period = []  # period
@@ -19,8 +26,8 @@ class MovingLoad:
         self.position = []  # position
         self.k_ratio = []  # ratio stiffness
 
-        self.nb_terms = 100
-        self.a = 0.0005
+        self.nb_terms = int(nb_terms)
+        self.a = a
 
         self.result = {}
         return
@@ -35,6 +42,12 @@ class MovingLoad:
         if len(k) != 2:
             sys.exit("Error: stiffness len must be two")
         self.stiffness = k
+
+        # check if speed smaller than critical speed
+        c_crit = (4 * min(self.stiffness) * self.EI / self.rho ** 2) ** (1 / 4)
+        print(c_crit*0.95)
+        if speed > c_crit:
+            sys.exit(f"Error: travelling speed higher than critical speed: {round(c_crit, 2)} m/s")
 
         self.time = self.position / self.speed
         self.force = force
@@ -98,10 +111,10 @@ class MovingLoad:
             # homogeneous solution
             u1h, u2h = self.coefficients_low(t)
             # particular solution
-            u1p = self.A * np.exp(self.qa * abs(eta)) + self.B * np.exp(self.qb * abs(eta))
+            u1p = self.A * np.exp(self.qa * np.abs(eta)) + self.B * np.exp(self.qb * np.abs(eta))
 
             u1[self.qsi <= [0]] = np.real(u1p[self.qsi <= [0]]) + np.real(u1h[self.qsi <= [0]])
-            u1[self.qsi > [0]] = np.real(u2h[self.qsi > [0]])
+            u2[self.qsi > [0]] = np.real(u2h[self.qsi > [0]])
             self.u[:, i] = u1 + u2
 
         return
@@ -243,10 +256,7 @@ class MovingLoad:
         self.C1b = -((self.qb - self.r1b2) * (self.qb - self.r2b2) * (self.qb - self.r2b1)) * self.B / ((self.r1b1 - self.r1b2) * (self.r1b1 - self.r2b2) * (self.r1b1 - self.r2b1))
         self.C2b = -((self.qb - self.r1b2) * (self.qb - self.r2b2) * (self.qb - self.r1b1)) * self.B / ((self.r2b1 - self.r1b2) * (self.r1b1 - self.r2b1) * (self.r2b1 - self.r2b2))
         self.D1b = ((self.qb - self.r2b2) * (self.qb - self.r2b1) * (self.qb - self.r1b1)) * self.B / ((self.r2b2 - self.r1b2) * (self.r2b1 - self.r1b2) * (self.r1b1 - self.r1b2))
-        self.D2b = -self.B * (-self.r1b2 * self.qb ** 2 + self.qb ** 3 + self.r2b1 * self.r1b1 * self.qb + self.r1b2 * self.r1b1 * self.qb + self.r1b2 * self.r2b1 * self.qb -
-                              self.r2b1 * self.r1b1 * self.r1b2 - self.r1b1 * self.qb ** 2 - self.r2b1 * self.qb ** 2) / (-self.r2b2 ** 3 -
-                                                                                                 self.r2b1 * self.r1b1 * self.r2b2 - self.r1b2 * self.r1b1 * self.r2b2 + self.r2b1 * self.r1b1 * self.r1b2 -
-                                                                                                 self.r1b2 * self.r2b1 * self.r2b2 + self.r1b1 * self.r2b2 ** 2 + self.r1b2 * self.r2b2 ** 2 + self.r2b1 * self.r2b2 ** 2)
+        self.D2b = -((self.qb - self.r1b1) * (self.qb - self.r1b2) * (self.qb - self.r2b1)) * self.B / ((self.r1b1 - self.r2b2) * (self.r1b2 - self.r2b2) * (self.r2b1 - self.r2b2))
         return
 
     def write_results(self, output="./results.json"):
@@ -271,32 +281,26 @@ class MovingLoad:
 if __name__ == "__main__":
     import time
     t_ini = time.time()
+
+    stiffness_spring = 4.27e5
+    stiffness_spring_2 = stiffness_spring * 2
+    distance_springs = 1
+    winkler_mod_1 = stiffness_spring / distance_springs
+    winkler_mod_2 = stiffness_spring_2 / distance_springs
+    youngs_mod_beam = 1.28e7
+    inertia_beam = 1
+    rho = 119.7
+    y_load = -1e6
+    speed = 100
+
     p = MovingLoad()
-    p.parameters(np.linspace(-200, 200, 400), 100, 1.28e7, 1, 120, [400e3, 1*400e3], -100e3)
+    p.parameters(np.linspace(-100, 100, 401), speed, youngs_mod_beam, inertia_beam, rho, [winkler_mod_1, winkler_mod_2], y_load)
     p.solve()
     p.write_results(output="./results.json")
     print(f"Time: {time.time() - t_ini}")
 
     import matplotlib.pylab as plt
-    plt.plot(p.qsi, p.displacement[:, 50], color="k")
-    plt.plot(p.qsi, p.displacement[:, 100], color="k")
-    plt.plot(p.qsi, p.displacement[:, 200], color="k")
-    plt.plot(p.qsi, p.displacement[:, 300], color="k")
-    # plt.show()
-
-
-    p = MovingLoad()
-    p.parameters(np.linspace(-200, 200, 400), 100, 1.28e7, 1, 120, [400e3, 5*400e3], -100e3)
-    p.solve()
-    p.write_results(output="./results.json")
-    print(f"Time: {time.time() - t_ini}")
-
-    import matplotlib.pylab as plt
-    plt.plot(p.qsi, p.displacement[:, 50])
-    plt.plot(p.qsi, p.displacement[:, 100])
-    plt.plot(p.qsi, p.displacement[:, 200])
-    plt.plot(p.qsi, p.displacement[:, 300])
+    plt.plot(p.qsi, p.displacement[:, 250], color="b")
+    plt.plot(p.qsi, p.displacement[:, 200], color="k", marker='x')
+    plt.plot(p.qsi, p.displacement[:, 210], color="k")
     plt.show()
-    #
-    # import src.plot_utils as pt
-    # pt.create_animation("moving.html", p.result["time"], np.array(p.result["displacement"]))
