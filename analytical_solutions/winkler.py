@@ -4,7 +4,7 @@ import json
 
 
 class MovingLoad:
-    def __init__(self, nb_terms=100, a=0.05):
+    def __init__(self, nb_terms=100, a=0.005):
         """
         Initialise
 
@@ -45,7 +45,7 @@ class MovingLoad:
 
         # check if speed smaller than critical speed
         c_crit = (4 * min(self.stiffness) * self.EI / self.rho ** 2) ** (1 / 4)
-        print(c_crit*0.95)
+
         if speed > c_crit:
             sys.exit(f"Error: travelling speed higher than critical speed: {round(c_crit, 2)} m/s")
 
