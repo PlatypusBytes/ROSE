@@ -30,7 +30,7 @@ class SimpleSupportEulerStatic:
         :param I: Inertia
         :param L: Length
         :param F: Force
-        :param x_F: # coordinate of the point load
+        :param x_F: coordinate of the point load
         """
         self.EI = E * I
         self.length = L
@@ -355,7 +355,7 @@ class SimpleSupportTimoshenkoNoDamping:
         Assigns properties
 
         :param E: Young modulus
-        :param E: Shear modulus
+        :param G: Shear modulus
         :param k: Timoshenko coefficient
         :param I: Inertia
         :param rho: Density
@@ -452,6 +452,7 @@ class SimpleSupportTimoshenkoNoDamping:
         aux = (1 - omega ** 2) - omega**2 * (n * np.pi * self.r / self.length)**2 * (1 + self.E / (self.k * self.G)) +\
               omega ** 4 * (n * np.pi * self.r / self.length)**4 * self.E / (self.k * self.G)
         return aux
+
 
 if __name__ == "__main__":
 
