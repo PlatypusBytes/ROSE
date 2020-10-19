@@ -182,12 +182,3 @@ class ReadSosScenarios:
             plt.close()
 
         return
-
-
-if __name__ == "__main__":
-    sos = ReadSosScenarios(r"N:\Projects\11203500\11203592\B. Measurements and calculations\TKI Data\Output\soilprofiles.csv",
-                           r"N:\Projects\11203500\11203592\B. Measurements and calculations\TKI Data\Output\segments.csv",
-                           r"N:\Projects\11204500\11204953\B. Measurements and calculations\SOS\TKI Data\Segmenten\Segments_TKI_v2.shp")
-    sos.create_segments()
-    sos.dump("./SOS.json")
-    sos.plot_sos()
