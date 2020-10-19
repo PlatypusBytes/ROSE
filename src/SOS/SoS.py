@@ -108,17 +108,18 @@ class ReadSosScenarios:
 
         return
 
-    def plot_sos(self, output_f: str = "./results", colour_file: str = "./SOS_colour_code.json") -> None:
+    def plot_sos(self, output_folder: str = "./results",
+                 colour_file: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "./SOS_colour_code.json")) -> None:
         """
         Creates the plot for each SOS
 
-        :param output_f: path to the location of the file (optional "./results")
+        :param output_folder: path to the location of the file (optional "./results")
         :param colour_file: path to the colour_file scheme of each soil layer (default "./SOS_colour_code.json")
         """
 
         # create the results folder if does not exist
-        if not os.path.isdir(output_f):
-            os.makedirs(output_f)
+        if not os.path.isdir(output_folder):
+            os.makedirs(output_folder)
 
         # open json file for colour SOS
         with open(colour_file, "r") as f:
@@ -177,16 +178,7 @@ class ReadSosScenarios:
             ax[0].set_ylim(bottom=self.depth_ref)
             ax[0].set_xticks(range(1, nb_sce + 1))
             ax[0].set_xticklabels(probs, rotation=45, fontsize=12)
-            plt.savefig(os.path.join(output_f, f"{seg}.png"))
+            plt.savefig(os.path.join(output_folder, f"{seg}.png"))
             plt.close()
 
         return
-
-
-if __name__ == "__main__":
-    sos = ReadSosScenarios(r"N:\Projects\11203500\11203592\B. Measurements and calculations\TKI Data\Output\soilprofiles.csv",
-                           r"N:\Projects\11203500\11203592\B. Measurements and calculations\TKI Data\Output\segments.csv",
-                           r"N:\Projects\11204500\11204953\B. Measurements and calculations\SOS\TKI Data\Segmenten\Segments_TKI_v2.shp")
-    sos.create_segments()
-    sos.dump("./SOS.json")
-    sos.plot_sos()
