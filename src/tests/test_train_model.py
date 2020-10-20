@@ -90,6 +90,13 @@ class TestTrainModel:
         # train.calculate_static_wheel_deformation()
 
         train.solver = ZhaiSolver()
+        # train.solver.initialise(train.active_n_dof, train.time)
+        # train.solver.load_func = train.update_force_vector
+        # train.set_aux_mass_matrix()
+        # train.set_aux_damping_matrix()
+        # train.set_aux_stiffness_matrix()
+
+        # train.solver = NewmarkSolver()
         train.solver.initialise(train.active_n_dof, train.time)
         train.solver.load_func = train.update_force_vector
         train.set_aux_mass_matrix()
@@ -106,16 +113,22 @@ class TestTrainModel:
         # for t in range(len(train.time) - 2):
         # train.set_dynamic_force_vector(0)
         # train.set_force_vector()
-        train.calculate_initial_displacement([0,0,0,0])
+        train.calculate_initial_displacement([0, 0, 0, 0])
         train.update_stage(0, len(time)-1)
         train.calculate_stage(0, len(time)-1)
 
         import matplotlib.pyplot as plt
-        plt.plot(train.solver.u[:, 6])
-        plt.plot(train.solver.u[:, 8])
-        plt.plot(train.solver.u[:, 9])
         plt.plot(train.solver.u[:, 0])
-        # plt.plot(train.irregularities_at_wheels[-1,:])
+        # plt.plot(train.solver.u[:, 8])
+        # plt.plot(train.solver.u[:, 9])
+        # plt.plot(train.solver.u[:, 4])
+        # plt.plot(train.solver.u[:, 5])
+
+        # plt.plot(train.solver.u[:, 4])
+        # plt.plot(train.solver.u[:, 5])
+        # plt.plot(train.solver.u[:, 8])
+        # plt.plot(train.solver.u[:, 9])
+        # plt.plot(-train.irregularities_at_wheels[-1,:])
 
         # plt.plot(train.solver.u[:, 8])
         # plt.plot(train.irregularities_at_wheels[-2,:])

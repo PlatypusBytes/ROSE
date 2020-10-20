@@ -68,13 +68,14 @@ class LineLoadCondition(LoadCondition):
         super().__init__(normal_dof, y_disp_dof, z_rot_dof)
 
         self.nodal_ndof = 3
+        self.active_elements = None
 
     def validate(self):
         for element in self.elements:
             if len(element.nodes) != 2:
                 raise SizeException("Elements with this condition require 2 nodes")
 
-    def __distribute_point_load_on_nodes(
+    def distribute_point_load_on_nodes(
         self,
         model_part,
         element_idx,
@@ -184,7 +185,7 @@ class LineLoadCondition(LoadCondition):
         # if it is known on which element the point load intersects, do not search the element
         if element_idxs is not None:
             for time_idx in range(len(time)):
-                self.__distribute_point_load_on_nodes(
+                self.distribute_point_load_on_nodes(
                     model_part,
                     int(element_idxs[time_idx]),
                     time_idx,
@@ -233,7 +234,7 @@ class LineLoadCondition(LoadCondition):
                     .buffer(INTERSECTION_TOLERANCE)
                     .intersection(point)
                 ):
-                    self.__distribute_point_load_on_nodes(
+                    self.distribute_point_load_on_nodes(
                         model_part,
                         element_idx,
                         time_idx,
