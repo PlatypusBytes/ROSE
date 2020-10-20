@@ -286,7 +286,7 @@ class TestBenchmarkSet1:
         beam.radial_frequency_one = 2
         beam.radial_frequency_two = 500
 
-        beam.initialize()
+        # beam.initialize()
 
         foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
         foundation1.nodes = [beam_nodes[0]]
@@ -320,9 +320,6 @@ class TestBenchmarkSet1:
 
         # assert displacement on each node
         np.testing.assert_allclose(beam_analytical.u, vertical_displacements[:, -1])
-
-
-
 
 
     @pytest.mark.workinprogress

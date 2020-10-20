@@ -38,6 +38,29 @@ def set_load_vector_as_function_of_time(time, load, build_up_idxs, load_location
     return moving_load, cum_distances_force
 
 
+def get_coordinates_node_array(nodes):
+    # get numpy array of nodal coordinates
+    nodal_coordinates = np.array([node.coordinates for node in nodes])
+    return nodal_coordinates
+
+
+def calculate_cum_distances_coordinate_array(coordinates):
+
+    # calculate cumulative distances between nodes and point load locations
+    cum_distances_coordinates = np.append(
+        0,
+        np.cumsum(
+            utils.distance_np(
+                coordinates[:-1, :], coordinates[1:, :], axis=1
+            )
+        ),
+    )
+    return cum_distances_coordinates
+
+# def get_active_elements():
+
+
+
 def add_moving_point_load_to_track(
     rail_model_part: ElementModelPart,
     time: np.array,
@@ -79,6 +102,7 @@ def add_moving_point_load_to_track(
     # if start coords are not given, set the first node as start coordinates
     if start_coords is None:
         start_coords = np.array(force.nodes[0].coordinates)
+
     # get numpy array of nodal coordinates
     nodal_coordinates = np.array([node.coordinates for node in force.nodes])
 
@@ -86,37 +110,46 @@ def add_moving_point_load_to_track(
     element_idx = utils.find_intersecting_point_element(force.elements, start_coords)
 
     # calculate cumulative distances between nodes and point load locations
-    cum_distances_nodes = np.append(
-        0,
-        np.cumsum(
-            utils.distance_np(
-                nodal_coordinates[:-1, :], nodal_coordinates[1:, :], axis=1
-            )
-        ),
-    )
+    cum_distances_nodes = calculate_cum_distances_coordinate_array(nodal_coordinates)
 
     # calculate cumulative distance of the force location based on force velocity
 
+    # calculate distance from force
+    cum_distances_force = utils.calculate_cum_distance_from_velocity(time, velocities)
 
-    cum_distances_force = (
-            np.append(
-                0,
-                np.cumsum((time[1:] - time[:-1]) * velocities[:-1])
-            )
-        + utils.distance_np(
+    # add distance force to first node in first active element
+    cum_distances_force += utils.distance_np(
             start_coords, np.array(force.elements[element_idx].nodes[0].coordinates)
         )
-        + force.nodes.index(force.elements[element_idx].nodes[0])
-    )
+    # ???
+    cum_distances_force += force.nodes.index(force.elements[element_idx].nodes[0])
+
+    # cum_distances_force = (
+    #         np.append(
+    #             0,
+    #             np.cumsum((time[1:] - time[:-1]) * velocities[:-1])
+    #         )
+    #     + utils.distance_np(
+    #         start_coords, np.array(force.elements[element_idx].nodes[0].coordinates)
+    #     )
+    #     + force.nodes.index(force.elements[element_idx].nodes[0])
+    # )
 
     # get element idx where point load is located for each time step
-    element_idxs = np.zeros(len(cum_distances_force))
+    # set_active_elements
+    # element_idxs = np.zeros(len(cum_distances_force))
+    force.active_elements = np.zeros((len(force.elements), len(cum_distances_force)))
     i = element_idx
     for idx, distance in enumerate(cum_distances_force):
         if i < len(cum_distances_nodes) - 2:
             if distance > cum_distances_nodes[i + 1]:
                 i += 1
-        element_idxs[idx] = i
+        # force.active_elements[i, idx] = i
+        force.active_elements[i, idx] = True
+
+    element_idxs = force.active_elements.nonzero()[0]
+
+    # force.active_elements = np.zeros(len(cum_distances_force))
 
     # set the load vector as a function of time
     #todo check what happens when more than 1 for type is added, e.g. both normal force and y force

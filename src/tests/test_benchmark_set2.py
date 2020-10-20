@@ -257,8 +257,17 @@ class TestBenchmarkSet2:
         n_beams = 201
 
         # Setup parameters euler beam
-        time = np.linspace(0, 100, 10001)
-        E = 20e5
+
+        calculation_time_steps = 100000
+
+        initialisation_time = np.linspace(0, 0.01, 10000)
+        # initialisation_time = np.linspace(0, 10, 100)
+        calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 0.1, calculation_time_steps)
+        time = np.concatenate((initialisation_time, calculation_time[1:]))
+
+        # initialisation_time =
+        # time = np.linspace(0, 100, 10001)
+        E = 20e3
         I = 1
         rho = 2000
         A = 1
@@ -319,13 +328,16 @@ class TestBenchmarkSet2:
         load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
         load.y_force = np.ones((1, len(time))) * F
 
+        load.y_force[0,:len(initialisation_time)] = np.linspace(0,F,len(initialisation_time))
+
         load.time = time
         load.nodes = [beam_nodes[int((n_beams-1)/2)]]
 
         model_parts = [beam, foundation1, foundation2, load]
 
         # set solver
-        solver = NewmarkSolver()
+        # solver = NewmarkSolver()
+        solver = ZhaiSolver()
 
         # populate global system
         global_system = GlobalSystem()
@@ -513,7 +525,7 @@ class TestBenchmarkSet2:
         calculation_time_steps = 500
 
         initialisation_time = np.linspace(0, 10, 100)
-        calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 10, calculation_time_steps)
+        calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 5, calculation_time_steps)
         time = np.concatenate((initialisation_time, calculation_time[1:]))
 
         # set geometry
@@ -627,6 +639,7 @@ class TestBenchmarkSet2:
 
         # set solver
         solver = NewmarkSolver()
+        # solver = ZhaiSolver()
 
         # populate global system
         global_system = GlobalSystem()
@@ -638,6 +651,11 @@ class TestBenchmarkSet2:
         model_parts = [[rail_model_part, rail_pad_model_part, rail_pad_model_part_2, sleeper_model_part, soil_1, soil_2,
                         side_boundaries],
                        list(bottom_boundary_1.values()), list(bottom_boundary_2.values()), list(load.values())]
+        # get all element model parts from dictionary
+        # model_parts = [[rail_model_part, rail_pad_model_part, rail_pad_model_part_2, sleeper_model_part, soil_1, soil_2
+        #                 ],
+        #                list(bottom_boundary_1.values()), list(bottom_boundary_2.values()), list(load.values())]
+
         global_system.model_parts = list(itertools.chain.from_iterable(model_parts))
 
         # calculate
@@ -649,11 +667,12 @@ class TestBenchmarkSet2:
         coords = np.array([node.coordinates[0] for node in global_system.model_parts[0].nodes])
 
         # recalculate analytical solution and compare with numerical solution
-        if RENEW_BENCHMARKS:
+        if True:
+        # if RENEW_BENCHMARKS:
             # calculate analytical solution
             position = np.linspace(rail_model_part.nodes[0].coordinates[0],
                                    rail_model_part.nodes[-1].coordinates[0], calculation_time_steps)
-            p = MovingLoad()
+            p = MovingLoad(a=0.005)
             p.parameters(position, velocity, youngs_mod_beam, intertia_beam, rho, [winkler_mod_1, winkler_mod_2],
                          y_load)
             p.solve()
@@ -681,6 +700,31 @@ class TestBenchmarkSet2:
             with open(os.path.join(TEST_PATH, 'test_data', 'beam_on_varying_winkler_foundation.json'),
                       "w") as f:
                 json.dump(result, f, indent=2)
+
+        # calculate analytical solution
+        position = np.linspace(rail_model_part.nodes[0].coordinates[0],
+                               rail_model_part.nodes[-1].coordinates[0], calculation_time_steps)
+        p = MovingLoad(a=0.005)
+        p.parameters(position, velocity, youngs_mod_beam, intertia_beam, rho, [winkler_mod_1, winkler_mod_2],
+                     y_load)
+        p.solve()
+
+        # # todo check time discreatisation and force build-up
+        plt.plot(coords,
+                 vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 1 / 4)],
+                 color="k")
+        plt.plot(coords,
+                 vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 2 / 4)],
+                 color="k")
+        plt.plot(coords,
+                 vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 3 / 4)],
+                 color="k")
+        plt.plot(p.position, p.displacement[:, int(len(p.time) * 1 / 4)], color="r", marker='x')
+        plt.plot(p.position, p.displacement[:, int(len(p.time) * 2 / 4)], color="r", marker='x')
+        plt.plot(p.position, p.displacement[:, int(len(p.time) * 3 / 4)], color="r", marker='x')
+        # plt.plot(p.qsi, p.displacement[:, int(n_sleepers*2)], color="k")
+        plt.show()
+
 
         # retrieve results from file
         with open(os.path.join(TEST_PATH, 'test_data', 'beam_on_varying_winkler_foundation.json')) as f:

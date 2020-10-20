@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.sparse.linalg import spsolve, inv
+from scipy.sparse import csc_matrix
 import os
 import pickle
 from tqdm import tqdm
@@ -43,17 +44,23 @@ class Solver:
         self.a = []
         self.time = []
 
+        # load function
+        self.load_func = None
+        self.stiffness_func = None
+        self.mass_func = None
+        self.damping_func = None
+
         return
 
     def initialise(self, number_equations, time):
-        self.u0 = np.zeros(number_equations)
-        self.v0 = np.zeros(number_equations)
+        self.u0 = np.zeros((1, number_equations))
+        self.v0 = np.zeros((1, number_equations))
 
         self.time = np.array(time)
 
-        self.u = np.zeros([len(time), number_equations])
-        self.v = np.zeros([len(time), number_equations])
-        self.a = np.zeros([len(time), number_equations])
+        self.u = np.zeros((len(time), number_equations))
+        self.v = np.zeros((len(time), number_equations))
+        self.a = np.zeros((len(time), number_equations))
 
     def update(self, t_start_idx):
         self.u0 = self.u[t_start_idx, :]
@@ -83,8 +90,6 @@ class ZhaiSolver(Solver):
         self.phi = 0.5
         self.beta = 1/6
         self.gamma = 1/6
-
-        self.load_func = None
 
         self.number_equations = None
 
@@ -196,8 +201,7 @@ class ZhaiSolver(Solver):
             (t_end_idx - t_start_idx))
 
         # initial force conditions: for computation of initial acceleration
-        force = F[:, t_start_idx].toarray()
-        force = force[:, 0]
+        force = F[:, t_start_idx].toarray()[0]
 
         u = self.u0
         v = self.v0
@@ -265,6 +269,16 @@ class NewmarkSolver(Solver):
         self.beta = 0.25
         self.gamma = 0.5
 
+    def update_force(self, u, F, t):
+
+        if self.load_func is not None:
+            force = self.load_func(u, t)
+            d_force = force - F[:, t - 1].toarray()[:, 0]
+        else:
+            d_force = F[:, t] - F[:, t - 1]
+            d_force = d_force.toarray()[:, 0]
+        return d_force
+
     def calculate(self, M, C, K, F, t_start_idx, t_end_idx):
         """
         Newmark integration scheme.
@@ -327,11 +341,11 @@ class NewmarkSolver(Solver):
             c_part = C.dot(c_part)
 
             # update external force
-            d_force = F[:, t] - F[:, t - 1]
+            d_force = self.update_force(u, F, t)
 
             # external force
-            force_ext = d_force.toarray()[:, 0] + m_part + c_part
-
+            force_ext = d_force + m_part + c_part
+            # force_ext = d_force.toarray()[:, 0]
             # solve
             du = spsolve(K_till, force_ext)
 
@@ -348,6 +362,9 @@ class NewmarkSolver(Solver):
                 - v.dot(1 / (beta * t_step))
                 - a.dot(1 / (2 * beta))
             )
+
+            if max(abs((K.dot(du) + C.dot(dv) + M.dot(da)) - d_force)) > 1e-3:
+                test = 1+1
 
             # update variables
             u = u + du
@@ -403,10 +420,10 @@ class StaticSolver(Solver):
             pbar.update(1)
 
             # solve
-            uu = spsolve(K, d_force)
+            uu = csc_matrix(spsolve(K, d_force))
 
             # update displacement
-            u = np.array(u + uu)
+            u = u + uu
 
             # update external force
             d_force = F[:, t] - F[:, t - 1]

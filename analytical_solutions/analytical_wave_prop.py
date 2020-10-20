@@ -27,7 +27,7 @@ class OneDimWavePropagation:
         self.time = []  # time
         return
 
-    def properties(self, rho, K, p0, L, nb_ele):
+    def properties(self, rho, K, p0, L, nb_ele, time=None):
         r"""
         Assigns properties
 
@@ -42,6 +42,7 @@ class OneDimWavePropagation:
         self.p0 = p0
         self.L = L
         self.nb_elements = nb_ele
+        self.time = time
         return
 
     def solution(self):
@@ -54,7 +55,8 @@ class OneDimWavePropagation:
         # solid discretisation
         H_discre = np.linspace(0, self.L, int(self.nb_elements))
         # time discretisation
-        self.time = np.linspace(0, (self.nb_cycles * self.L / self.c), int(np.ceil(self.c / self.L) * 10))
+        if self.time is None:
+            self.time = np.linspace(0, (self.nb_cycles * self.L / self.c), int(np.ceil(self.c / self.L) * 10))
 
         # variable initialisation: u = displacement; p = pressure
         self.u = np.zeros((H_discre.shape[0], self.time.shape[0]))
@@ -99,9 +101,15 @@ class OneDimWavePropagation:
         return
 
 if __name__ == '__main__':
+
+
+    with open('results_temp.json') as json_file:
+        test = json.load(json_file)
+
     p = OneDimWavePropagation()
     p.properties(1000, 20e6, 10, 1, 11)
     p.solution()
+    p.write_results()
     import matplotlib.pylab as plt
     plt.plot(p.time, p.p[5, :])
     plt.show()

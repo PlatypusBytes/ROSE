@@ -86,6 +86,8 @@ class ModelPart:
 
     def initialize(self):
         self.calculate_total_n_dof()
+        [element.add_model_part(self) for element in self.elements]
+        pass
 
 
     def update(self):
@@ -110,12 +112,15 @@ class ElementModelPart(ModelPart):
         self.aux_damping_matrix = None
         self.aux_mass_matrix = None
 
+        self.static_force_vector = None
+
         self._normal_shape_functions = None
         self._y_shape_functions = None
         self._z_rot_shape_functions = None
         self.__rotation_matrix = None
 
     def initialize(self):
+        super().initialize()
         self.set_aux_stiffness_matrix()
         self.set_aux_mass_matrix()
 
@@ -304,6 +309,7 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
                     * self.section.shear_factor
                 )
             )
+            # self.__timoshenko_factor = 0
 
     def __set_translational_aux_mass_matrix(self):
         """
@@ -426,8 +432,8 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         self.aux_stiffness_matrix[[1, 1, 2, 5], [2, 5, 1, 1]] = 6 * l
         self.aux_stiffness_matrix[[2, 4, 4, 5], [4, 2, 5, 4]] = -6 * l
 
-        self.aux_stiffness_matrix[[2, 5], [2, 5]] = (4 + phi) * l ** 2
-        self.aux_stiffness_matrix[[2, 5], [5, 2]] = (2 - phi) * l ** 2
+        self.aux_stiffness_matrix[[2, 5], [2, 5]] = (4+ phi) * l ** 2 # (4 + phi) * l ** 2
+        self.aux_stiffness_matrix[[2, 5], [5, 2]] = (2 - phi) * l ** 2 # (2 - phi) * l ** 2
 
         self.aux_stiffness_matrix = self.aux_stiffness_matrix.dot(constant)
         self.aux_stiffness_matrix = utils.reshape_aux_matrix(

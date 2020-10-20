@@ -69,6 +69,40 @@ def interpolate_cumulative_distance_on_nodes(
 
     return np.array([new_x_coords, new_y_coords, new_z_coords]).transpose()
 
+def calculate_cum_distance_from_velocity(time, velocities):
+    cum_distances = np.append(
+                    0,
+                    np.cumsum((time[1:] - time[:-1]) * velocities[:-1])
+                    )
+    return cum_distances
+
+
+def reshape_force_vector(n_nodes_element, dofs, force_vector):
+    """
+    Reshapes force vector of the model part based on the total possible degrees of freedom (active and unactive). This
+    function is required to easily fill the global force vector
+
+    :param n_nodes: number of nodes per element
+    :param dofs: list of degrees of freedoms
+    :param force_vector: current force vector
+    :return:
+    """
+
+    new_force_vector = np.zeros((n_nodes_element * len(dofs), 1))
+
+    dofs = np.asarray(dofs)
+    for i in range(n_nodes_element):
+        for k in range(len(dofs)):
+            if dofs[k]:
+                new_force_vector[
+                    i * len(dofs) + k, 0
+                ] = force_vector[
+                    i * sum(dofs) + sum(dofs[0:k]),
+                    0,
+                ]
+
+    return new_force_vector
+
 
 def reshape_aux_matrix(n_nodes_element, dofs, aux_matrix):
     """
@@ -324,4 +358,3 @@ def get_shapely_elements(elements: List[Element]):
     :return:
     """
     return [__create_shapely_element(element) for element in elements]
-
