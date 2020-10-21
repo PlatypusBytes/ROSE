@@ -1,13 +1,13 @@
 import json
 import pytest
 
-from src.global_system import *
-from src.train_model.train_model import TrainModel
-from src.model_part import Material, Section, TimoshenkoBeamElementModelPart, RodElementModelPart
-from src.mesh_utils import *
-from src.plot_utils import *
+from rose.base.global_system import *
+from rose.train_model.train_model import TrainModel
+from rose.base.model_part import Material, Section, TimoshenkoBeamElementModelPart, RodElementModelPart
+from rose.utils.mesh_utils import *
+from rose.utils.plot_utils import *
 
-import src.tests.utils.signal_proc as sp
+import rose.tests.utils.signal_proc as sp
 
 from analytical_solutions.simple_supported import \
     SimpleSupportEulerNoDamping, \

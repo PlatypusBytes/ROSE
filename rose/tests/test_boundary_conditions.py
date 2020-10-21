@@ -1,11 +1,11 @@
-from src.geometry import Node, Element
-from src.boundary_conditions import LineLoadCondition
+from rose.base.geometry import Node, Element
+from rose.base.boundary_conditions import LineLoadCondition
 
 from scipy import sparse
 import numpy as np
 import pytest
 
-from src.model_part import Section, Material, TimoshenkoBeamElementModelPart
+from rose.base.model_part import Section, Material, TimoshenkoBeamElementModelPart
 
 
 class TestBoundaryConditions:

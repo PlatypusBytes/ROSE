@@ -2,12 +2,12 @@ import json
 import os.path
 import pytest
 
-from src.global_system import *
-from src.model_part import Material, Section, TimoshenkoBeamElementModelPart, RodElementModelPart
-from src.mesh_utils import *
-from src.plot_utils import *
+from rose.base.global_system import *
+from rose.base.model_part import Material, Section, TimoshenkoBeamElementModelPart, RodElementModelPart
+from rose.utils.mesh_utils import *
+from rose.utils.plot_utils import *
 
-import src.tests.utils.signal_proc as sp
+import rose.tests.utils.signal_proc as sp
 
 from analytical_solutions.analytical_wave_prop import OneDimWavePropagation
 from analytical_solutions.simple_supported import \
@@ -22,8 +22,8 @@ import matplotlib.pyplot as plt
 # if RENEW_BENCHMARKS is true, the analytical solutions will be recalculated, results will be plotted together with the
 # numerical solution.
 RENEW_BENCHMARKS = False
-TEST_PATH = os.path.join('src', 'tests')
-# TEST_PATH = '.'
+# TEST_PATH = os.path.join('rose', 'tests')
+TEST_PATH = '.'
 
 
 class TestBenchmarkSet2:
@@ -260,14 +260,13 @@ class TestBenchmarkSet2:
 
         calculation_time_steps = 100000
 
-        initialisation_time = np.linspace(0, 0.01, 10000)
-        # initialisation_time = np.linspace(0, 10, 100)
-        calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 0.1, calculation_time_steps)
-        time = np.concatenate((initialisation_time, calculation_time[1:]))
-
-        # initialisation_time =
-        # time = np.linspace(0, 100, 10001)
-        E = 20e3
+        # initialisation_time = np.linspace(0, 0.01, 10000)
+        # calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 0.1, calculation_time_steps)
+        # time = np.concatenate((initialisation_time, calculation_time[1:]))
+        # E = 20e3
+        time = np.linspace(0, 100, 10001)
+        # E = 20e3
+        E = 20e5
         I = 1
         rho = 2000
         A = 1
@@ -328,7 +327,7 @@ class TestBenchmarkSet2:
         load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
         load.y_force = np.ones((1, len(time))) * F
 
-        load.y_force[0,:len(initialisation_time)] = np.linspace(0,F,len(initialisation_time))
+        # load.y_force[0,:len(initialisation_time)] = np.linspace(0,F,len(initialisation_time))
 
         load.time = time
         load.nodes = [beam_nodes[int((n_beams-1)/2)]]
@@ -336,8 +335,8 @@ class TestBenchmarkSet2:
         model_parts = [beam, foundation1, foundation2, load]
 
         # set solver
-        # solver = NewmarkSolver()
-        solver = ZhaiSolver()
+        solver = NewmarkSolver()
+        # solver = ZhaiSolver()
 
         # populate global system
         global_system = GlobalSystem()
@@ -525,7 +524,8 @@ class TestBenchmarkSet2:
         calculation_time_steps = 500
 
         initialisation_time = np.linspace(0, 10, 100)
-        calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 5, calculation_time_steps)
+        # calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 5, calculation_time_steps)
+        calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 10, calculation_time_steps)
         time = np.concatenate((initialisation_time, calculation_time[1:]))
 
         # set geometry
@@ -667,8 +667,8 @@ class TestBenchmarkSet2:
         coords = np.array([node.coordinates[0] for node in global_system.model_parts[0].nodes])
 
         # recalculate analytical solution and compare with numerical solution
-        if True:
-        # if RENEW_BENCHMARKS:
+        # if True:
+        if RENEW_BENCHMARKS:
             # calculate analytical solution
             position = np.linspace(rail_model_part.nodes[0].coordinates[0],
                                    rail_model_part.nodes[-1].coordinates[0], calculation_time_steps)
@@ -710,20 +710,20 @@ class TestBenchmarkSet2:
         p.solve()
 
         # # todo check time discreatisation and force build-up
-        plt.plot(coords,
-                 vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 1 / 4)],
-                 color="k")
-        plt.plot(coords,
-                 vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 2 / 4)],
-                 color="k")
-        plt.plot(coords,
-                 vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 3 / 4)],
-                 color="k")
-        plt.plot(p.position, p.displacement[:, int(len(p.time) * 1 / 4)], color="r", marker='x')
-        plt.plot(p.position, p.displacement[:, int(len(p.time) * 2 / 4)], color="r", marker='x')
-        plt.plot(p.position, p.displacement[:, int(len(p.time) * 3 / 4)], color="r", marker='x')
-        # plt.plot(p.qsi, p.displacement[:, int(n_sleepers*2)], color="k")
-        plt.show()
+        # plt.plot(coords,
+        #          vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 1 / 4)],
+        #          color="k")
+        # plt.plot(coords,
+        #          vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 2 / 4)],
+        #          color="k")
+        # plt.plot(coords,
+        #          vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 3 / 4)],
+        #          color="k")
+        # plt.plot(p.position, p.displacement[:, int(len(p.time) * 1 / 4)], color="r", marker='x')
+        # plt.plot(p.position, p.displacement[:, int(len(p.time) * 2 / 4)], color="r", marker='x')
+        # plt.plot(p.position, p.displacement[:, int(len(p.time) * 3 / 4)], color="r", marker='x')
+        # # plt.plot(p.qsi, p.displacement[:, int(n_sleepers*2)], color="k")
+        # plt.show()
 
 
         # retrieve results from file

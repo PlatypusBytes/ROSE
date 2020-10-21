@@ -1,16 +1,17 @@
-from src import utils
+from rose.base.model_part import ElementModelPart, ConstraintModelPart, ModelPart
+from rose.base.boundary_conditions import LoadCondition
+from rose.base.geometry import Mesh
+from rose.base.exceptions import *
 
-from src.model_part import ElementModelPart, ConstraintModelPart, ModelPart
-from src.boundary_conditions import LoadCondition
-from src.geometry import Mesh
+from rose.solver.solver import NewmarkSolver, StaticSolver, ZhaiSolver
+from rose.utils import utils
 
 from scipy import sparse
 import numpy as np
 import logging
 from typing import List
 
-from src.solver import NewmarkSolver, StaticSolver, ZhaiSolver
-from src.exceptions import *
+
 
 class GlobalSystem:
     def __init__(self):
