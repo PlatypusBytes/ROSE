@@ -1,11 +1,11 @@
 import pytest
 
-from src.geometry import Element, Node
+from rose.base.geometry import Element, Node
 
-from src.track import *
-from src.global_system import *
+from rose.track.track import *
+from rose.base.global_system import *
 
-from src.model_part import *
+from rose.base.model_part import *
 
 class TestRodElement:
     def test_initialize_rod_element(self):

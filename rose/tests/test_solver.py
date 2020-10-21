@@ -3,7 +3,7 @@
 # for newmark pg 782
 import pytest
 import unittest
-import src.solver as solver
+import rose.solver.solver as solver
 import numpy as np
 from scipy import sparse
 

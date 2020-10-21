@@ -5,7 +5,7 @@ from shapely.geometry import LineString, Polygon
 from typing import List
 
 # from src.boundary_conditions import LoadCondition
-from src.geometry import Node, Element
+from rose.base.geometry import Node, Element
 from scipy import sparse
 from scipy.spatial.distance import cdist
 

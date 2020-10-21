@@ -2,11 +2,12 @@ import pytest
 
 import numpy as np
 
-from src.train_model.train_model import TrainModel, Cart, Bogie, Wheel
-from src.solver import NewmarkSolver, StaticSolver, ZhaiSolver
+from rose.train_model.train_model import TrainModel, Cart, Bogie, Wheel
+from rose.solver.solver import NewmarkSolver, StaticSolver, ZhaiSolver
 
 class TestTrainModel:
 
+    @pytest.mark.workinprogress
     def test_set_aux_mass_matrix_cart(self, expected_cart_mass_matrix, set_up_cart):
         """
         Checks of mass matrix of cart is as expected
@@ -23,6 +24,7 @@ class TestTrainModel:
             for j in range(len(expected_cart_mass_matrix[i])):
                 assert expected_cart_mass_matrix[i][j] == pytest.approx(calculated_mass_matrix[i, j])
 
+    @pytest.mark.workinprogress
     def test_set_aux_stiffness_matrix_cart(self, expected_cart_stiffness_matrix, set_up_cart):
         """
         Checks if stiffness matrix of cart is as expected
@@ -40,6 +42,7 @@ class TestTrainModel:
             for j in range(len(expected_cart_stiffness_matrix[i])):
                 assert expected_cart_stiffness_matrix[i][j] == pytest.approx(calculated_stiffness_matrix[i,j])
 
+    @pytest.mark.workinprogress
     def test_set_aux_damping_matrix_cart(self, expected_cart_damping_matrix, set_up_cart):
         """
         Checks if stiffness matrix of cart is as expected
@@ -57,7 +60,7 @@ class TestTrainModel:
             for j in range(len(expected_cart_damping_matrix[i])):
                 assert expected_cart_damping_matrix[i][j] == pytest.approx(calculated_damping_matrix[i, j])
 
-
+    @pytest.mark.workinprogress
     def test_train(self, set_up_cart):
         train = TrainModel()
         train.carts = [set_up_cart]
@@ -260,6 +263,7 @@ def set_up_cart():
     cart.length = length_cart
 
     cart.calculate_total_n_dof()
+    # cart.calculate_active_n_dof(0)
 
     return cart
 

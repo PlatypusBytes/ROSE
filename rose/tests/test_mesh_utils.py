@@ -1,4 +1,4 @@
-from src.mesh_utils import *
+from rose.utils.mesh_utils import *
 import pytest
 
 class TestMeshUtils:
