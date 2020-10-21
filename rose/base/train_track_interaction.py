@@ -1,9 +1,9 @@
-from src.train_model.train_model import TrainModel
-from src.global_system import GlobalSystem
-from src.model_part import ElementModelPart, TimoshenkoBeamElementModelPart
-from src.utils import *
+from rose.train_model.train_model import TrainModel
+from rose.base.global_system import GlobalSystem
+from rose.base.model_part import ElementModelPart, TimoshenkoBeamElementModelPart
+from rose.utils.utils import *
 
-from src.solver import NewmarkSolver, StaticSolver, ZhaiSolver
+from rose.solver.solver import NewmarkSolver, StaticSolver, ZhaiSolver
 
 import numpy as np
 from scipy import sparse

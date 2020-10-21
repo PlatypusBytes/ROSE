@@ -1,11 +1,10 @@
 # from src.track import *
-from src.model_part import Material, Section
-from src.solver import NewmarkSolver
-from src.mesh_utils import *
+from rose.base.model_part import Material, Section
+from rose.solver.solver import NewmarkSolver
+from rose.utils.mesh_utils import *
+from rose.utils.plot_utils import *
+from rose.base.global_system import GlobalSystem
 
-from src.plot_utils import *
-
-from src.global_system import GlobalSystem
 import cProfile
 
 import matplotlib.pyplot as plt

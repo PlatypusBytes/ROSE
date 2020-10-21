@@ -1,11 +1,11 @@
 import numpy as np
 from scipy.sparse.linalg import spsolve, inv
-from scipy.sparse import csc_matrix
+# from scipy.sparse import csc_matrix
 import os
 import pickle
 from tqdm import tqdm
 
-from src.exceptions import *
+from rose.base.exceptions import *
 import logging
 import copy
 
@@ -53,8 +53,8 @@ class Solver:
         return
 
     def initialise(self, number_equations, time):
-        self.u0 = np.zeros((1, number_equations))
-        self.v0 = np.zeros((1, number_equations))
+        self.u0 = np.zeros((number_equations))
+        self.v0 = np.zeros((number_equations))
 
         self.time = np.array(time)
 
@@ -81,15 +81,11 @@ class Solver:
 class ZhaiSolver(Solver):
     def __init__(self):
         super(ZhaiSolver, self).__init__()
-        # self.psi = 0.5
-        # self.phi = 0.5
-        # self.beta = 0.25
-        # self.gamma = 0.5
 
         self.psi = 0.5
         self.phi = 0.5
-        self.beta = 1/6
-        self.gamma = 1/6
+        self.beta = 1/4
+        self.gamma = 1/2
 
         self.number_equations = None
 
@@ -201,7 +197,10 @@ class ZhaiSolver(Solver):
             (t_end_idx - t_start_idx))
 
         # initial force conditions: for computation of initial acceleration
-        force = F[:, t_start_idx].toarray()[0]
+        # force = F[:, t_start_idx].toarray()[0]
+        force = F[:, t_start_idx].toarray()
+        force = force[:,0]
+
 
         u = self.u0
         v = self.v0
@@ -420,7 +419,7 @@ class StaticSolver(Solver):
             pbar.update(1)
 
             # solve
-            uu = csc_matrix(spsolve(K, d_force))
+            uu = spsolve(K, d_force)
 
             # update displacement
             u = u + uu

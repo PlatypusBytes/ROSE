@@ -1,5 +1,5 @@
-from src.model_part import ConditionModelPart
-import src.utils as utils
+from rose.base.model_part import ConditionModelPart
+import rose.utils.utils as utils
 
 import numpy as np
 from shapely.geometry import Point
