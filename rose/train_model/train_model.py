@@ -2,12 +2,12 @@ import numpy as np
 from scipy import sparse
 from copy import deepcopy
 
-from src import utils, geometry
-from src.geometry import Node, Element, Mesh
+from rose.utils import utils
+from rose.base.geometry import Node, Element, Mesh
 import time
-from src.model_part import ElementModelPart
+from rose.base.model_part import ElementModelPart
 
-from src.solver import NewmarkSolver, StaticSolver, ZhaiSolver
+from rose.solver.solver import NewmarkSolver, StaticSolver, ZhaiSolver
 
 g = 9.81
 
@@ -257,7 +257,7 @@ class Cart(ElementModelPart):
             index_dof = bogie.calculate_active_n_dof(index_dof)
 
         self.active_n_dof = 2 + sum([bogie.active_n_dof for bogie in self.bogies])
-        return  index_dof
+        return index_dof
 
 
     def set_aux_mass_matrix(self):
@@ -667,6 +667,10 @@ class TrainModel(ElementModelPart):
         self.elements = list(mesh.elements)
 
     def calculate_distances(self):
+        """
+        Also sets mesh
+        :return:
+        """
 
         dt = np.diff(self.time)
         distances = np.cumsum(np.append(0, self.velocities[:-1] * dt))

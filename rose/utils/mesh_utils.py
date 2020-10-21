@@ -1,16 +1,18 @@
-from src.geometry import Node, Element, Mesh
+from rose.base.geometry import Node, Element, Mesh
 
-from src.track import Rail, RailPad, Sleeper
-from src.soil import Soil
-from src.model_part import ConstraintModelPart, ElementModelPart
-from src.boundary_conditions import LineLoadCondition
+from rose.track.track import Rail, RailPad, Sleeper
+from rose.soil.soil import Soil
+from rose.base.model_part import ConstraintModelPart, ElementModelPart
+from rose.base.boundary_conditions import LineLoadCondition
+import rose.utils.utils as utils
+
 import itertools
 import numpy as np
 
 from scipy import sparse
 from scipy.spatial.distance import cdist
 
-import src.utils as utils
+
 from shapely.geometry import Point
 from scipy.spatial.distance import cdist
 from scipy.spatial import KDTree

@@ -1,8 +1,9 @@
 import numpy as np
 from scipy import sparse
-from src import utils, geometry
+from rose.utils import utils
+from rose.base import geometry
 import time
-from src.model_part import ElementModelPart, RodElementModelPart, TimoshenkoBeamElementModelPart
+from rose.base.model_part import ElementModelPart, RodElementModelPart, TimoshenkoBeamElementModelPart
 import logging
 
 class InvalidRailException(Exception):
