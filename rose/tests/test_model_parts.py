@@ -184,7 +184,7 @@ def set_up_euler_section():
 @pytest.fixture
 def set_up_euler_beam(set_up_material, set_up_euler_section):
     nodes = [Node(0, 0, 0), Node(10, 0, 0)]
-    elements = [Element([nodes])]
+    elements = [Element(nodes)]
 
     beam = TimoshenkoBeamElementModelPart()
     beam.nodes = nodes
