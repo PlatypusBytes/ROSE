@@ -8,11 +8,12 @@ import shapefile
 
 
 class ReadSosScenarios:
-    def __init__(self, profile_filename: str, segment_filename: str, shape_filename: str, depth_ref: float = -20.) -> None:
+    def __init__(self, profile_filename: str, soil_props: str, segment_filename: str, shape_filename: str, depth_ref: float = -20.) -> None:
         """
         Reads the SOS csv files. Plots and creates json file
 
         :param profile_filename: CSV file with profile
+        :param soil_props: CSV file with soil properties
         :param segment_filename: CSV file with segments
         :param shape_filename: shapefile
         :param depth_ref: reference depth to plot the segments (default -20.)
@@ -33,6 +34,10 @@ class ReadSosScenarios:
         self.shape_segment = []
         self.read_shape_file(shape_filename)
 
+        # read materials properties
+        self.materials = {}
+        self.read_materials(soil_props)
+
         self.SOS = {}  # SOS dictionary
 
         self.depth_ref = depth_ref  # depth reference for SOS plot
@@ -42,6 +47,7 @@ class ReadSosScenarios:
     def read_shape_file(self, file):
         """
         Read shape file for the SOS segments and create index for coordinates
+
         :param file: shape file
         """
 
@@ -50,6 +56,35 @@ class ReadSosScenarios:
         for s in sf.shapeRecords():
             self.shape_segment.append(s.record.Segment)
             self.shape_coord.append(np.array(s.shape.points).tolist())
+        return
+
+    def read_materials(self, file: str) -> None:
+        """
+        Reads the CSV file with the materials parameters
+
+        :param file: csv file
+        """
+        # open props csv file
+        with open(file, "r") as f:
+            data = f.read().splitlines()
+        props = [d.split(";") for d in data[2:]]
+
+        for p in props:
+            self.materials.update({p[0]: {"formation": p[1],
+                                          "gamma_dry": float(p[3]),
+                                          "gamma_wet": float(p[4]),
+                                          "cohesion": float(p[5]),
+                                          "friction_angle": float(p[6]),
+                                          "Su": float(p[7]),
+                                          "m": float(p[9]),
+                                          "POP": float(p[10]),
+                                          "shear_modulus": float(p[12]),
+                                          "Young_modulus": float(p[13]),
+                                          "poisson": float(p[14]),
+                                          "a": float(p[15]),
+                                          "b": float(p[16]),
+                                          "c": float(p[17]),
+                                          }})
         return
 
     def create_segments(self):
@@ -72,19 +107,39 @@ class ReadSosScenarios:
             idx_coord = self.shape_segment.index(int(seg[1:]))
             coords = self.shape_coord[idx_coord]
 
+            materials_keys = []
+            for k in self.materials:
+                materials_keys.extend(self.materials[k].keys())
+            materials_keys = set(materials_keys)
+
             # for each scenario:
             for i, idx in enumerate(scenarios):
                 # collect segment info
                 idx_segment = [j for j, x in enumerate(self.profiles) if x[0] == self.segments[idx][1]]
 
+                # soil layers dict dict:
+                aux = {"soil_name": [],
+                       "top_level": [],
+                       }
+                for k in materials_keys:
+                    aux.update({k: []})
+
+                for j in idx_segment:
+                    name = self.profiles[j][2]
+
+                    aux["soil_name"].append(name)
+                    aux["top_level"].append(float(self.profiles[j][1]))
+
+                    for k in materials_keys:
+                        aux[k].append(self.materials[name][k])
+
                 # update scenario into segment
                 self.SOS[f"Segment {seg}"].update({f"scenario {int(i + 1)}":  {"probability": float(self.segments[idx][2]),
-                                                                               "top_level": [float(self.profiles[j][1]) for j in idx_segment],
-                                                                               "soil_name": [self.profiles[j][2] for j in idx_segment],
+                                                                               # "top_level": [float(self.profiles[j][1]) for j in idx_segment],
+                                                                               "soil_layers": aux,#[self.profiles[j][2] for j in idx_segment],
                                                                                "coordinates": coords,
                                                                                }
                                                    })
-
         return
 
     def dump(self, output_file: str) -> None:
@@ -140,15 +195,15 @@ class ReadSosScenarios:
             probs = []
             for i, sce in enumerate(self.SOS[seg]):
                 # get depths
-                depth = copy.deepcopy(self.SOS[seg][sce]["top_level"])
+                depth = copy.deepcopy(self.SOS[seg][sce]["soil_layers"]["top_level"])
                 depth.append(self.depth_ref)
-                name_layer = self.SOS[seg][sce]["soil_name"]
+                name_layer = self.SOS[seg][sce]["soil_layers"]["soil_name"]
 
                 probs.append(f'{i + 1}\nProb: {self.SOS[seg][sce]["probability"]}')
 
-                for j in range(len(self.SOS[seg][sce]['top_level'])):
+                for j in range(len(self.SOS[seg][sce]["soil_layers"]['top_level'])):
                     # collect soil type
-                    nam.append(self.SOS[seg][sce]['soil_name'][j])
+                    nam.append(self.SOS[seg][sce]["soil_layers"]['soil_name'][j])
                     ax[0].fill_betweenx([depth[j], depth[j + 1]],
                                         np.zeros(2) + i * 1 + 0.75,
                                         np.zeros(2) + i * 1 + 1.25,
