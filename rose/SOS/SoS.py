@@ -84,6 +84,7 @@ class ReadSosScenarios:
                                           "a": float(p[15]),
                                           "b": float(p[16]),
                                           "c": float(p[17]),
+                                          "damping": float(p[19]),
                                           }})
         return
 
