@@ -1,6 +1,6 @@
 import numpy as np
 import json
-from wolfstiff import LayeredHalfSpace
+from rose.wolf import LayeredHalfSpace
 
 
 def run_wolf(layers_file, omega, output="./", freq=False):
@@ -61,5 +61,5 @@ if __name__ == "__main__":
     layers = read_file(r"./SOS/SOS.json", emb)
     import time
     t_ini = time.time()
-    run_wolf(layers, np.linspace(0, 2 * np.pi * 10, 11), output=r"./wolfstiff/dyn_stiffness")
+    run_wolf(layers, np.linspace(0, 2 * np.pi * 10, 11), output=r"./wolf/dyn_stiffness")
     print(f"Time: {time.time() - t_ini}")
