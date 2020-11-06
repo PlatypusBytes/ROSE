@@ -6,7 +6,7 @@ import numpy as np
 # import package
 from rose.wolf import LayeredHalfSpace
 
-TEST_PATH = os.path.join('rose', 'tests')
+TEST_PATH = "."
 
 
 class TestWolf(unittest.TestCase):
