@@ -6,24 +6,26 @@ import numpy as np
 # import package
 from rose.wolf import LayeredHalfSpace
 
+TEST_PATH = os.path.join('rose', 'tests')
+
 
 class TestWolf(unittest.TestCase):
     def setUp(self):
         self.omega = np.linspace(0, 5, 150)
-        self.output_folder = "./results"
+        self.output_folder = os.path.join(TEST_PATH, "./results")
         self.freq = False
 
         # load datasets
-        with open("./test_data/Kdyn_vertical.json") as f:
+        with open(os.path.join(TEST_PATH, "./test_data/Kdyn_vertical.json")) as f:
             self.vertical = json.load(f)
 
-        with open("./test_data/Kdyn_horizontal.json") as f:
+        with open(os.path.join(TEST_PATH, "./test_data/Kdyn_horizontal.json")) as f:
             self.horizontal = json.load(f)
 
         return
 
     def test_vertical_solution(self):
-        layer_file = "./test_data/input_V.csv"
+        layer_file = os.path.join(TEST_PATH, "./test_data/input_V.csv")
 
         layers = LayeredHalfSpace.read_file(layer_file)
 
@@ -45,7 +47,7 @@ class TestWolf(unittest.TestCase):
         return
 
     def test_horizontal_solution(self):
-        layer_file = "./test_data/input_H.csv"
+        layer_file = os.path.join(TEST_PATH, "./test_data/input_H.csv")
 
         layers = LayeredHalfSpace.read_file(layer_file)
 
@@ -67,7 +69,7 @@ class TestWolf(unittest.TestCase):
         return
 
     def test_files(self):
-        layer_file = "./test_data/input_V.csv"
+        layer_file = os.path.join(TEST_PATH, "./test_data/input_V.csv")
 
         layers = LayeredHalfSpace.read_file(layer_file)
 
