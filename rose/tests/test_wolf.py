@@ -6,7 +6,8 @@ import numpy as np
 # import package
 from rose.wolf import LayeredHalfSpace
 
-TEST_PATH = "."
+TEST_PATH = "./rose/tests"
+tol = 1e-12
 
 
 class TestWolf(unittest.TestCase):
@@ -43,7 +44,8 @@ class TestWolf(unittest.TestCase):
         with open(os.path.join(self.output_folder, "Kdyn_input_V.json")) as f:
             data = json.load(f)
 
-        self.assertTrue(data == self.vertical)
+        compare_dics(self.vertical, data)
+
         return
 
     def test_horizontal_solution(self):
@@ -65,7 +67,7 @@ class TestWolf(unittest.TestCase):
         with open(os.path.join(self.output_folder, "Kdyn_input_H.json")) as f:
             data = json.load(f)
 
-        self.assertTrue(data == self.horizontal)
+        compare_dics(self.horizontal, data)
         return
 
     def test_files(self):
@@ -85,7 +87,9 @@ class TestWolf(unittest.TestCase):
 
         # check if folders and files exist
         self.assertTrue(os.path.isdir(self.output_folder))
-        self.assertTrue(os.path.isfile(os.path.join(self.output_folder, "KDyn_input_V.json")))
+        print(os.getcwd())
+        print(self.output_folder)
+        self.assertTrue(os.path.isfile(os.path.join(self.output_folder, "Kdyn_input_V.json")))
         self.assertTrue(os.path.isfile(os.path.join(self.output_folder, "input_V.png")))
         self.assertTrue(os.path.isfile(os.path.join(self.output_folder, "input_V.pdf")))
 
@@ -96,5 +100,31 @@ class TestWolf(unittest.TestCase):
         return
 
 
+def compare_dics(dic1, dic2):
+
+    result = []
+    for key in dic1:
+        for j in range(len(dic1[key])):
+            if isinstance(dic1[key][j], list):
+                for k in range(len(dic1[key][j])):
+                    if (dic1[key][j][k] - dic2[key][j][k]) < tol:
+                        result.append(True)
+                    else:
+                        result.append(False)
+            else:
+                if (dic1[key][j] - dic2[key][j]) < tol:
+                    result.append(True)
+                elif (dic1[key][j] == np.inf) and (dic2[key][j] == np.inf):
+                    result.append(True)
+                else:
+                    result.append(False)
+
+    if all(result):
+        result = True
+    else:
+        result = False
+    return result
+
+
 if __name__ == '__main__':  # pragma: no cover
-    unittest.main(unittest.TextTestRunner())
+    unittest.main()
