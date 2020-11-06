@@ -1,14 +1,18 @@
 import sys
 import os
-import matplotlib.pylab as plt
+import json
 import numpy as np
+# import wolf packages
+from rose.wolf import utils
+
 np.seterr(all="ignore")
 
 
 class Layers:
-    """ Based on Foundation vibration analysis: A strength of materials approach
-        Wolf & Deeks
-        """
+    r"""
+    Based on Foundation vibration analysis: A strength of materials approach
+    Wolf & Deeks (2004)
+    """
 
     def __init__(self, data):
         # create variables
@@ -223,69 +227,27 @@ def read_file(file_name):
 
 def write_output(path_results, name, data, omega, freq):
 
+    # if output folder does not exist create
     if not os.path.isdir(path_results):
         os.makedirs(path_results)
 
-    # tmp variables for plot
-    stiff_tmp = []
-    damp_tmp = []
+    # create data dump
+    res = {"omega": omega.tolist(),
+           "complex dynamic stiffness": data.K_dyn.tolist(),
+           "stiffness": np.real(data.K_dyn).tolist(),
+           "damping": (np.imag(data.K_dyn) / (omega * data.radius / np.real(data.cs[1]))).tolist(),
+           }
 
-    # write table => frequency ; complex stiffness (real; imaginary)
-    with open(os.path.join(path_results, "Kdyn_" + str(name) + ".csv"), "w") as f:
-        f.write("omega [rad/s];Complex dynamic stiffness [N/m2];Stiffness [N/m2];Damping [Ns/m2]\n")
-        for i in range(len(omega)):
-            f.write(str(omega[i]) + ";" +
-                    str(data.K_dyn[i]) + ";" +
-                    str(np.real(data.K_dyn[i])) + ";" +
-                    str(np.imag(data.K_dyn[i]) / (omega[i] * data.radius / np.real(data.cs[1]))) + "\n")
-            # add to tmp variables
-            stiff_tmp.append(np.real(data.K_dyn[i]))
-            damp_tmp.append(np.imag(data.K_dyn[i]) / (omega[i] * data.radius / np.real(data.cs[1])))
+    # dump json
+    with open(os.path.join(path_results, f"Kdyn_{name}.json"), "w") as f:
+        json.dump(res, f, indent=2, cls=utils.ComplexEncoder)
 
     # make plots
     if freq:
         # if frequency
-        create_plot(omega / 2. / np.pi, stiff_tmp, damp_tmp, "Frequency [Hz]", path_results, name)
+        utils.create_plot(omega / 2. / np.pi, res["stiffness"], res["damping"], "Frequency [Hz]", path_results, name)
     else:
         # if angular frequency
-        create_plot(omega, stiff_tmp, damp_tmp, r"$\omega$ [rad/s]", path_results, name)
+        utils.create_plot(omega, res["stiffness"], res["damping"], r"$\omega$ [rad/s]", path_results, name)
 
     return
-
-
-def create_plot(frequency, stiff, damp, label_x, path_results, name):
-
-    # create figure
-    fig, ax = plt.subplots(1, 2, figsize=(8.5, 3.5))
-    ax[0].set_position([0.13, 0.13, 0.35, 0.80])
-    ax[1].set_position([0.60, 0.13, 0.35, 0.80])
-    plt.rcParams.update({'font.size': 10})
-
-    # plot stiffness
-    ax[0].grid()
-    ax[0].plot(frequency, stiff)
-    ax[0].set_xlabel(label_x)
-    ax[0].set_ylabel(r'K$_{dyn}$ [N/m]')
-    ax[0].set_xlim((frequency[0], frequency[-1]))
-    # ax[0].set_ylim(bottom=0)
-
-    # plot damping
-    ax[1].grid()
-    ax[1].plot(frequency, damp)
-    ax[1].set_xlabel(label_x)
-    ax[1].set_ylabel(r'Damping [Ns/m]')
-    ax[1].set_xlim((frequency[0], frequency[-1]))
-    # ax[1].set_ylim(bottom=0)
-
-    # save fig
-    plt.savefig(os.path.join(path_results, str(name) + ".png"))
-    plt.savefig(os.path.join(path_results, str(name) + ".pdf"))
-    plt.close()
-    return
-
-# Validation with Wolf & Deeks pg: 108
-# parameters:
-# Force      -       -            -     -     -    1  V/H
-# Layer1     1000.0  0.25         1800  0.05  1    -  -
-# Layer2     500.0   0.3          1800  0.05  0.5  -  -
-# halfspace  200.0   0.333333333  1602  0.05  inf  -  -

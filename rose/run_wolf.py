@@ -1,13 +1,16 @@
 import numpy as np
 import json
+# import rose packages
 from rose.wolf import LayeredHalfSpace
 
 
 def run_wolf(layers_file, omega, output="./", freq=False):
-    """Dynamic stiffness according to Wolf and Deeks
-       Layered soil solution
-       Only considers the translational cones. The rotational cones are not considered
-       """
+    r"""
+    Dynamic stiffness according to Wolf and Deeks (2004)
+
+    Infinite layered soil solution
+    Only considers the translational cones. The rotational cones are not considered.
+    """
 
     for layers in layers_file:
         print(layers[0])
@@ -61,5 +64,5 @@ if __name__ == "__main__":
     layers = read_file(r"./SOS/SOS.json", emb)
     import time
     t_ini = time.time()
-    run_wolf(layers, np.linspace(0, 2 * np.pi * 10, 11), output=r"./wolf/dyn_stiffness")
+    run_wolf(layers, np.linspace(0, 2 * np.pi * 10, 51), output=r"./wolf/dyn_stiffness")
     print(f"Time: {time.time() - t_ini}")
