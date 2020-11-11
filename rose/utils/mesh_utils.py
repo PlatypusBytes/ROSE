@@ -124,7 +124,8 @@ def add_moving_point_load_to_track(
             start_coords, np.array(force.elements[element_idx].nodes[0].coordinates)
         )
     # ???
-    cum_distances_force += force.nodes.index(force.elements[element_idx].nodes[0])
+    cum_distances_force += cum_distances_nodes[force.nodes.index(force.elements[element_idx].nodes[0])]
+    # cum_distances_force += force.elements[element_idx].nodes[0].coordinates
 
     # cum_distances_force = (
     #         np.append(
