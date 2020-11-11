@@ -6,6 +6,8 @@ from rose.base.global_system import *
 from rose.base.model_part import Material, Section, TimoshenkoBeamElementModelPart, RodElementModelPart
 from rose.utils.mesh_utils import *
 from rose.utils.plot_utils import *
+from rose.train_model.train_model import *
+from rose.base.train_track_interaction import *
 
 import rose.tests.utils.signal_proc as sp
 
@@ -17,6 +19,7 @@ from analytical_solutions.simple_supported import \
     SimpleSupportTimoshenkoNoDamping
 from analytical_solutions.cantilever_beam import PulseLoadNoDamping
 from analytical_solutions.winkler import MovingLoad
+from analytical_solutions.moving_vehicle import TwoDofVehicle
 import matplotlib.pyplot as plt
 
 # if RENEW_BENCHMARKS is true, the analytical solutions will be recalculated, results will be plotted together with the
@@ -710,20 +713,20 @@ class TestBenchmarkSet2:
         p.solve()
 
         # # todo check time discreatisation and force build-up
-        # plt.plot(coords,
-        #          vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 1 / 4)],
-        #          color="k")
-        # plt.plot(coords,
-        #          vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 2 / 4)],
-        #          color="k")
-        # plt.plot(coords,
-        #          vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 3 / 4)],
-        #          color="k")
-        # plt.plot(p.position, p.displacement[:, int(len(p.time) * 1 / 4)], color="r", marker='x')
-        # plt.plot(p.position, p.displacement[:, int(len(p.time) * 2 / 4)], color="r", marker='x')
-        # plt.plot(p.position, p.displacement[:, int(len(p.time) * 3 / 4)], color="r", marker='x')
-        # # plt.plot(p.qsi, p.displacement[:, int(n_sleepers*2)], color="k")
-        # plt.show()
+        plt.plot(coords,
+                 vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 1 / 4)],
+                 color="k")
+        plt.plot(coords,
+                 vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 2 / 4)],
+                 color="k")
+        plt.plot(coords,
+                 vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 3 / 4)],
+                 color="k")
+        plt.plot(p.position, p.displacement[:, int(len(p.time) * 1 / 4)], color="r", marker='x')
+        plt.plot(p.position, p.displacement[:, int(len(p.time) * 2 / 4)], color="r", marker='x')
+        plt.plot(p.position, p.displacement[:, int(len(p.time) * 3 / 4)], color="r", marker='x')
+        # plt.plot(p.qsi, p.displacement[:, int(n_sleepers*2)], color="k")
+        plt.show()
 
 
         # retrieve results from file
@@ -735,4 +738,451 @@ class TestBenchmarkSet2:
 
         # assert
         np.testing.assert_array_almost_equal(expected_displacement, vertical_displacements_rail)
+
+    def test_moving_train(self):
+
+        # Set parameters of beam and winkler foundation
+        stiffness_spring = 123e6
+        distance_springs = 10 #0.6
+        winkler_mod_1 = stiffness_spring / distance_springs
+
+        youngs_mod_beam = 210e5
+        intertia_beam = 2337.9e-3
+        rho = 7860
+
+        n_sleepers = 100
+
+        n_sleepers = 3
+
+        # setup numerical model
+        # set time in two stages
+        calculation_time_steps = 10000
+
+        initialisation_time = np.linspace(0, 0.1, 1000)
+        # calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 5, calculation_time_steps)
+        calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 1, calculation_time_steps)
+        time = np.concatenate((initialisation_time, calculation_time[1:]))
+
+
+        # time = np.linspace(0, 0.1, 10001)
+
+
+        # set geometry
+        # set left part of rail
+        depth_soil = 0.9
+        element_model_parts_1, mesh_1 = create_horizontal_track(
+            n_sleepers, distance_springs, depth_soil
+        )
+        bottom_boundary_1 = add_no_displacement_boundary_to_bottom(
+            element_model_parts_1["soil"]
+        )
+
+        all_mesh = Mesh()
+
+        # fill model parts
+        rail_model_part = element_model_parts_1["rail"]
+        rail_pad_model_part = element_model_parts_1["rail_pad"]
+        sleeper_model_part = element_model_parts_1["sleeper"]
+        soil_1 = element_model_parts_1["soil"]
+
+        all_mesh.add_unique_nodes_to_mesh(mesh_1.nodes)
+        all_mesh.add_unique_elements_to_mesh(mesh_1.elements)
+
+        all_mesh.reorder_node_ids()
+        all_mesh.reorder_element_ids()
+
+        # set elements
+        material = Material()
+        material.youngs_modulus = youngs_mod_beam  # Pa
+        material.poisson_ratio = 0.3
+        material.density = rho  # 7860
+
+        section = Section()
+        section.area = 69.6e-2
+        section.sec_moment_of_inertia = intertia_beam
+        section.shear_factor = 0
+
+        rail_model_part.section = section
+        rail_model_part.material = material
+        rail_model_part.damping_ratio = 0.04
+        rail_model_part.radial_frequency_one = 2
+        rail_model_part.radial_frequency_two = 500
+
+        rail_model_part.initialize()
+
+        rail_pad_model_part.mass = 5  # 5
+        rail_pad_model_part.stiffness = stiffness_spring / 0.1
+        rail_pad_model_part.damping = 12e3  # 12e3
+
+
+        sleeper_model_part.mass = 162.5  # 162.5
+        sleeper_model_part.distance_between_sleepers = distance_springs
+
+        soil_1.stiffness = stiffness_spring / depth_soil  # 300e6
+        soil_1.damping = 0
+
+
+        # set load
+        position = np.array([node.coordinates[0] for node in rail_model_part.nodes])
+        velocity = (position[-1] - position[0]) / (time[-1] - time[len(initialisation_time)])
+
+        # set moving load on rail_model_part
+        velocities = np.ones(len(time)) * velocity
+        # velocities[0:len(initialisation_time)] = 0
+        # velocities[:] = 0
+
+
+        # constraint rotation at the side boundaries
+        side_boundaries = ConstraintModelPart(normal_dof=False, y_disp_dof=True, z_rot_dof=True)
+        side_boundaries.nodes = [rail_model_part.nodes[0], rail_model_part.nodes[-1]]
+
+        # set solver
+        solver = NewmarkSolver()
+        # solver = ZhaiSolver()
+
+        # populate global system
+        track = GlobalSystem()
+        track.mesh = all_mesh
+        track.time = time
+        track.solver = solver
+
+        # get all element model parts from dictionary
+        model_parts = [[rail_model_part, rail_pad_model_part, sleeper_model_part, soil_1,
+                        side_boundaries],
+                       list(bottom_boundary_1.values())]
+
+        # model_parts = [[rail_model_part, rail_pad_model_part, sleeper_model_part, soil_1],
+        #                list(bottom_boundary_1.values())]
+
+        track.model_parts = list(itertools.chain.from_iterable(model_parts))
+
+
+        length_beam = 6.25
+        n_beams = 1
+
+        length_beam = 12.5
+        n_beams = 2
+
+        # Setup parameters euler beam
+        #
+        # n_steps = 1000
+        # increase_factor = 2
+        # prev_dt = 0.0001
+        # prev_time = np.linspace(0, prev_dt, n_steps)
+        # for i in range(2):
+        #     new_dt = prev_dt * increase_factor
+        #     new_time = np.linspace(prev_time[-1], prev_time[-1] + new_dt, n_steps)
+        #     time = np.concatenate((prev_time, new_time[1:]))
+        #
+        #     prev_time = copy.deepcopy(time)
+        #     prev_dt = new_dt
+
+        # t_steps2 = 100
+        # t_steps3 = 100
+        # t_steps4 = 100
+        # calculation_time_steps = 10000
+        #
+        # initialisation_time = np.linspace(0, 0.00001, 100)
+        # time_2 = np.linspace(initialisation_time[-1], initialisation_time[-1] + 0.00005, t_steps2)
+        # time_3 = np.linspace(time_2[-1], time_2[-1] + 0.001, t_steps3)
+        # time_4 = np.linspace(time_3[-1], time_3[-1] + 0.01, t_steps4)
+        # calculation_time = np.linspace(time_4[-1], time_4[-1] + 1, calculation_time_steps)
+        # time = np.concatenate((initialisation_time,time_2[1:], time_3[1:], time_4[1:], calculation_time[1:]))
+
+
+
+        # set up train
+        mass_wheel = 1019.5
+        mass_bogie = 16000 / 2
+        mass_cart = 0
+        inertia_cart = 0
+        inertia_bogie = 0
+        prim_stiffness = 1e6
+        sec_stiffness = 0
+        prim_damping = 30e3
+        sec_damping = 0
+
+        wheel_1 = Wheel()
+        wheel_1.mass = mass_wheel
+
+        wheel_2 = Wheel()
+        wheel_2.mass = mass_wheel
+
+        bogie = Bogie()
+        # bogie.wheels = [wheel_1, wheel_2]
+        bogie.wheels = [wheel_1]
+        # bogie.wheel_distances = [0,20]
+        bogie.wheel_distances = [0]
+        bogie.mass = mass_bogie
+        bogie.intertia = inertia_bogie
+        bogie.stiffness = prim_stiffness
+        bogie.damping = prim_damping
+        bogie.length = 20
+        bogie.calculate_total_n_dof()
+
+        cart = Cart()
+        cart.bogies = [bogie]
+        cart.bogie_distances = [0]
+        cart.inertia = inertia_cart
+        cart.mass = mass_cart
+        cart.stiffness = sec_stiffness
+        cart.damping = sec_damping
+        cart.length = 0
+        cart.calculate_total_n_dof()
+
+        train = TrainModel()
+        train.carts = [cart]
+        train.time = time
+        # train.velocities = velocities
+        train.velocities = np.ones(len(train.time)) * 0
+        # train.velocities[:10000] = 0
+        train.cart_distances = [10]
+        train.herzian_contact_cof = 9.1e-7
+
+        coupled_model = CoupledTrainTrack()
+
+        coupled_model.train = train
+        coupled_model.track = track
+        coupled_model.rail = rail_model_part
+
+        coupled_model.time = time
+        # coupled_model.initialisation_time = initialisation_time
+
+        coupled_model.herzian_contact_coef = train.herzian_contact_cof
+        coupled_model.herzian_power = 3 / 2
+
+        train.calculate_distances()
+
+
+        coupled_model.solver = ZhaiSolver()
+        # coupled_model.solver.initialise(coupled_model.total_n_dof, coupled_model.time)
+        coupled_model.solver.load_func = coupled_model.update_force_vector
+        coupled_model.velocities = train.velocities
+
+        coupled_model.main()
+        # coupled_model.initialise()
+
+        # plt.plot(coupled_model.solver.u[:,601])
+        # plt.plot(coupled_model.solver.u[:, 2])
+        plt.plot(coupled_model.solver.u[:, -1])
+        # plt.plot(coupled_model.solver.u[:, -1])
+        # plt.plot(coupled_model.solver.u[:, 1])
+        plt.show()
+        # coupled_model.wheel_loads = None
+
+
+    def test_train_on_beam(self):
+
+        length_beam = 6.25
+        n_beams = 1
+
+
+        fact = 1
+        length_beam = 25 / fact
+        n_beams = 2 * fact + 1
+
+        # Setup parameters euler beam
+
+        # n_steps = 1000
+        # increase_factor=2
+        # prev_dt = 0.0001
+        # prev_time = np.linspace(0, prev_dt, n_steps)
+        # for i in range(2):
+        #     new_dt = prev_dt*increase_factor
+        #     new_time = np.linspace(prev_time[-1], prev_time[-1] + new_dt, n_steps)
+        #     time = np.concatenate((prev_time, new_time[1:]))
+        #
+        #     prev_time = copy.deepcopy(time)
+        #     prev_dt = new_dt
+
+
+
+        # t_steps2 = 100
+        # t_steps3 = 100
+        # t_steps4 = 100
+        # calculation_time_steps = 10000
+        #
+        # initialisation_time = np.linspace(0, 0.00001, 100)
+        # time_2 = np.linspace(initialisation_time[-1], initialisation_time[-1] + 0.00005, t_steps2)
+        # time_3 = np.linspace(time_2[-1], time_2[-1] + 0.001, t_steps3)
+        # time_4 = np.linspace(time_3[-1], time_3[-1] + 0.01, t_steps4)
+        # calculation_time = np.linspace(time_4[-1], time_4[-1] + 1, calculation_time_steps)
+        # time = np.concatenate((initialisation_time,time_2[1:], time_3[1:], time_4[1:], calculation_time[1:]))
+
+        time = np.linspace(0, 1.8, 10001)
+        # E = 20e3
+        E = 2.87e9
+        I = 2.9
+        rho = 2303
+        A = 1
+        # L = 10
+        # F = -1000
+
+        damping_ratio = 0.0 #0.2
+        omega1 = 2
+        omega2 = 5000
+
+        beam_nodes = [Node(i * length_beam, 0, 0) for i in range(n_beams)]
+        beam_elements = [Element([beam_nodes[i], beam_nodes[i + 1]]) for i in range(n_beams - 1)]
+
+        mesh = Mesh()
+        mesh.add_unique_nodes_to_mesh(beam_nodes)
+        mesh.add_unique_elements_to_mesh(beam_elements)
+
+        material = Material()
+        material.youngs_modulus = E  # Pa
+        material.poisson_ratio = 0.2
+        material.density = rho
+
+        section = Section()
+        section.area = A
+        section.sec_moment_of_inertia = I
+        section.shear_factor = 0
+
+        beam = TimoshenkoBeamElementModelPart()
+        beam.nodes = beam_nodes
+        beam.elements = beam_elements
+
+        beam.material = material
+        beam.section = section
+        beam.length_element = length_beam
+        beam.damping_ratio = damping_ratio
+        beam.radial_frequency_one = omega1
+        beam.radial_frequency_two = omega2
+
+        beam.initialize()
+        foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
+        foundation1.nodes = [beam_nodes[0]]
+        foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)
+        foundation2.nodes = [beam_nodes[-1]]
+
+        track = GlobalSystem()
+        track.mesh = mesh
+        track.time = time
+
+        # get all element model parts from dictionary
+        model_parts = [beam, foundation1, foundation2]
+        track.model_parts = model_parts
+
+        # set up train
+        mass_wheel = 5750
+        mass_bogie = 2000
+        mass_cart = 0
+        inertia_cart = 0
+        inertia_bogie = 0
+        prim_stiffness = 1595e3
+        sec_stiffness = 0
+        prim_damping = 100
+        sec_damping = 0
+
+
+        wheel = Wheel()
+        wheel.mass = mass_wheel
+
+        bogie = Bogie()
+        bogie.wheels = [wheel]
+        bogie.wheel_distances =[0]
+        bogie.mass = mass_bogie
+        bogie.intertia = inertia_bogie
+        bogie.stiffness = prim_stiffness
+        bogie.damping = prim_damping
+        bogie.length = 0
+        bogie.calculate_total_n_dof()
+
+
+        cart = Cart()
+        cart.bogies = [bogie]
+        cart.bogie_distances = [0]
+        cart.inertia = inertia_cart
+        cart.mass = mass_cart
+        cart.stiffness = sec_stiffness
+        cart.damping = sec_damping
+        cart.length = 0
+        cart.calculate_total_n_dof()
+
+        train = TrainModel()
+        train.carts=[cart]
+        train.time = time
+        velocity = 100/3.6
+        train.velocities = np.ones(len(train.time)) * velocity
+        # train.velocities = np.ones(len(train.time)) * 0
+        # train.velocities[:10000] = 0
+        train.cart_distances = [0]
+
+        train.herzian_contact_cof = 9.1e-7
+
+
+        coupled_model = CoupledTrainTrack()
+
+        coupled_model.train = train
+        coupled_model.track = track
+        coupled_model.rail = beam
+
+        coupled_model.time = time
+        # coupled_model.initialisation_time = initialisation_time
+
+        coupled_model.herzian_contact_coef = train.herzian_contact_cof
+        coupled_model.herzian_power = 3/2
+        # coupled_model.irregularities_at_wheels = None
+
+        # coupled_model.global_mass_matrix = None
+        # coupled_model.global_damping_matrix = None
+        # coupled_model.global_stiffness_matrix = None
+        # coupled_model.global_force_vector = None
+
+        # coupled_model.total_n_dof = None
+
+        train.calculate_distances()
+
+        # coupled_model.track.initialise()
+        # coupled_model.train.initialize()
+        #
+        # coupled_model.initialise_ndof()
+
+        coupled_model.solver = ZhaiSolver()
+        # coupled_model.solver = NewmarkSolver()
+        # coupled_model.solver.initialise(coupled_model.total_n_dof, coupled_model.time)
+        coupled_model.solver.load_func = coupled_model.update_force_vector
+        coupled_model.velocities = train.velocities
+
+        coupled_model.main()
+        # coupled_model.initialise()
+
+        # plt.plot(coupled_model.solver.u[:,601])
+        # plt.plot(coupled_model.solver.u[:, 2])
+
+        # coupled_model.wheel_loads = None
+
+        ss = TwoDofVehicle()
+        ss.vehicle(mass_bogie,mass_wheel, velocity, prim_stiffness, prim_damping)
+        # vehicle(self, m1, m2, speed, k, c)
+        ss.beam(E, I, rho, A, 50)
+        ss.compute()
+        # beam(self, E, I, rho, A, L)
+        # import matplotlib.pylab as plt
+        # fig, ax = plt.subplots()
+        fig = plt.figure()
+        gs = fig.add_gridspec(2, 2)
+        ax = fig.add_subplot(gs[0, 0])
+        ax2 = fig.add_subplot(gs[1, 0])
+        ax.plot(ss.time, ss.displacement[:, 0], color='b', label="beam")
+        ax.plot(ss.time, ss.displacement[:, 1], color='r', label="vehicle")
+        ax.plot(coupled_model.time, -coupled_model.solver.u[:, int(2 + (3*n_beams-3)/2 - 3)], color='b', linestyle='dashed', label="beam_num")
+        # ax.plot(coupled_model.time, -coupled_model.solver.u[:, 5], color='b', linestyle='dashed', label="beam_num")
+        # ax.plot(coupled_model.time, -coupled_model.solver.u[:, 8], color='g',linestyle='dashed', label="beam_num")
+        # ax.plot(coupled_model.time, -coupled_model.solver.u[:, -1], color='r', linestyle='dashed', label="vehicle_num_1")
+        ax.plot(coupled_model.time, -coupled_model.solver.u[:, -1], color='r',linestyle='dashed', label="vehicle_num_2")
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("Vertical displacement [m]")
+        ax.grid()
+        ax.legend()
+
+        # ax2.plot(-coupled_model.solver.u[:, -1])
+        # ax2.plot(-coupled_model.solver.u[:, -2])
+        # ax2.plot(-coupled_model.solver.u[:, 2])
+
+        # plt.plot(coupled_model.solver.u[:, 1])
+        plt.show()
+
+
 
