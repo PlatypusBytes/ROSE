@@ -46,8 +46,8 @@ class TwoDofVehicle:
         """
         Define vehicle properties
 
-        :param m1: mass of unsprung vehicle part
-        :param m2: mass of sprung vehicle part
+        :param m1: mass of sprung vehicle part
+        :param m2: mass of unsprung vehicle part
         :param speed: vehicle speed
         :param k: vehicle stiffness
         :param c: vehicle damping
@@ -150,7 +150,7 @@ class TwoDofVehicle:
 
 if __name__ == "__main__":
     ss = TwoDofVehicle()
-    ss.vehicle(5750, 2000, 100/3.6, 1e8, 50)
+    ss.vehicle(5750, 2000, 100/3.6, 1595e3, 25)
     ss.beam(2.87e9, 2.9, 2303, 1, 25)
     ss.compute()
 
