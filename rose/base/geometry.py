@@ -91,9 +91,10 @@ class Element:
         return True
 
     def add_model_part(self, model_part):
-        self.model_parts.append(model_part)
-        for node in self.nodes:
-            node.model_parts.append(model_part)
+        if model_part not in self.model_parts:
+            self.model_parts.append(model_part)
+            for node in self.nodes:
+                node.model_parts.append(model_part)
 
 
 class Mesh:
