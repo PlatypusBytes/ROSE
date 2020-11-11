@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.sparse.linalg import spsolve, inv
-from scipy.sparse import csc_matrix, diags
+from scipy.sparse import csc_matrix, diags, issparse
 import os
 import pickle
 from tqdm import tqdm
@@ -118,6 +118,8 @@ class ZhaiSolver(Solver):
         """
         if self.load_func is not None:
             force = self.load_func(u, t)
+            if issparse(force):
+                force = force.toarray()[:,0]
         else:
             force = F[:, t]
             force = force.toarray()[:, 0]
@@ -232,7 +234,7 @@ class ZhaiSolver(Solver):
             u_new, v_new = self.prediction(u, v, a, a_old, t_step, is_initial)
 
             # Calculate predicted external force vector
-            force = self.calculate_force(u, F, t)
+            force = self.calculate_force(u_new, F, t)
 
             # Calculate predicted acceleration
             a_new = self.evaluate_acceleration(inv_M, C, K, force, u_new, v_new)
@@ -269,21 +271,14 @@ class NewmarkSolver(Solver):
         self.beta = 0.25
         self.gamma = 0.5
 
-    def update_force(self, u, F, t):
+    def update_force(self, u, F_previous, t):
+        force = self.load_func(u, t)
+        if issparse(force):
+            force = force.toarray()[:, 0]
+        d_force = force - F_previous
+        F_total = copy.deepcopy(force)
 
-        if self.load_func is not None:
-            force = self.load_func(u, t)
-            # previous_force = F[:, t - 1].toarray()[:, 0]
-            d_force = force - F
-            # F[:, t - 1] = csc_matrix(force)
-            if d_force[-1] > 1e-8:
-                test=1+1
-            if d_force[-1] < -1e-8:
-                test = 1 + 1
-        else:
-            d_force = F[:, t] - F[:, t - 1]
-            d_force = d_force.toarray()[:, 0]
-        return d_force
+        return d_force, F_total
 
     def calculate(self, M, C, K, F, t_start_idx, t_end_idx):
         """
@@ -334,8 +329,14 @@ class NewmarkSolver(Solver):
             unit="steps",
         )
 
-        # F_previous = F[:, 0].toarray()[:,0]
-        # du = np.zeros((len(F_previous)))
+        # initialise Force from load function
+        if self.load_func is not None:
+            F_previous = self.load_func(u, 0)
+            if issparse(F_previous):
+                F_previous = F_previous.toarray()[:, 0]
+        else:
+            F_previous = F[:, 0]
+
         # iterate for each time step
         for t in range(t_start_idx + 1, t_end_idx + 1):
             # update progress bar
@@ -349,15 +350,16 @@ class NewmarkSolver(Solver):
             c_part = C.dot(c_part)
 
             # update external force
-            d_force = self.update_force(u, F, t)
-            # F_previous = F_previous + d_force
+            if self.load_func is not None:
+                d_force, F_previous = self.update_force(u, F_previous, t)
+            else:
+                d_force = F[:, t] - F_previous
+                d_force = d_force.toarray()[:, 0]
+                F_previous = F[:, t]
 
             # external force
             force_ext = d_force + m_part + c_part
-            # force_ext  = d_force
-            # F_previous = F_previous + force_ext
-            # force_ext = d_force
-            # force_ext = d_force.toarray()[:, 0]
+
             # solve
             du = spsolve(K_till, force_ext)
 
@@ -375,16 +377,10 @@ class NewmarkSolver(Solver):
                 - a.dot(1 / (2 * beta))
             )
 
-            # if max(abs((K.dot(du) + C.dot(dv) + M.dot(da)) - d_force)) > 1e-3:
-            #     test = 1+1
-
             # update variables
             u = u + du
             v = v + dv
             a = a + da
-
-            # if du[0]>0:
-            #     test =1+1
 
             # add to results
             self.u[t, :] = u
