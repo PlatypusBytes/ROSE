@@ -331,11 +331,11 @@ class NewmarkSolver(Solver):
 
         # initialise Force from load function
         if self.load_func is not None:
-            F_previous = self.load_func(u, 0)
+            F_previous = self.load_func(u, t_start_idx)
             if issparse(F_previous):
                 F_previous = F_previous.toarray()[:, 0]
         else:
-            F_previous = F[:, 0]
+            F_previous = F[:, t_start_idx]
 
         # iterate for each time step
         for t in range(t_start_idx + 1, t_end_idx + 1):
