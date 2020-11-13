@@ -713,20 +713,20 @@ class TestBenchmarkSet2:
         p.solve()
 
         # # todo check time discreatisation and force build-up
-        plt.plot(coords,
-                 vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 1 / 4)],
-                 color="k")
-        plt.plot(coords,
-                 vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 2 / 4)],
-                 color="k")
-        plt.plot(coords,
-                 vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 3 / 4)],
-                 color="k")
-        plt.plot(p.position, p.displacement[:, int(len(p.time) * 1 / 4)], color="r", marker='x')
-        plt.plot(p.position, p.displacement[:, int(len(p.time) * 2 / 4)], color="r", marker='x')
-        plt.plot(p.position, p.displacement[:, int(len(p.time) * 3 / 4)], color="r", marker='x')
-        # plt.plot(p.qsi, p.displacement[:, int(n_sleepers*2)], color="k")
-        plt.show()
+        # plt.plot(coords,
+        #          vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 1 / 4)],
+        #          color="k")
+        # plt.plot(coords,
+        #          vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 2 / 4)],
+        #          color="k")
+        # plt.plot(coords,
+        #          vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 3 / 4)],
+        #          color="k")
+        # plt.plot(p.position, p.displacement[:, int(len(p.time) * 1 / 4)], color="r", marker='x')
+        # plt.plot(p.position, p.displacement[:, int(len(p.time) * 2 / 4)], color="r", marker='x')
+        # plt.plot(p.position, p.displacement[:, int(len(p.time) * 3 / 4)], color="r", marker='x')
+        # # plt.plot(p.qsi, p.displacement[:, int(n_sleepers*2)], color="k")
+        # plt.show()
 
 
         # retrieve results from file
@@ -973,9 +973,6 @@ class TestBenchmarkSet2:
 
     def test_train_on_beam(self):
 
-        length_beam = 6.25
-        n_beams = 1
-
 
         fact = 1
         length_beam = 25 / fact
@@ -983,42 +980,13 @@ class TestBenchmarkSet2:
 
         # Setup parameters euler beam
 
-        # n_steps = 1000
-        # increase_factor=2
-        # prev_dt = 0.0001
-        # prev_time = np.linspace(0, prev_dt, n_steps)
-        # for i in range(2):
-        #     new_dt = prev_dt*increase_factor
-        #     new_time = np.linspace(prev_time[-1], prev_time[-1] + new_dt, n_steps)
-        #     time = np.concatenate((prev_time, new_time[1:]))
-        #
-        #     prev_time = copy.deepcopy(time)
-        #     prev_dt = new_dt
-
-
-
-        # t_steps2 = 100
-        # t_steps3 = 100
-        # t_steps4 = 100
-        # calculation_time_steps = 10000
-        #
-        # initialisation_time = np.linspace(0, 0.00001, 100)
-        # time_2 = np.linspace(initialisation_time[-1], initialisation_time[-1] + 0.00005, t_steps2)
-        # time_3 = np.linspace(time_2[-1], time_2[-1] + 0.001, t_steps3)
-        # time_4 = np.linspace(time_3[-1], time_3[-1] + 0.01, t_steps4)
-        # calculation_time = np.linspace(time_4[-1], time_4[-1] + 1, calculation_time_steps)
-        # time = np.concatenate((initialisation_time,time_2[1:], time_3[1:], time_4[1:], calculation_time[1:]))
-
         time = np.linspace(0, 1.8, 10001)
-        # E = 20e3
         E = 2.87e9
         I = 2.9
         rho = 2303
         A = 1
-        # L = 10
-        # F = -1000
 
-        damping_ratio = 0.0 #0.2
+        damping_ratio = 0.0
         omega1 = 2
         omega2 = 5000
 
@@ -1066,15 +1034,14 @@ class TestBenchmarkSet2:
 
         # set up train
         mass_wheel = 5750
-        mass_bogie = 2000
+        mass_bogie = 3000
         mass_cart = 0
         inertia_cart = 0
         inertia_bogie = 0
-        prim_stiffness = 1595e3
+        prim_stiffness = 1595e5
         sec_stiffness = 0
-        prim_damping = 100
+        prim_damping = 1000
         sec_damping = 0
-
 
         wheel = Wheel()
         wheel.mass = mass_wheel
@@ -1088,7 +1055,6 @@ class TestBenchmarkSet2:
         bogie.damping = prim_damping
         bogie.length = 0
         bogie.calculate_total_n_dof()
-
 
         cart = Cart()
         cart.bogies = [bogie]
@@ -1105,12 +1071,9 @@ class TestBenchmarkSet2:
         train.time = time
         velocity = 100/3.6
         train.velocities = np.ones(len(train.time)) * velocity
-        # train.velocities = np.ones(len(train.time)) * 0
-        # train.velocities[:10000] = 0
         train.cart_distances = [0]
 
-        train.herzian_contact_cof = 9.1e-7
-
+        train.herzian_contact_cof = 9.1e-8
 
         coupled_model = CoupledTrainTrack()
 
@@ -1122,45 +1085,22 @@ class TestBenchmarkSet2:
         # coupled_model.initialisation_time = initialisation_time
 
         coupled_model.herzian_contact_coef = train.herzian_contact_cof
-        coupled_model.herzian_power = 3/2
-        # coupled_model.irregularities_at_wheels = None
-
-        # coupled_model.global_mass_matrix = None
-        # coupled_model.global_damping_matrix = None
-        # coupled_model.global_stiffness_matrix = None
-        # coupled_model.global_force_vector = None
-
-        # coupled_model.total_n_dof = None
+        # coupled_model.herzian_power = 3/2
+        coupled_model.herzian_power = 1
 
         train.calculate_distances()
 
-        # coupled_model.track.initialise()
-        # coupled_model.train.initialize()
-        #
-        # coupled_model.initialise_ndof()
-
         coupled_model.solver = ZhaiSolver()
         # coupled_model.solver = NewmarkSolver()
-        # coupled_model.solver.initialise(coupled_model.total_n_dof, coupled_model.time)
         coupled_model.solver.load_func = coupled_model.update_force_vector
         coupled_model.velocities = train.velocities
 
         coupled_model.main()
-        # coupled_model.initialise()
-
-        # plt.plot(coupled_model.solver.u[:,601])
-        # plt.plot(coupled_model.solver.u[:, 2])
-
-        # coupled_model.wheel_loads = None
 
         ss = TwoDofVehicle()
-        ss.vehicle(mass_bogie,mass_wheel, velocity, prim_stiffness, prim_damping)
-        # vehicle(self, m1, m2, speed, k, c)
+        ss.vehicle(mass_bogie, mass_wheel, velocity, prim_stiffness, prim_damping)
         ss.beam(E, I, rho, A, 50)
         ss.compute()
-        # beam(self, E, I, rho, A, L)
-        # import matplotlib.pylab as plt
-        # fig, ax = plt.subplots()
         fig = plt.figure()
         gs = fig.add_gridspec(2, 2)
         ax = fig.add_subplot(gs[0, 0])
@@ -1168,20 +1108,11 @@ class TestBenchmarkSet2:
         ax.plot(ss.time, ss.displacement[:, 0], color='b', label="beam")
         ax.plot(ss.time, ss.displacement[:, 1], color='r', label="vehicle")
         ax.plot(coupled_model.time, -coupled_model.solver.u[:, int(2 + (3*n_beams-3)/2 - 3)], color='b', linestyle='dashed', label="beam_num")
-        # ax.plot(coupled_model.time, -coupled_model.solver.u[:, 5], color='b', linestyle='dashed', label="beam_num")
-        # ax.plot(coupled_model.time, -coupled_model.solver.u[:, 8], color='g',linestyle='dashed', label="beam_num")
-        # ax.plot(coupled_model.time, -coupled_model.solver.u[:, -1], color='r', linestyle='dashed', label="vehicle_num_1")
-        ax.plot(coupled_model.time, -coupled_model.solver.u[:, -1], color='r',linestyle='dashed', label="vehicle_num_2")
+        ax.plot(coupled_model.time, -coupled_model.solver.u[:, -2], color='r',linestyle='dashed', label="vehicle_num_2")
         ax.set_xlabel("Time [s]")
         ax.set_ylabel("Vertical displacement [m]")
         ax.grid()
         ax.legend()
-
-        # ax2.plot(-coupled_model.solver.u[:, -1])
-        # ax2.plot(-coupled_model.solver.u[:, -2])
-        # ax2.plot(-coupled_model.solver.u[:, 2])
-
-        # plt.plot(coupled_model.solver.u[:, 1])
         plt.show()
 
 

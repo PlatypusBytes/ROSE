@@ -151,26 +151,6 @@ class CoupledTrainTrack():
     def __get_wheel_dofs(self):
         return [wheel.nodes[0].index_dof[1] for wheel in self.train.wheels]
 
-    # def calculate_wheel_rail_contact_force(self, u, t):
-    #
-    #     track_elements = self.get_track_element_at_wheels(t)
-    #     position_wheels = self.get_position_wheels(t)
-    #     disp_track_at_wheel = self.get_displacement_track_at_wheels(position_wheels,track_elements, u)
-    #
-    #     wheel_dofs = self.__get_wheel_dofs()
-    #     disp_wheel = u[wheel_dofs]
-    #
-    #     du = disp_wheel - disp_track_at_wheel
-    #     elastic_wheel_deformation = self.__calculate_elastic_wheel_deformation(du, t)
-    #
-    #     contact_force = np.sign(elastic_wheel_deformation)*(
-    #                             1 / self.herzian_contact_coef * abs(elastic_wheel_deformation)
-    #                     ) ** self.herzian_power
-    #
-    #     self.global_force_vector[wheel_dofs,t] = contact_force
-    #     self.set_wheel_load_on_track(track_elements, position_wheels, contact_force, t)
-    #
-    #     return self.global_force_vector[:,t]
 
     def calculate_active_n_dof(self):
         self.train.calculate_active_n_dof()
@@ -191,14 +171,20 @@ class CoupledTrainTrack():
 
         return elastic_wheel_deformation
 
+    def calculate_static_contact_deformation(self):
+        G = self.herzian_contact_coef
+        pow = self.herzian_power
+
+        self.static_contact_deformation = np.array([np.sign(wheel.total_static_load)* G * abs(wheel.total_static_load)
+                                                    ** (1/pow) for wheel in self.train.wheels])
+
     def calculate_wheel_rail_contact_force(self, t, du_wheels):
 
         elastic_wheel_deformation = self.__calculate_elastic_wheel_deformation(t)
 
-        contact_force = np.sign(elastic_wheel_deformation - du_wheels) * np.nan_to_num((1 / self.herzian_contact_coef * abs((elastic_wheel_deformation - du_wheels))
+        contact_force = np.sign(elastic_wheel_deformation - du_wheels) * \
+                        np.nan_to_num((1 / self.herzian_contact_coef * abs((elastic_wheel_deformation - du_wheels))
                         ) ** self.herzian_power)
-        # contact_force = np.nan_to_num((-1 / self.herzian_contact_coef * (du_wheels - elastic_wheel_deformation)
-        #                 ) ** self.herzian_power)
 
         return contact_force
 
@@ -211,8 +197,6 @@ class CoupledTrainTrack():
                     # dist = distance_np(position_wheels[idx], np.array(track_element.nodes[0].coordinates))
                     dist = distance_np(position_wheels[idx], track_element.nodes[0].coordinates[0])
                     model_part.set_y_shape_functions(dist)
-                    if dist>2:
-                        test=1+1
                     test = [track_element.nodes[0].index_dof[1], track_element.nodes[0].index_dof[2],
                             track_element.nodes[1].index_dof[1], track_element.nodes[1].index_dof[2]]
                     disp = np.zeros(len(test))
@@ -228,25 +212,23 @@ class CoupledTrainTrack():
                     break
         return disp_at_wheels
 
-
-
-
     def update_force_vector(self,u, t):
         u_wheels = u[self.train.contact_dofs]
+        u_stat = self.static_contact_deformation
 
-        # F = self.train.force_vector[:, t]
-
+        test = self.calculate_static_contact_deformation()
         contact_track_elements = self.get_track_element_at_wheels(t)
         wheel_distances = [wheel.distances[t] for wheel in self.train.wheels]
         disp_at_wheels = self.get_disp_track_at_wheels(contact_track_elements, wheel_distances, u)
 
-        contact_force = self.calculate_wheel_rail_contact_force(t, u_wheels - disp_at_wheels)
-        self.global_force_vector[self.train.contact_dofs,t] += contact_force
+        contact_force = self.calculate_wheel_rail_contact_force(t, u_wheels + u_stat - disp_at_wheels)
+
+        F = copy.deepcopy(self.global_force_vector[:,t])
+        F[self.train.contact_dofs] += contact_force
 
         self.set_wheel_load_on_track(contact_track_elements, wheel_distances, -contact_force, t)
 
-        self.global_force_vector[:self.track.total_n_dof,t] = self.track.global_force_vector[:, t].toarray()
-        F = self.global_force_vector[:,t]
+        F[:self.track.total_n_dof] = self.track.global_force_vector[:, t].toarray()
         return F
 
 
@@ -394,21 +376,13 @@ class CoupledTrainTrack():
         wheel_distances = [wheel.distances[0] for wheel in self.train.wheels]
         disp_at_wheels = self.get_disp_track_at_wheels(contact_track_elements, wheel_distances, self.track.solver.u[0,:])
 
-        # self.train.get_deformation_track_at_wheels()
-        # self.calculate_initial_displacement_train(self.train.deformation_track_at_wheels)
         self.calculate_initial_displacement_train(disp_at_wheels)
+        self.calculate_static_contact_deformation()
 
-        # self.train.trim_global_matrices()
-        # self.train.calculate_initial_displacement(self.train.deformation_track_at_wheels)
         self.combine_global_matrices()
 
         self.solver.load_func = self.update_force_vector
 
-        # self.train.solver.load_func = self.update_force_vector
-        # self.train.update_stage(0, len(self.time) - 1)
-        # self.train.calculate_stage(0, len(self.time) - 1)
-
-        test=1+1
 
 
 
