@@ -15,7 +15,7 @@ g = 9.81
 class Wheel(ElementModelPart):
     def __init__(self):
         super().__init__()
-        self.mass = 1e-10
+        self.mass = 0 #1e-10
         self.total_static_load = None
         self.distances = 0
 
@@ -78,10 +78,10 @@ class Bogie(ElementModelPart):
 
         self.wheels = None
         self.wheel_distances = 0  # including sign
-        self.mass = 1e-10
-        self.inertia = 1e-10
-        self.stiffness = 1e-10  # stiffness between bogie and wheels
-        self.damping = 1e-10
+        self.mass = 0
+        self.inertia = 0
+        self.stiffness = 0  # stiffness between bogie and wheels
+        self.damping = 0
         self.length = 0
 
         self.__n_wheels = None
@@ -246,10 +246,10 @@ class Cart(ElementModelPart):
 
         self.bogies = None
         self.bogie_distances = None  # including sign
-        self.mass = 1e-10
-        self.inertia = 1e-10
-        self.stiffness = 1e-10  # stiffness cart - bogie
-        self.damping = 1e-10
+        self.mass = 0
+        self.inertia =0
+        self.stiffness = 0  # stiffness cart - bogie
+        self.damping = 0
         self.length = None
 
         self.__n_bogies = None
@@ -401,6 +401,7 @@ class TrainModel(ElementModelPart):
         self.contact_dofs = None
 
         self.solver = None
+        self.mesh = None
 
     @property
     def bogies(self):
@@ -702,27 +703,27 @@ class TrainModel(ElementModelPart):
         dt = np.diff(self.time)
         distances = np.cumsum(np.append(0, self.velocities[:-1] * dt))
 
-        mesh = Mesh()
+        self.mesh = Mesh()
 
         for i, cart in enumerate(self.carts):
             cart.distances = np.zeros(len(self.time))
             cart.distances = distances + self.cart_distances[i]
 
             cart.nodes = [Node(distances[0], 2, 0)]
-            mesh.add_unique_nodes_to_mesh(cart.nodes)
+            self.mesh.add_unique_nodes_to_mesh(cart.nodes)
 
             for j, bogie in enumerate(cart.bogies):
                 bogie.distances = np.zeros(len(self.time))
                 bogie.distances = cart.distances + cart.bogie_distances[j]
 
                 bogie.nodes = [Node(cart.distances[0], 1, 0)]
-                mesh.add_unique_nodes_to_mesh(bogie.nodes)
+                self.mesh.add_unique_nodes_to_mesh(bogie.nodes)
                 for k, wheel in enumerate(bogie.wheels):
                     wheel.distances = np.zeros(len(self.time))
                     wheel.distances = bogie.distances + bogie.wheel_distances[k]
                     wheel.nodes = [Node(wheel.distances[0], 0, 0)]
-                    mesh.add_unique_nodes_to_mesh(wheel.nodes)
-        self.nodes = list(mesh.nodes)
+                    self.mesh.add_unique_nodes_to_mesh(wheel.nodes)
+        self.nodes = list(self.mesh.nodes)
 
 
     def initialise_global_matrices(self):
@@ -796,7 +797,7 @@ class TrainModel(ElementModelPart):
                     node.index_dof[idx] = None
                     node.set_dof(idx, False)
                 elif index_dof is None:
-                    pass
+                    node.set_dof(idx, False)
                 else:
                     node.index_dof[idx] = index_dof + i
 

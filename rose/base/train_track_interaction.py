@@ -41,9 +41,9 @@ class CoupledTrainTrack():
         self.velocities = None
         self.time = None
 
-        self.deformation_wheels = None  # np.zeros((4, 1))
-        self.deformation_track_at_wheels = None  # np.zeros((4, 1))
-        self.irregularities_at_wheels = None  # np.zeros(4)
+        self.deformation_wheels = None
+        self.deformation_track_at_wheels = None
+        self.irregularities_at_wheels = None
         self.total_static_load = None
 
         self.contact_dofs = None
@@ -95,9 +95,7 @@ class CoupledTrainTrack():
 
         self.wheel_node_dist = np.array([wheel - cumulative_dist_nodes[idx] for idx, wheel in enumerate(self.wheel_distances)])
 
-
-
-    def calculate_y_shape_factors(self):
+    def calculate_y_shape_factors_rail(self):
 
         self.y_shape_factors = np.zeros((len(self.wheel_node_dist),len(self.wheel_node_dist[0]), 4))
         for w_idx , w_track_elements in enumerate(self.track_elements):
@@ -106,8 +104,6 @@ class CoupledTrainTrack():
                     if isinstance(model_part, TimoshenkoBeamElementModelPart):
                         model_part.set_y_shape_functions(self.wheel_node_dist[0, idx])
                         self.y_shape_factors[w_idx,idx, :] = copy.deepcopy(model_part.y_shape_functions)
-
-
 
     def get_track_element_at_wheels(self, t):
         return self.track_elements[:,t]
@@ -234,8 +230,6 @@ class CoupledTrainTrack():
 
 
     def initialise_ndof(self):
-        # self.track.initialise_ndof()
-        # self.train.calculate_active_n_dof()
 
         for node in self.train.nodes:
             for idx, index_dof in enumerate(node.index_dof):
@@ -272,10 +266,40 @@ class CoupledTrainTrack():
         if isinstance(self.solver, StaticSolver):
             self.solver.calculate(K, F, start_time_id, end_time_id)
 
-        # self.assign_results_to_nodes()
+        self.assign_results_to_nodes()
+
+    def _assign_result_to_node(self, node):
+        """
+        Assigns solver results to a node
+        :param node:
+        :return:
+        """
+        node_ids_dofs = list(node.index_dof[node.index_dof != None])
+        node.assign_result(
+            self.solver.u[:, node_ids_dofs],
+            self.solver.v[:, node_ids_dofs],
+            self.solver.a[:, node_ids_dofs],
+        )
+        return node
+
+    def assign_results_to_nodes(self):
+        """
+        Assigns all solver results to all nodes in the mesh
+        :return:
+        """
+        self.track.mesh.nodes = list(
+            map(lambda node: self._assign_result_to_node(node), self.track.mesh.nodes)
+        )
+        self.train.mesh.nodes = list(
+            map(lambda node: self._assign_result_to_node(node), self.train.mesh.nodes)
+        )
 
 
     def calculate_initial_displacement_track(self):
+        """
+        Calculates initial displacement of track
+        :return:
+        """
         # transfer matrices to compressed sparsed column matrices
         K = sparse.lil_matrix(deepcopy(self.track.global_stiffness_matrix))
         F = sparse.lil_matrix(deepcopy(self.track.global_force_vector[:,:3]))
@@ -284,11 +308,13 @@ class CoupledTrainTrack():
         ini_solver.initialise(self.track.total_n_dof, self.time[:3])
         ini_solver.calculate(K, F, 0, 2)
 
-        # self.track.solver.u[0,:] = ini_solver.u[2,:]
-        pass
-
-
     def calculate_initial_displacement_train(self, wheel_displacements):
+        """
+        Calculates initial displacement of the train
+
+        :param wheel_displacements: displacement of track below initial loaction of the wheels
+        :return:
+        """
         # transfer matrices to compressed sparsed column matrices
         K = sparse.lil_matrix(deepcopy(self.train.global_stiffness_matrix))
         F = sparse.lil_matrix(deepcopy(self.train.global_force_vector))
@@ -303,14 +329,12 @@ class CoupledTrainTrack():
         ini_solver.calculate(K, F, 0, 1)
 
         self.train.solver.initialise(self.train.active_n_dof, self.time)
+
         # todo take into account initial differential settlements between wheels, for now max displacement of wheel is taken
         mask = np.ones(self.train.solver.u[0, :].shape, bool)
         mask[wheel_dofs] = False
         self.train.solver.u[0, mask] = ini_solver.u[1, :] + max(wheel_displacements)
         self.train.solver.u[0, wheel_dofs] = wheel_displacements
-
-        pass
-
 
     def update_stage(self, start_time_id, end_time_id):
         """
@@ -322,24 +346,26 @@ class CoupledTrainTrack():
         self.solver.update(start_time_id)
 
     def calculate_initial_state(self):
+        """
+        Calculates initial state of coupled track and train system
+        :return:
+        """
 
         self.calculate_initial_displacement_track()
 
         contact_track_elements = self.get_track_element_at_wheels(0)
-        # wheel_distances = [wheel.distances[0] for wheel in self.train.wheels]
         disp_at_wheels = self.get_disp_track_at_wheels(contact_track_elements, 0, self.track.solver.u[0,:])
 
         self.calculate_initial_displacement_train(disp_at_wheels)
         self.calculate_static_contact_deformation()
-
         self.combine_global_matrices()
-
-        self.solver.load_func = self.update_force_vector
-
-
 
 
     def initialize_wheel_loads(self):
+        """
+        Initialises wheel loads on track
+        :return:
+        """
         self.wheel_loads = []
         for wheel in self.train.wheels:
             load = add_moving_point_load_to_track(
@@ -351,35 +377,59 @@ class CoupledTrainTrack():
             )
             # todo set y and z start coords
 
-
             self.wheel_loads.extend(list(load.values()))
-            self.wheel_loads[-1].y_force[:, 0] = 0
-            self.wheel_loads[-1].z_moment[:, 0] = 0
         self.track.model_parts.extend(self.wheel_loads)
 
 
-    def initialise(self):
+    def initialise_track_wheel_interaction(self):
+        """
+        Initialises interaction between wheel and track.
+            Finds elements which are in contact with the wheels at time t
+            Calculates distance between wheel and node 1 of contact track element at time t
+            Calculates y-shape factors of the track elements at time t
 
+        :return:
+        """
+        self.initialize_track_elements()
+        self.calculate_distance_wheels_track_nodes()
+        self.calculate_y_shape_factors_rail()
+
+    def initialise_train(self):
+        """
+        Initialises train
+        :return:
+        """
         self.train.solver = self.solver.__class__()
-        self.track.solver = self.solver.__class__()
-
         self.train.initialise()
-        # self.track.initialise()
 
+    def initialise_track(self):
+        """
+        Initialises track.
+            Adds wheel loads to track
+        :return:
+        """
+        self.track.solver = self.solver.__class__()
         self.initialize_wheel_loads()
         self.track.initialise()
+
+    def initialise(self):
+        """
+        Initialises train track interaction
+        :return:
+        """
+
+        # initialize train and track in this order
+        self.initialise_train()
+        self.initialise_track()
+
         self.initialise_ndof()
         self.initialize_global_matrices()
+        self.initialise_track_wheel_interaction()
 
-        self.initialize_track_elements()
-
-        self.calculate_distance_wheels_track_nodes()
-        self.calculate_y_shape_factors()
+        self.set_stage_time_ids()
 
         self.solver.initialise(self.total_n_dof, self.time)
-
-        self.calculate_initial_state()
-        self.set_stage_time_ids()
+        self.solver.load_func = self.update_force_vector
 
 
     def set_stage_time_ids(self):
@@ -391,16 +441,26 @@ class CoupledTrainTrack():
         new_dt_idxs = sorted(np.unique(diff.round(decimals=15), return_index=True)[1])
         self.stage_time_ids = np.append(new_dt_idxs, len(self.time) - 1)
 
+    def finalise(self):
+        """
+        Finalises calculation
+        :return:
+        """
+
+        self.displacements = self.solver.u
+        self.velocities = self.solver.v
+        self.accelerations = self.solver.a
+
+        self.time = self.solver.time
+
     def main(self):
 
         self.initialise()
+        self.calculate_initial_state()
 
         # calculate stages
         for i in range(len(self.stage_time_ids) - 1):
-            # self.update_stage(0, len(self.time) - 1)
-            # self.calculate_stage(0, len(self.time) - 1)
-
             self.update_stage(self.stage_time_ids[i], self.stage_time_ids[i + 1])
             self.calculate_stage(self.stage_time_ids[i], self.stage_time_ids[i + 1])
 
-        # self.finalise()
+        self.finalise()
