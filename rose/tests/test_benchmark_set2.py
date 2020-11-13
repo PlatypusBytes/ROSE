@@ -970,17 +970,18 @@ class TestBenchmarkSet2:
         plt.show()
         # coupled_model.wheel_loads = None
 
+    @pytest.mark.parametrize("solver, n_timesteps, filename_expected",
+                             [(ZhaiSolver(), 20000, "train_on_beam_zhai.json"),
+                              (NewmarkSolver(), 2000, "train_on_beam_newmark.json")])
+    def test_train_on_beam(self, solver, n_timesteps, filename_expected):
 
-    def test_train_on_beam(self):
-
-
-        fact = 1
+        fact = 5
         length_beam = 25 / fact
         n_beams = 2 * fact + 1
 
         # Setup parameters euler beam
 
-        time = np.linspace(0, 1.8, 10001)
+        time = np.linspace(0, 1.8, n_timesteps)
         E = 2.87e9
         I = 2.9
         rho = 2303
@@ -1082,38 +1083,63 @@ class TestBenchmarkSet2:
         coupled_model.rail = beam
 
         coupled_model.time = time
-        # coupled_model.initialisation_time = initialisation_time
-
         coupled_model.herzian_contact_coef = train.herzian_contact_cof
-        # coupled_model.herzian_power = 3/2
         coupled_model.herzian_power = 1
 
         train.calculate_distances()
 
-        coupled_model.solver = ZhaiSolver()
-        # coupled_model.solver = NewmarkSolver()
+        coupled_model.solver = solver
         coupled_model.solver.load_func = coupled_model.update_force_vector
         coupled_model.velocities = train.velocities
 
         coupled_model.main()
 
-        ss = TwoDofVehicle()
-        ss.vehicle(mass_bogie, mass_wheel, velocity, prim_stiffness, prim_damping)
-        ss.beam(E, I, rho, A, 50)
-        ss.compute()
-        fig = plt.figure()
-        gs = fig.add_gridspec(2, 2)
-        ax = fig.add_subplot(gs[0, 0])
-        ax2 = fig.add_subplot(gs[1, 0])
-        ax.plot(ss.time, ss.displacement[:, 0], color='b', label="beam")
-        ax.plot(ss.time, ss.displacement[:, 1], color='r', label="vehicle")
-        ax.plot(coupled_model.time, -coupled_model.solver.u[:, int(2 + (3*n_beams-3)/2 - 3)], color='b', linestyle='dashed', label="beam_num")
-        ax.plot(coupled_model.time, -coupled_model.solver.u[:, -2], color='r',linestyle='dashed', label="vehicle_num_2")
-        ax.set_xlabel("Time [s]")
-        ax.set_ylabel("Vertical displacement [m]")
-        ax.grid()
-        ax.legend()
-        plt.show()
+        u_beam = coupled_model.solver.u[:, int(2 + (3 * n_beams - 3) / 2 - 3)]
+        u_vehicle = coupled_model.solver.u[:, -2]
+
+        if RENEW_BENCHMARKS:
+            ss = TwoDofVehicle()
+            ss.vehicle(mass_bogie, mass_wheel, velocity, prim_stiffness, prim_damping)
+            ss.beam(E, I, rho, A, 50)
+            ss.compute()
+            fig = plt.figure()
+            gs = fig.add_gridspec(2, 2)
+            ax = fig.add_subplot(gs[0, 0])
+            ax2 = fig.add_subplot(gs[1, 0])
+            ax.plot(ss.time, ss.displacement[:, 0], color='b', label="beam")
+            ax.plot(ss.time, ss.displacement[:, 1], color='r', label="vehicle")
+            ax.plot(coupled_model.time, -coupled_model.solver.u[:, int(2 + (3 * n_beams - 3) / 2 - 3)], color='b',
+                    linestyle='dashed', label="beam_num")
+            ax.plot(coupled_model.time, -coupled_model.solver.u[:, -2], color='r', linestyle='dashed',
+                    label="vehicle_num_2")
+            ax.set_xlabel("Time [s]")
+            ax.set_ylabel("Vertical displacement [m]")
+            ax.grid()
+            ax.legend()
+            plt.show()
+
+            # create dictionary for results
+            result = {"time": coupled_model.time.tolist(),
+                      "u_beam": u_beam.tolist(),
+                      "u_vehicle": u_vehicle.tolist()}
+
+            # dump results
+            with open(os.path.join(TEST_PATH, 'test_data', filename_expected),
+                      "w") as f:
+                json.dump(result, f, indent=2)
+
+
+        # retrieve results from file
+        with open(os.path.join(TEST_PATH, 'test_data', filename_expected)) as f:
+            res_numerical = json.load(f)
+
+        # get expected displacement
+        expected_u_beam = np.array(res_numerical['u_beam'])
+        expected_u_vehicle = np.array(res_numerical['u_vehicle'])
+
+        # assert
+        np.testing.assert_array_almost_equal(expected_u_beam, u_beam)
+        np.testing.assert_array_almost_equal(expected_u_vehicle, expected_u_vehicle)
 
 
 
