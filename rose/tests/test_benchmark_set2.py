@@ -971,18 +971,31 @@ class TestBenchmarkSet2:
         # coupled_model.wheel_loads = None
 
     @pytest.mark.parametrize("solver, n_timesteps, filename_expected",
-                             [(ZhaiSolver(), 20000, "train_on_beam_zhai.json"),
-                              (NewmarkSolver(), 2000, "train_on_beam_newmark.json")])
+                             [(NewmarkSolver(), 2000, "train_on_beam_newmark.json"),
+                              (ZhaiSolver(), 20000, "train_on_beam_zhai.json")
+                              ])
     def test_train_on_beam(self, solver, n_timesteps, filename_expected):
+        """
+        Tests a moving vehicle on a simply supported beam. Where the vehicle consists of a wheel which
+        is in contact with the beam and a mass which is connected to the wheel with a spring and damper
 
+        Based on Biggs "Introduction do Structural Dynamics", pp pg 322
+
+        :param solver: solver class
+        :param n_timesteps:  number of time steps
+        :param filename_expected: filename of expected results
+        :return:
+        """
+
+        # set up number of nodes for a 50m beam
         fact = 5
         length_beam = 25 / fact
-        n_beams = 2 * fact + 1
+        n_nodes = 2 * fact + 1
 
         # Setup parameters euler beam
-
         time = np.linspace(0, 1.8, n_timesteps)
         E = 2.87e9
+        nu = 0.2
         I = 2.9
         rho = 2303
         A = 1
@@ -991,8 +1004,9 @@ class TestBenchmarkSet2:
         omega1 = 2
         omega2 = 5000
 
-        beam_nodes = [Node(i * length_beam, 0, 0) for i in range(n_beams)]
-        beam_elements = [Element([beam_nodes[i], beam_nodes[i + 1]]) for i in range(n_beams - 1)]
+        # set up geometry beam
+        beam_nodes = [Node(i * length_beam, 0, 0) for i in range(n_nodes)]
+        beam_elements = [Element([beam_nodes[i], beam_nodes[i + 1]]) for i in range(n_nodes - 1)]
 
         mesh = Mesh()
         mesh.add_unique_nodes_to_mesh(beam_nodes)
@@ -1000,7 +1014,7 @@ class TestBenchmarkSet2:
 
         material = Material()
         material.youngs_modulus = E  # Pa
-        material.poisson_ratio = 0.2
+        material.poisson_ratio = nu
         material.density = rho
 
         section = Section()
@@ -1025,15 +1039,15 @@ class TestBenchmarkSet2:
         foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)
         foundation2.nodes = [beam_nodes[-1]]
 
+        # set up track
         track = GlobalSystem()
         track.mesh = mesh
         track.time = time
 
-        # get all element model parts from dictionary
         model_parts = [beam, foundation1, foundation2]
         track.model_parts = model_parts
 
-        # set up train
+        # Setup parameters train
         mass_wheel = 5750
         mass_bogie = 3000
         mass_cart = 0
@@ -1044,6 +1058,9 @@ class TestBenchmarkSet2:
         prim_damping = 1000
         sec_damping = 0
 
+        velocity = 100 / 3.6
+
+        # setup geometry train
         wheel = Wheel()
         wheel.mass = mass_wheel
 
@@ -1070,12 +1087,15 @@ class TestBenchmarkSet2:
         train = TrainModel()
         train.carts=[cart]
         train.time = time
-        velocity = 100/3.6
+
         train.velocities = np.ones(len(train.time)) * velocity
         train.cart_distances = [0]
 
-        train.herzian_contact_cof = 9.1e-8
+        # setup contact parameters
+        herzian_contact_cof = 9.1e-8
+        herzian_power = 1
 
+        # setup coupled train and track model
         coupled_model = CoupledTrainTrack()
 
         coupled_model.train = train
@@ -1083,32 +1103,34 @@ class TestBenchmarkSet2:
         coupled_model.rail = beam
 
         coupled_model.time = time
-        coupled_model.herzian_contact_coef = train.herzian_contact_cof
-        coupled_model.herzian_power = 1
-
-        train.calculate_distances()
+        coupled_model.herzian_contact_coef = herzian_contact_cof
+        coupled_model.herzian_power = herzian_power
 
         coupled_model.solver = solver
         coupled_model.solver.load_func = coupled_model.update_force_vector
         coupled_model.velocities = train.velocities
 
+        # calculate
         coupled_model.main()
 
-        u_beam = coupled_model.solver.u[:, int(2 + (3 * n_beams - 3) / 2 - 3)]
+        # get results
+        u_beam = coupled_model.solver.u[:, int(2 + (3 * n_nodes - 3) / 2 - 3)]
         u_vehicle = coupled_model.solver.u[:, -2]
 
         if RENEW_BENCHMARKS:
+            # calculate analytical solution
             ss = TwoDofVehicle()
             ss.vehicle(mass_bogie, mass_wheel, velocity, prim_stiffness, prim_damping)
             ss.beam(E, I, rho, A, 50)
             ss.compute()
+
+            # plot numerical and analytical solution
             fig = plt.figure()
             gs = fig.add_gridspec(2, 2)
             ax = fig.add_subplot(gs[0, 0])
-            ax2 = fig.add_subplot(gs[1, 0])
             ax.plot(ss.time, ss.displacement[:, 0], color='b', label="beam")
             ax.plot(ss.time, ss.displacement[:, 1], color='r', label="vehicle")
-            ax.plot(coupled_model.time, -coupled_model.solver.u[:, int(2 + (3 * n_beams - 3) / 2 - 3)], color='b',
+            ax.plot(coupled_model.time, -coupled_model.solver.u[:, int(2 + (3 * n_nodes - 3) / 2 - 3)], color='b',
                     linestyle='dashed', label="beam_num")
             ax.plot(coupled_model.time, -coupled_model.solver.u[:, -2], color='r', linestyle='dashed',
                     label="vehicle_num_2")
@@ -1128,7 +1150,6 @@ class TestBenchmarkSet2:
                       "w") as f:
                 json.dump(result, f, indent=2)
 
-
         # retrieve results from file
         with open(os.path.join(TEST_PATH, 'test_data', filename_expected)) as f:
             res_numerical = json.load(f)
@@ -1139,7 +1160,7 @@ class TestBenchmarkSet2:
 
         # assert
         np.testing.assert_array_almost_equal(expected_u_beam, u_beam)
-        np.testing.assert_array_almost_equal(expected_u_vehicle, expected_u_vehicle)
+        np.testing.assert_array_almost_equal(expected_u_vehicle, u_vehicle)
 
 
 
