@@ -49,120 +49,77 @@ class CoupledTrainTrack():
         self.contact_dofs = None
 
         self.track_elements = None
-
-    # def __calculate_elastic_wheel_deformation(self, du, t):
-    #     elastic_wheel_deformation = (
-    #             # self.static_wheel_deformation
-    #             du
-    #             - self.irregularities_at_wheels[:, t]
-    #     )
-    #
-    #
-    #     return elastic_wheel_deformation
-
+        self.wheel_distances = None
+        self.wheel_node_dist = None
+        self.y_shape_factors_track = None
 
     def get_position_wheels(self, t):
         position_wheels = [wheel.distances for wheel in self.train.wheels]
         position_wheels_at_t = [position_wheel[t] for position_wheel in position_wheels]
         return position_wheels_at_t
 
-
-    # def get_displacement_track_at_wheels(self, position_wheels,track_elements, u):
-    #     # for idx, wheel_load in enumerate(self.wheel_loads):
-    #     #     active_element_idx = wheel_load.active_elements.nonzero()[0][t]
-    #     #     track_element = wheel_load.elements[active_element_idx]
-    #     disp_at_wheels = np.empty(len(track_elements))
-    #     for idx, track_element in enumerate(track_elements):
-    #         for model_part in track_element.model_parts:
-    #             if isinstance(model_part, TimoshenkoBeamElementModelPart):
-    #                 track_model_part = model_part
-    #                 dist = distance_np(position_wheels[idx], np.array(track_element.nodes[0].coordinates))
-    #
-    #                 track_model_part.set_y_shape_functions(dist)
-    #                 displacements_element = u[[track_element.nodes[0].index_dof[0],
-    #                                             track_element.nodes[0].index_dof[1],
-    #                                             track_element.nodes[1].index_dof[0],
-    #                                             track_element.nodes[1].index_dof[1]]]
-    #
-    #                 disp_at_wheels[idx] = sum(displacements_element / track_model_part.y_shape_functions)
-    #                 break
-    #
-    #             return disp_at_wheels
-
-    def set_wheel_load_on_track(self, track_elements, position_wheels, wheel_loads,t):
+    def set_wheel_load_on_track(self, track_elements, wheel_loads,t):
         for idx, track_element in enumerate(track_elements):
-            for model_part in track_element.model_parts:
-                if isinstance(model_part, TimoshenkoBeamElementModelPart):
-                    track_model_part = model_part
-                    #todo calc distance for non horizontal track
-                    # dist = distance_np(position_wheels[idx], np.array(track_element.nodes[0].coordinates))
-                    dist = distance_np(position_wheels[idx], track_element.nodes[0].coordinates[0])
-                    track_model_part.set_y_shape_functions(dist)
+            global_indices = np.array([track_element.nodes[0].index_dof[1], track_element.nodes[0].index_dof[2],
+                                       track_element.nodes[1].index_dof[1], track_element.nodes[1].index_dof[2]])
 
-                    global_indices = np.array([track_element.nodes[0].index_dof[1], track_element.nodes[0].index_dof[2],
-                                               track_element.nodes[1].index_dof[1], track_element.nodes[1].index_dof[2]])
+            force_vector = np.array([self.y_shape_factors[idx, t, 0] * wheel_loads[idx],
+                                     self.y_shape_factors[idx, t, 1] * wheel_loads[idx],
+                                     self.y_shape_factors[idx, t, 2] * wheel_loads[idx],
+                                     self.y_shape_factors[idx, t, 3] * wheel_loads[idx]])
 
-                    mask = []
-                    for i in range(len(global_indices)):
-                        if global_indices[i] is not None:
-                            mask.append(i)
+            mask = [i for i in range(len(global_indices)) if global_indices[i] is not None]
+            t_idxs = np.ones(len(mask)) * t
 
-                    force_vector = np.array([track_model_part.y_shape_functions[0] * wheel_loads[idx],
-                                                                           track_model_part.y_shape_functions[1] * wheel_loads[idx],
-                                                                           track_model_part.y_shape_functions[2] * wheel_loads[idx],
-                                                                           track_model_part.y_shape_functions[3] * wheel_loads[idx]])
+            self.track.global_force_vector[global_indices[mask],t_idxs] = force_vector[mask]
 
-
-                    t_idxs = np.ones(len(mask)) * t
-
-
-                    self.track.global_force_vector[global_indices[mask],t_idxs] = force_vector[mask]
-                    pass
 
     def initialize_track_elements(self):
         self.track_elements =np.empty((len(self.wheel_loads), len(self.time)))
         self.track_elements = []
-
-
         for idx, wheel_load in enumerate(self.wheel_loads):
             wheel_load_np = np.array(wheel_load.elements)
             self.track_elements.append(wheel_load_np[wheel_load.active_elements.nonzero()[0]])
-        self.track_elements = np.array(self.track_elements)
-        # test[self.wheel_loads[0].active_elements.nonzero()[0]]
 
-        # for t in range(len(self.time)):
-        #     active_elements = [wheel_load.elements[wheel_load.active_elements.nonzero()[0][t]] for wheel_load in self.wheel_loads]
-        #     self.track_elements[t] = active_elements
-        pass
+        self.track_elements = np.array(self.track_elements)
+
+
+    def calculate_distance_wheels_track_nodes(self):
+        self.wheel_distances = np.array([wheel.distances for wheel in self.train.wheels])
+
+        nodal_coordinates = np.array([np.array([element.nodes[0].coordinates for element in wheel])
+                                      for wheel in self.track_elements])
+
+        cumulative_dist_nodes = np.array([calculate_cum_distances_coordinate_array(wheel_coords)
+                                          for wheel_coords in nodal_coordinates])
+
+        self.wheel_node_dist = np.array([wheel - cumulative_dist_nodes[idx] for idx, wheel in enumerate(self.wheel_distances)])
+
+
+
+    def calculate_y_shape_factors(self):
+
+        self.y_shape_factors = np.zeros((len(self.wheel_node_dist),len(self.wheel_node_dist[0]), 4))
+        for w_idx , w_track_elements in enumerate(self.track_elements):
+            for idx, element in enumerate(w_track_elements):
+                for model_part in element.model_parts:
+                    if isinstance(model_part, TimoshenkoBeamElementModelPart):
+                        model_part.set_y_shape_functions(self.wheel_node_dist[0, idx])
+                        self.y_shape_factors[w_idx,idx, :] = copy.deepcopy(model_part.y_shape_functions)
 
 
 
     def get_track_element_at_wheels(self, t):
-
-        # track_elements =
-        #
-        # for idx, wheel_load in enumerate(self.wheel_loads):
-        #     self.track_elements[idx,t]
-        #     active_element_idx = wheel_load.active_elements.nonzero()[0][t]
-        #     track_elements[idx] = wheel_load.elements[active_element_idx]
         return self.track_elements[:,t]
-
 
     def __get_wheel_dofs(self):
         return [wheel.nodes[0].index_dof[1] for wheel in self.train.wheels]
-
 
     def calculate_active_n_dof(self):
         self.train.calculate_active_n_dof()
 
 
     def __calculate_elastic_wheel_deformation(self, t):
-        # elastic_wheel_deformation = (
-        #         # self.static_wheel_deformation
-        #         + self.deformation_wheels
-        #         - self.deformation_track_at_wheels
-        #         - self.irregularities_at_wheels[:, t]
-        # )
 
         elastic_wheel_deformation = (
             # self.static_wheel_deformation
@@ -188,45 +145,41 @@ class CoupledTrainTrack():
 
         return contact_force
 
-    def get_disp_track_at_wheels(self, track_elements, position_wheels, u):
-        disp_at_wheels = np.zeros(len(position_wheels))
+    def get_disp_track_at_wheels(self, track_elements, t, u):
+        disp_at_wheels = np.zeros(len(track_elements))
         for idx, track_element in enumerate(track_elements):
-            for model_part in track_element.model_parts:
-                if isinstance(model_part, TimoshenkoBeamElementModelPart):
-                    #todo calc cumulative distance track elements, for now programm works with horizontal track
-                    # dist = distance_np(position_wheels[idx], np.array(track_element.nodes[0].coordinates))
-                    dist = distance_np(position_wheels[idx], track_element.nodes[0].coordinates[0])
-                    model_part.set_y_shape_functions(dist)
-                    test = [track_element.nodes[0].index_dof[1], track_element.nodes[0].index_dof[2],
-                            track_element.nodes[1].index_dof[1], track_element.nodes[1].index_dof[2]]
-                    disp = np.zeros(len(test))
-                    if None not in test:
-                        disp = u[test]
+
+            global_indices = [track_element.nodes[0].index_dof[1], track_element.nodes[0].index_dof[2],
+                              track_element.nodes[1].index_dof[1], track_element.nodes[1].index_dof[2]]
+
+            # get displacement at indices
+            if None not in global_indices:
+                disp = u[global_indices]
+            else:
+                # set inactive dofs at 0
+                disp = np.zeros(len(global_indices))
+                for i, v in enumerate(global_indices):
+                    if v is None:
+                        disp[i] = 0
                     else:
-                        for i ,v in enumerate(test):
-                            if v is None:
-                                disp[i] = 0
-                            else:
-                                disp[i] = u[v]
-                    disp_at_wheels[idx] = np.sum(disp * model_part.y_shape_functions)
-                    break
+                        disp[i] = u[v]
+
+            disp_at_wheels[idx] = np.sum(disp * self.y_shape_factors[idx,t,:])
+
         return disp_at_wheels
 
     def update_force_vector(self,u, t):
         u_wheels = u[self.train.contact_dofs]
         u_stat = self.static_contact_deformation
 
-        test = self.calculate_static_contact_deformation()
         contact_track_elements = self.get_track_element_at_wheels(t)
-        wheel_distances = [wheel.distances[t] for wheel in self.train.wheels]
-        disp_at_wheels = self.get_disp_track_at_wheels(contact_track_elements, wheel_distances, u)
-
+        disp_at_wheels = self.get_disp_track_at_wheels(contact_track_elements, t, u)
         contact_force = self.calculate_wheel_rail_contact_force(t, u_wheels + u_stat - disp_at_wheels)
 
         F = copy.deepcopy(self.global_force_vector[:,t])
         F[self.train.contact_dofs] += contact_force
 
-        self.set_wheel_load_on_track(contact_track_elements, wheel_distances, -contact_force, t)
+        self.set_wheel_load_on_track(contact_track_elements, -contact_force, t)
 
         F[:self.track.total_n_dof] = self.track.global_force_vector[:, t].toarray()
         return F
@@ -373,8 +326,8 @@ class CoupledTrainTrack():
         self.calculate_initial_displacement_track()
 
         contact_track_elements = self.get_track_element_at_wheels(0)
-        wheel_distances = [wheel.distances[0] for wheel in self.train.wheels]
-        disp_at_wheels = self.get_disp_track_at_wheels(contact_track_elements, wheel_distances, self.track.solver.u[0,:])
+        # wheel_distances = [wheel.distances[0] for wheel in self.train.wheels]
+        disp_at_wheels = self.get_disp_track_at_wheels(contact_track_elements, 0, self.track.solver.u[0,:])
 
         self.calculate_initial_displacement_train(disp_at_wheels)
         self.calculate_static_contact_deformation()
@@ -420,10 +373,14 @@ class CoupledTrainTrack():
 
         self.initialize_track_elements()
 
+        self.calculate_distance_wheels_track_nodes()
+        self.calculate_y_shape_factors()
+
         self.solver.initialise(self.total_n_dof, self.time)
 
         self.calculate_initial_state()
         self.set_stage_time_ids()
+
 
     def set_stage_time_ids(self):
         """
