@@ -90,10 +90,14 @@ class CoupledTrainTrack():
         nodal_coordinates = np.array([np.array([element.nodes[0].coordinates for element in wheel])
                                       for wheel in self.track_elements])
 
+        initial_distance = np.array([[distance_np(np.array([0, 0, 0]), wheel_coords[0])
+                                     for wheel_coords in nodal_coordinates]])
         cumulative_dist_nodes = np.array([calculate_cum_distances_coordinate_array(wheel_coords)
                                           for wheel_coords in nodal_coordinates])
 
+        cumulative_dist_nodes = np.add(cumulative_dist_nodes,initial_distance.transpose())
         self.wheel_node_dist = np.array([wheel - cumulative_dist_nodes[idx] for idx, wheel in enumerate(self.wheel_distances)])
+        pass
 
     def calculate_y_shape_factors_rail(self):
 
@@ -173,7 +177,10 @@ class CoupledTrainTrack():
         contact_force = self.calculate_wheel_rail_contact_force(t, u_wheels + u_stat - disp_at_wheels)
 
         F = copy.deepcopy(self.global_force_vector[:,t])
-        F[self.train.contact_dofs] += contact_force
+        F[self.train.contact_dofs] += np.reshape(contact_force,(contact_force.size, 1))
+
+        # for idx, contact_dof in enumerate(self.train.contact_dofs):
+        #     F[contact_dof] += contact_force[idx]
 
         self.set_wheel_load_on_track(contact_track_elements, -contact_force, t)
 
@@ -307,6 +314,9 @@ class CoupledTrainTrack():
         ini_solver = StaticSolver()
         ini_solver.initialise(self.track.total_n_dof, self.time[:3])
         ini_solver.calculate(K, F, 0, 2)
+
+        self.track.solver.initialise(self.track.total_n_dof, self.time)
+        self.track.solver.u[0, :] = ini_solver.u[1, :]
 
     def calculate_initial_displacement_train(self, wheel_displacements):
         """
@@ -447,11 +457,13 @@ class CoupledTrainTrack():
         :return:
         """
 
-        self.displacements = self.solver.u
-        self.velocities = self.solver.v
-        self.accelerations = self.solver.a
+        self.solver.finalise()
 
-        self.time = self.solver.time
+        self.displacements = self.solver.u_out
+        self.velocities = self.solver.v_out
+        self.accelerations = self.solver.a_out
+
+        self.time_out = self.solver.time_out
 
     def main(self):
 

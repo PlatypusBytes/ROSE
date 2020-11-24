@@ -25,8 +25,8 @@ import matplotlib.pyplot as plt
 # if RENEW_BENCHMARKS is true, the analytical solutions will be recalculated, results will be plotted together with the
 # numerical solution.
 RENEW_BENCHMARKS = False
-TEST_PATH = os.path.join('rose', 'tests')
-# TEST_PATH = '.'
+# TEST_PATH = os.path.join('rose', 'tests')
+TEST_PATH = '.'
 
 
 class TestBenchmarkSet2:
@@ -743,8 +743,7 @@ class TestBenchmarkSet2:
 
         # Set parameters of beam and winkler foundation
         stiffness_spring = 123e6
-        distance_springs = 10 #0.6
-        winkler_mod_1 = stiffness_spring / distance_springs
+        distance_springs = 0.6 #0.6
 
         youngs_mod_beam = 210e5
         intertia_beam = 2337.9e-3
@@ -752,20 +751,14 @@ class TestBenchmarkSet2:
 
         n_sleepers = 100
 
-        n_sleepers = 3
-
         # setup numerical model
         # set time in two stages
-        calculation_time_steps = 10000
+        calculation_time_steps = 5000
 
         initialisation_time = np.linspace(0, 0.1, 1000)
         # calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 5, calculation_time_steps)
         calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 1, calculation_time_steps)
         time = np.concatenate((initialisation_time, calculation_time[1:]))
-
-
-        # time = np.linspace(0, 0.1, 10001)
-
 
         # set geometry
         # set left part of rail
@@ -804,7 +797,7 @@ class TestBenchmarkSet2:
 
         rail_model_part.section = section
         rail_model_part.material = material
-        rail_model_part.damping_ratio = 0.04
+        rail_model_part.damping_ratio = 2.04
         rail_model_part.radial_frequency_one = 2
         rail_model_part.radial_frequency_two = 500
 
@@ -813,7 +806,6 @@ class TestBenchmarkSet2:
         rail_pad_model_part.mass = 5  # 5
         rail_pad_model_part.stiffness = stiffness_spring / 0.1
         rail_pad_model_part.damping = 12e3  # 12e3
-
 
         sleeper_model_part.mass = 162.5  # 162.5
         sleeper_model_part.distance_between_sleepers = distance_springs
@@ -827,10 +819,8 @@ class TestBenchmarkSet2:
         velocity = (position[-1] - position[0]) / (time[-1] - time[len(initialisation_time)])
 
         # set moving load on rail_model_part
-        velocities = np.ones(len(time)) * velocity
-        # velocities[0:len(initialisation_time)] = 0
-        # velocities[:] = 0
-
+        velocities = np.ones(len(time)) * velocity/2
+        velocities[0:len(initialisation_time)] = 0
 
         # constraint rotation at the side boundaries
         side_boundaries = ConstraintModelPart(normal_dof=False, y_disp_dof=True, z_rot_dof=True)
@@ -844,51 +834,13 @@ class TestBenchmarkSet2:
         track = GlobalSystem()
         track.mesh = all_mesh
         track.time = time
-        track.solver = solver
 
         # get all element model parts from dictionary
         model_parts = [[rail_model_part, rail_pad_model_part, sleeper_model_part, soil_1,
                         side_boundaries],
                        list(bottom_boundary_1.values())]
 
-        # model_parts = [[rail_model_part, rail_pad_model_part, sleeper_model_part, soil_1],
-        #                list(bottom_boundary_1.values())]
-
         track.model_parts = list(itertools.chain.from_iterable(model_parts))
-
-
-        length_beam = 6.25
-        n_beams = 1
-
-        length_beam = 12.5
-        n_beams = 2
-
-        # Setup parameters euler beam
-        #
-        # n_steps = 1000
-        # increase_factor = 2
-        # prev_dt = 0.0001
-        # prev_time = np.linspace(0, prev_dt, n_steps)
-        # for i in range(2):
-        #     new_dt = prev_dt * increase_factor
-        #     new_time = np.linspace(prev_time[-1], prev_time[-1] + new_dt, n_steps)
-        #     time = np.concatenate((prev_time, new_time[1:]))
-        #
-        #     prev_time = copy.deepcopy(time)
-        #     prev_dt = new_dt
-
-        # t_steps2 = 100
-        # t_steps3 = 100
-        # t_steps4 = 100
-        # calculation_time_steps = 10000
-        #
-        # initialisation_time = np.linspace(0, 0.00001, 100)
-        # time_2 = np.linspace(initialisation_time[-1], initialisation_time[-1] + 0.00005, t_steps2)
-        # time_3 = np.linspace(time_2[-1], time_2[-1] + 0.001, t_steps3)
-        # time_4 = np.linspace(time_3[-1], time_3[-1] + 0.01, t_steps4)
-        # calculation_time = np.linspace(time_4[-1], time_4[-1] + 1, calculation_time_steps)
-        # time = np.concatenate((initialisation_time,time_2[1:], time_3[1:], time_4[1:], calculation_time[1:]))
-
 
 
         # set up train
@@ -909,15 +861,15 @@ class TestBenchmarkSet2:
         wheel_2.mass = mass_wheel
 
         bogie = Bogie()
-        # bogie.wheels = [wheel_1, wheel_2]
-        bogie.wheels = [wheel_1]
-        # bogie.wheel_distances = [0,20]
+        bogie.wheels = [wheel_1, wheel_2]
+        # bogie.wheels = [wheel_1]
+        bogie.wheel_distances = [-2,2]
         bogie.wheel_distances = [0]
         bogie.mass = mass_bogie
         bogie.intertia = inertia_bogie
         bogie.stiffness = prim_stiffness
         bogie.damping = prim_damping
-        bogie.length = 20
+        bogie.length = 4
         bogie.calculate_total_n_dof()
 
         cart = Cart()
@@ -933,11 +885,8 @@ class TestBenchmarkSet2:
         train = TrainModel()
         train.carts = [cart]
         train.time = time
-        # train.velocities = velocities
-        train.velocities = np.ones(len(train.time)) * 0
-        # train.velocities[:10000] = 0
-        train.cart_distances = [10]
-        train.herzian_contact_cof = 9.1e-7
+        train.velocities = velocities
+        train.cart_distances = [5.1]
 
         coupled_model = CoupledTrainTrack()
 
@@ -948,26 +897,28 @@ class TestBenchmarkSet2:
         coupled_model.time = time
         # coupled_model.initialisation_time = initialisation_time
 
-        coupled_model.herzian_contact_coef = train.herzian_contact_cof
+        coupled_model.herzian_contact_coef = 9.1e-7
         coupled_model.herzian_power = 3 / 2
 
-        train.calculate_distances()
-
-
-        coupled_model.solver = ZhaiSolver()
-        # coupled_model.solver.initialise(coupled_model.total_n_dof, coupled_model.time)
-        coupled_model.solver.load_func = coupled_model.update_force_vector
-        coupled_model.velocities = train.velocities
+        coupled_model.solver = solver
+        coupled_model.velocities = velocities
 
         coupled_model.main()
-        # coupled_model.initialise()
+
+        vertical_displacements_rail = np.array(
+            [node.displacements[0::10, 1] for node in coupled_model.track.model_parts[0].nodes])
+        coords = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[0].nodes])
+
+        create_animation("temp_mov2.html", (coords),
+                         (vertical_displacements_rail[:,:]))
 
         # plt.plot(coupled_model.solver.u[:,601])
-        # plt.plot(coupled_model.solver.u[:, 2])
-        plt.plot(coupled_model.solver.u[:, -1])
+        # plt.plot(coords, vertical_displacements_rail[:,1000])
+        # plt.plot(coords, vertical_displacements_rail[:, -1])
+        # plt.plot(coupled_model.solver.u[2000:10000, -1])
         # plt.plot(coupled_model.solver.u[:, -1])
         # plt.plot(coupled_model.solver.u[:, 1])
-        plt.show()
+        # plt.show()
         # coupled_model.wheel_loads = None
 
     @pytest.mark.parametrize("solver, n_timesteps, filename_expected",
