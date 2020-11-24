@@ -51,6 +51,11 @@ class Solver:
         self.mass_func = None
         self.damping_func = None
 
+        self.output_interval = 10
+        self.u_out = []
+        self.v_out = []
+        self.a_out = []
+        self.time_out = []
         return
 
     def initialise(self, number_equations, time):
@@ -66,6 +71,13 @@ class Solver:
     def update(self, t_start_idx):
         self.u0 = self.u[t_start_idx, :]
         self.v0 = self.v[t_start_idx, :]
+
+    def finalise(self):
+        self.u_out = self.u[0::self.output_interval,:]
+        self.v_out = self.v[0::self.output_interval,:]
+        self.a_out = self.a[0::self.output_interval,:]
+
+        self.time_out = self.time[0::self.output_interval]
 
     def validate_input(self, F, t_start_idx, t_end_idx):
         if len(self.time) != np.shape(F)[1]:
