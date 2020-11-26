@@ -25,8 +25,8 @@ import matplotlib.pyplot as plt
 # if RENEW_BENCHMARKS is true, the analytical solutions will be recalculated, results will be plotted together with the
 # numerical solution.
 RENEW_BENCHMARKS = False
-# TEST_PATH = os.path.join('rose', 'tests')
-TEST_PATH = '.'
+TEST_PATH = os.path.join('rose', 'tests')
+# TEST_PATH = '.'
 
 
 class TestBenchmarkSet2:
@@ -864,7 +864,7 @@ class TestBenchmarkSet2:
         bogie.wheels = [wheel_1, wheel_2]
         # bogie.wheels = [wheel_1]
         bogie.wheel_distances = [-2,2]
-        bogie.wheel_distances = [0]
+        # bogie.wheel_distances = [0]
         bogie.mass = mass_bogie
         bogie.intertia = inertia_bogie
         bogie.stiffness = prim_stiffness
@@ -909,8 +909,8 @@ class TestBenchmarkSet2:
             [node.displacements[0::10, 1] for node in coupled_model.track.model_parts[0].nodes])
         coords = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[0].nodes])
 
-        create_animation("temp_mov2.html", (coords),
-                         (vertical_displacements_rail[:,:]))
+        # create_animation("temp_mov2.html", (coords),
+        #                  (vertical_displacements_rail[:,:]))
 
         # plt.plot(coupled_model.solver.u[:,601])
         # plt.plot(coords, vertical_displacements_rail[:,1000])

@@ -3,43 +3,30 @@ from rose.base.global_system import GlobalSystem
 from rose.base.model_part import ElementModelPart, TimoshenkoBeamElementModelPart
 from rose.utils.utils import *
 from rose.utils.mesh_utils import *
-from rose.solver.solver import NewmarkSolver, StaticSolver, ZhaiSolver
+from rose.solver.solver import StaticSolver
 
 import numpy as np
 from scipy import sparse
 from copy import deepcopy
 
-class CoupledTrainTrack():
+class CoupledTrainTrack(GlobalSystem):
     def __init__(self):
+        super(CoupledTrainTrack, self).__init__()
         self.train = None
         self.track = None
         self.rail = None
-
-        self.time = None
-        self.initialisation_time = None
 
         self.herzian_contact_coef = None
         self.herzian_power = None
 
         self.irregularities_at_wheels = None
 
-        self.global_mass_matrix = None
-        self.global_damping_matrix = None
-        self.global_stiffness_matrix = None
-        self.global_force_vector = None
-
-        self.total_n_dof = None
-
-        self.solver = None
         self.velocities = None
         self.wheel_loads = None
 
-        self.force_vector = None
         self.static_force_vector = None
 
-        self.g = 9.81
         self.velocities = None
-        self.time = None
 
         self.deformation_wheels = None
         self.deformation_track_at_wheels = None
@@ -115,9 +102,6 @@ class CoupledTrainTrack():
     def __get_wheel_dofs(self):
         return [wheel.nodes[0].index_dof[1] for wheel in self.train.wheels]
 
-    def calculate_active_n_dof(self):
-        self.train.calculate_active_n_dof()
-
 
     def __calculate_elastic_wheel_deformation(self, t):
 
@@ -168,55 +152,81 @@ class CoupledTrainTrack():
 
         return disp_at_wheels
 
-    def update_force_vector(self,u, t):
-        u_wheels = u[self.train.contact_dofs]
-        u_stat = self.static_contact_deformation
+    def update_force_vector_contact(self, u: np.ndarray, t: int, F: sparse.lil_matrix) -> sparse.lil_matrix:
+        """
+        Updates the complete force vector due to wheel-rail contact forces
 
+        :param u: displacements at time t
+        :param t: time index
+        :param F: Force vector at time t
+        :return F:  Force vector at time t
+        """
+
+        # get displacement of wheels
+        u_wheels = u[self.train.contact_dofs]
+
+        # determine contact force
+        u_stat = self.static_contact_deformation
         contact_track_elements = self.get_track_element_at_wheels(t)
         disp_at_wheels = self.get_disp_track_at_wheels(contact_track_elements, t, u)
         contact_force = self.calculate_wheel_rail_contact_force(t, u_wheels + u_stat - disp_at_wheels)
 
-        F = copy.deepcopy(self.global_force_vector[:,t])
-        F[self.train.contact_dofs] += np.reshape(contact_force,(contact_force.size, 1))
+        # add contact force to train
+        F[self.train.contact_dofs] += np.reshape(contact_force, (contact_force.size, 1))
 
-        # for idx, contact_dof in enumerate(self.train.contact_dofs):
-        #     F[contact_dof] += contact_force[idx]
-
+        # add contact force to track
         self.set_wheel_load_on_track(contact_track_elements, -contact_force, t)
-
         F[:self.track.total_n_dof] = self.track.global_force_vector[:, t].toarray()
+
         return F
 
+    def update_force_vector(self, u: np.ndarray, t: int) -> sparse.lil_matrix:
+        """
+        Updates the complete force vector at time t
+
+        :param u: displacements at time t
+        :param t: time index
+        :return F: Force vector at time t
+        """
+
+        # Get force vector at time t
+        F = copy.deepcopy(self.global_force_vector[:, t])
+
+        # Update force vector due to contact force between rail and wheels
+        F = self.update_force_vector_contact(u, t, F)
+
+        return F
 
     def calculate_static_load(self):
+        """
+        Calculates static loads in the train and in the track and subsoil
+        :return:
+        """
         self.train.calculate_total_static_load()
         self.track.calculate_total_static_load()
 
     def initialize_force_vector(self):
+        """
+        Initialises force vector of the train and the track
+        :return:
+        """
 
         self.train.initialize_force_vector()
         self.track.initialize_force_vector()
 
-    def initialize_global_matrices(self):
-        self.global_stiffness_matrix = sparse.lil_matrix(
-            (self.total_n_dof, self.total_n_dof)
-        )
-        self.global_damping_matrix = sparse.lil_matrix(
-            (self.total_n_dof, self.total_n_dof)
-        )
-        self.global_mass_matrix = sparse.lil_matrix(
-            (self.total_n_dof, self.total_n_dof)
-        )
-        self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)))
-
     def combine_global_matrices(self):
+        """
+        Combines global matrices of the train and the track
+
+        :return:
+        """
         # add track
         self.global_stiffness_matrix[:self.track.total_n_dof, :self.track.total_n_dof] = self.track.global_stiffness_matrix
         self.global_damping_matrix[:self.track.total_n_dof, :self.track.total_n_dof] = self.track.global_damping_matrix
         self.global_mass_matrix[:self.track.total_n_dof,:self.track.total_n_dof] = self.track.global_mass_matrix
         self.global_force_vector[:self.track.total_n_dof,:] = self.track.global_force_vector
 
-        self.solver.u[:,:self.track.total_n_dof] = self.track.solver.u[:,:]
+        self.solver.u[:, :self.track.total_n_dof] = self.track.solver.u[:, :]
         self.solver.v[:, :self.track.total_n_dof] = self.track.solver.v[:, :]
 
         # add train
@@ -231,13 +241,16 @@ class CoupledTrainTrack():
 
         self.global_force_vector[self.track.total_n_dof:self.total_n_dof, :] = self.train.global_force_vector
 
-        self.solver.u[:,self.track.total_n_dof:self.total_n_dof] = self.train.solver.u[:,:]
+        self.solver.u[:, self.track.total_n_dof:self.total_n_dof] = self.train.solver.u[:, :]
         self.solver.v[:, self.track.total_n_dof:self.total_n_dof] = self.train.solver.v[:, :]
 
-
-
     def initialise_ndof(self):
+        """
+        Initialises number of the degree of freedom for the train and track
+        :return:
+        """
 
+        # add track n_dof track to n_dof train
         for node in self.train.nodes:
             for idx, index_dof in enumerate(node.index_dof):
                 if index_dof is not None:
@@ -246,48 +259,7 @@ class CoupledTrainTrack():
         # recalculate contact dofs train
         self.train.get_contact_dofs()
 
-        self.total_n_dof = self.track.total_n_dof + self.train.active_n_dof
-
-
-    def calculate_stage(self, start_time_id, end_time_id):
-
-        """
-        Calculates the global system
-        :return:
-        """
-        # transfer matrices to compressed sparsed column matrices
-        M = self.global_mass_matrix.tocsc()
-        C = self.global_damping_matrix.tocsc()
-        K = self.global_stiffness_matrix.tocsc()
-        F = self.global_force_vector.tocsc()
-
-        # run_stages with Zhai solver
-        if isinstance(self.solver, ZhaiSolver):
-            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
-
-        # run_stages with Newmark solver
-        if isinstance(self.solver, NewmarkSolver):
-            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
-
-        # run_stages with Static solver
-        if isinstance(self.solver, StaticSolver):
-            self.solver.calculate(K, F, start_time_id, end_time_id)
-
-        self.assign_results_to_nodes()
-
-    def _assign_result_to_node(self, node):
-        """
-        Assigns solver results to a node
-        :param node:
-        :return:
-        """
-        node_ids_dofs = list(node.index_dof[node.index_dof != None])
-        node.assign_result(
-            self.solver.u[:, node_ids_dofs],
-            self.solver.v[:, node_ids_dofs],
-            self.solver.a[:, node_ids_dofs],
-        )
-        return node
+        self.total_n_dof = self.track.total_n_dof + self.train.total_n_dof
 
     def assign_results_to_nodes(self):
         """
@@ -307,9 +279,10 @@ class CoupledTrainTrack():
         Calculates initial displacement of track
         :return:
         """
+
         # transfer matrices to compressed sparsed column matrices
-        K = sparse.lil_matrix(deepcopy(self.track.global_stiffness_matrix))
-        F = sparse.lil_matrix(deepcopy(self.track.global_force_vector[:,:3]))
+        K = sparse.csc_matrix(deepcopy(self.track.global_stiffness_matrix))
+        F = sparse.csc_matrix(deepcopy(self.track.global_force_vector[:,:3]))
 
         ini_solver = StaticSolver()
         ini_solver.initialise(self.track.total_n_dof, self.time[:3])
@@ -325,35 +298,27 @@ class CoupledTrainTrack():
         :param wheel_displacements: displacement of track below initial loaction of the wheels
         :return:
         """
+
         # transfer matrices to compressed sparsed column matrices
         K = sparse.lil_matrix(deepcopy(self.train.global_stiffness_matrix))
         F = sparse.lil_matrix(deepcopy(self.train.global_force_vector))
 
         wheel_dofs = [wheel.nodes[0].index_dof[1] -self.track.total_n_dof for wheel in self.train.wheels]
         ini_solver = StaticSolver()
-        ini_solver.initialise(self.train.active_n_dof - len(wheel_dofs), self.time)
+        ini_solver.initialise(self.train.total_n_dof - len(wheel_dofs), self.time)
         K = utils.delete_from_lil(
             K, row_indices=wheel_dofs, col_indices=wheel_dofs).tocsc()
         F = utils.delete_from_lil(
             F, row_indices=wheel_dofs).tocsc()
         ini_solver.calculate(K, F, 0, 1)
 
-        self.train.solver.initialise(self.train.active_n_dof, self.time)
+        self.train.solver.initialise(self.train.total_n_dof, self.time)
 
         # todo take into account initial differential settlements between wheels, for now max displacement of wheel is taken
         mask = np.ones(self.train.solver.u[0, :].shape, bool)
         mask[wheel_dofs] = False
         self.train.solver.u[0, mask] = ini_solver.u[1, :] + max(wheel_displacements)
         self.train.solver.u[0, wheel_dofs] = wheel_displacements
-
-    def update_stage(self, start_time_id, end_time_id):
-        """
-        Updates model parts and solver
-        :param start_time_id:
-        :param end_time_id:
-        :return:
-        """
-        self.solver.update(start_time_id)
 
     def calculate_initial_state(self):
         """
@@ -369,7 +334,6 @@ class CoupledTrainTrack():
         self.calculate_initial_displacement_train(disp_at_wheels)
         self.calculate_static_contact_deformation()
         self.combine_global_matrices()
-
 
     def initialize_wheel_loads(self):
         """
@@ -389,7 +353,6 @@ class CoupledTrainTrack():
 
             self.wheel_loads.extend(list(load.values()))
         self.track.model_parts.extend(self.wheel_loads)
-
 
     def initialise_track_wheel_interaction(self):
         """
@@ -433,7 +396,7 @@ class CoupledTrainTrack():
         self.initialise_track()
 
         self.initialise_ndof()
-        self.initialize_global_matrices()
+        self.initialise_global_matrices()
         self.initialise_track_wheel_interaction()
 
         self.set_stage_time_ids()
@@ -441,38 +404,28 @@ class CoupledTrainTrack():
         self.solver.initialise(self.total_n_dof, self.time)
         self.solver.load_func = self.update_force_vector
 
-
-    def set_stage_time_ids(self):
-        """
-        Find indices of unique time steps
-        :return:
-        """
-        diff = np.diff(self.time)
-        new_dt_idxs = sorted(np.unique(diff.round(decimals=15), return_index=True)[1])
-        self.stage_time_ids = np.append(new_dt_idxs, len(self.time) - 1)
-
     def finalise(self):
         """
         Finalises calculation
         :return:
         """
 
-        self.solver.finalise()
-
-        self.displacements = self.solver.u_out
-        self.velocities = self.solver.v_out
-        self.accelerations = self.solver.a_out
-
-        self.time_out = self.solver.time_out
+        super().finalise()
+        self.assign_results_to_nodes()
 
     def main(self):
+        """
+        Performs main procedure
+        :return:
+        """
 
+        self.validate_input()
         self.initialise()
         self.calculate_initial_state()
 
         # calculate stages
         for i in range(len(self.stage_time_ids) - 1):
-            self.update_stage(self.stage_time_ids[i], self.stage_time_ids[i + 1])
+            self.update(self.stage_time_ids[i], self.stage_time_ids[i + 1])
             self.calculate_stage(self.stage_time_ids[i], self.stage_time_ids[i + 1])
 
         self.finalise()

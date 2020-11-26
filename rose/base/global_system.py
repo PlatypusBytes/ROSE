@@ -25,7 +25,9 @@ class GlobalSystem:
 
         self.solver = None
         self.time = None
+        self.initialisation_time = None
         self.stage_time_ids = None
+        self.time_out = None
 
         self.model_parts = []  # type: List[ModelPart]
 
@@ -34,6 +36,8 @@ class GlobalSystem:
         self.displacements = None
         self.velocities = None
         self.accelerations = None
+
+        self.g = 9.81
 
     def validate_input(self):
         for model_part in self.model_parts:
@@ -247,25 +251,13 @@ class GlobalSystem:
         if len(obsolete_indices) > 0:
             self.__recalculate_dof(np.array(obsolete_indices))
 
-    def initialise_global_matrices(self):
+
+    def add_model_parts_to_global_matrices(self):
         """
-        Inititialises all the global matrices with all element model parts and conditions and constraints
+        Adds data from model parts to the global matrices
 
         :return:
         """
-
-        # initialise global lil matrices
-        self.global_stiffness_matrix = sparse.lil_matrix(
-            (self.total_n_dof, self.total_n_dof)
-        )
-        self.global_damping_matrix = sparse.lil_matrix(
-            (self.total_n_dof, self.total_n_dof)
-        )
-        self.global_mass_matrix = sparse.lil_matrix(
-            (self.total_n_dof, self.total_n_dof)
-        )
-        self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)))
-
         # add aux matrices to global matrices for each element model part and load model part
         for model_part in self.model_parts:
             if isinstance(model_part, ElementModelPart):
@@ -282,6 +274,28 @@ class GlobalSystem:
 
         # removes obsolete rows and columns from the global matrices
         self.trim_all_global_matrices()
+
+
+    def initialise_global_matrices(self):
+        """
+        Inititialises all the global matrices as zero
+
+        :return:
+        """
+
+        # initialise global lil matrices
+        self.global_stiffness_matrix = sparse.lil_matrix(
+            (self.total_n_dof, self.total_n_dof)
+        )
+        self.global_damping_matrix = sparse.lil_matrix(
+            (self.total_n_dof, self.total_n_dof)
+        )
+        self.global_mass_matrix = sparse.lil_matrix(
+            (self.total_n_dof, self.total_n_dof)
+        )
+        self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)))
+
+
 
     def initialise_ndof(self):
         """
@@ -308,7 +322,7 @@ class GlobalSystem:
         :return:
         """
         diff = np.diff(self.time)
-        new_dt_idxs = sorted(np.unique(diff.round(decimals=7), return_index=True)[1])
+        new_dt_idxs = sorted(np.unique(diff.round(decimals=15), return_index=True)[1])
         self.stage_time_ids = np.append(new_dt_idxs, len(self.time) - 1)
 
     def update_model_parts(self):
@@ -329,6 +343,7 @@ class GlobalSystem:
         self.initialise_model_parts()
         self.initialise_ndof()
         self.initialise_global_matrices()
+        self.add_model_parts_to_global_matrices()
 
         self.set_stage_time_ids()
 
@@ -375,11 +390,15 @@ class GlobalSystem:
         :return:
         """
 
-        self.displacements = self.solver.u
-        self.velocities = self.solver.v
-        self.accelerations = self.solver.a
+        self.solver.finalise()
 
-        self.time = self.solver.time
+        self.displacements = self.solver.u_out
+        self.velocities = self.solver.v_out
+        self.accelerations = self.solver.a_out
+
+        self.time_out = self.solver.time_out
+
+
 
     def _assign_result_to_node(self, node):
         """
