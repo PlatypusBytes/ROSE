@@ -70,7 +70,6 @@ class CoupledTrainTrack(GlobalSystem):
 
         self.track_elements = np.array(self.track_elements)
 
-
     def calculate_distance_wheels_track_nodes(self):
         self.wheel_distances = np.array([wheel.distances for wheel in self.train.wheels])
 
@@ -196,23 +195,6 @@ class CoupledTrainTrack(GlobalSystem):
         F = self.update_force_vector_contact(u, t, F)
 
         return F
-
-    def calculate_static_load(self):
-        """
-        Calculates static loads in the train and in the track and subsoil
-        :return:
-        """
-        self.train.calculate_total_static_load()
-        self.track.calculate_total_static_load()
-
-    def initialize_force_vector(self):
-        """
-        Initialises force vector of the train and the track
-        :return:
-        """
-
-        self.train.initialize_force_vector()
-        self.track.initialize_force_vector()
 
     def combine_global_matrices(self):
         """

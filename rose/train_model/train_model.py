@@ -5,7 +5,6 @@ from typing import List
 
 from rose.utils import utils
 from rose.base.geometry import Node, Element, Mesh
-import time
 from rose.base.model_part import ElementModelPart
 from rose.base.global_system import GlobalSystem
 
@@ -18,7 +17,7 @@ class Wheel(ElementModelPart):
         super().__init__()
         self.mass = 0 #1e-10
         self.total_static_load = None
-        self.distances = 0
+        self.distances = None
 
         self.index_dof = [None]
 
@@ -32,34 +31,20 @@ class Wheel(ElementModelPart):
         self.aux_mass_matrix = np.zeros((1, 1))
         self.aux_mass_matrix[0] = self.mass
 
-        # self.aux_mass_matrix = utils.reshape_aux_matrix(len(self.nodes),
-        #                        [self.normal_dof, self.y_disp_dof, self.z_rot_dof],
-        #                        self.aux_mass_matrix)
-
 
     def set_aux_stiffness_matrix(self):
         self.aux_stiffness_matrix = np.zeros((1, 1))
-        # self.aux_stiffness_matrix = utils.reshape_aux_matrix(len(self.nodes),
-        #                        [self.normal_dof, self.y_disp_dof, self.z_rot_dof],
-        #                        self.aux_stiffness_matrix)
 
     def set_aux_damping_matrix(self):
         self.aux_damping_matrix = np.zeros((1, 1))
-
-        # self.aux_damping_matrix = utils.reshape_aux_matrix(len(self.nodes),
-        #                        [self.normal_dof, self.y_disp_dof, self.z_rot_dof],
-        #                        self.aux_damping_matrix)
 
     def set_static_force_vector(self):
         self.static_force_vector = np.zeros((1, 1))
         self.static_force_vector[0,0] = -self.mass * g
 
-        # self.static_force_vector = utils.reshape_force_vector(len(self.nodes),
-        #                                                    [self.normal_dof, self.y_disp_dof, self.z_rot_dof],
-        #                                                    self.static_force_vector)
-
-    def set_mesh(self, y=0, z=0):
-        self.nodes = [Node(self.distances[0],0,0)]
+    def set_mesh(self,mesh, y=0, z=0):
+        self.nodes = [Node(self.distances[0], y, z)]
+        mesh.add_unique_nodes_to_mesh(self.nodes)
 
     def calculate_active_n_dof(self, index_dof):
         self.active_n_dof = 1
@@ -100,12 +85,13 @@ class Bogie(ElementModelPart):
     def z_rot_dof(self):
         return True
 
-    def set_mesh(self,x, y=1,z=0):
-        self.nodes = [Node(x, y, z)]
+    def set_mesh(self, mesh, y=1, z=0):
+        self.nodes = [Node(self.distances[0], y, z)]
+
+        mesh.add_unique_nodes_to_mesh(self.nodes)
 
         for wheel in self.wheels:
-            wheel.set_mesh()
-            # self.nodes.extend(wheel.nodes)
+            wheel.set_mesh(mesh)
 
     def __add_wheel_mass_matrix(self, wheel, aux_mass_matrix):
         pass
@@ -119,11 +105,6 @@ class Bogie(ElementModelPart):
         index_dof += 1
 
         for idx, wheel in enumerate(self.wheels):
-            # self.nodes[idx].index_dof[1] = index_dof
-            # index_dof += 1
-            # self.nodes[idx].index_dof[2] = index_dof
-            # index_dof += 1
-
             index_dof = wheel.calculate_active_n_dof(index_dof)
 
         self.active_n_dof = 2 + sum([wheel.active_n_dof for wheel in self.wheels])
@@ -266,12 +247,13 @@ class Cart(ElementModelPart):
     def z_rot_dof(self):
         return True
 
-    def set_mesh(self,y=2,z=0):
-        self.nodes = [Node(bogie.distances[0], y, z)  for bogie in self.bogies]
+    def set_mesh(self, mesh, y=2, z=0):
+        self.nodes = [Node(self.distances[0], y, z)]
+
+        mesh.add_unique_nodes_to_mesh(self.nodes)
 
         for bogie in self.bogies:
-            bogie.set_mesh()
-            # self.nodes.extend(bogie.nodes)
+            bogie.set_mesh(mesh)
 
     def calculate_active_n_dof(self, index_dof):
 
@@ -386,23 +368,17 @@ class TrainModel(GlobalSystem):
         self.static_wheel_load = None
         self.static_wheel_deformation = None
 
-        self.global_force_vector = None
         self.static_force_vector = None
 
-        self.g = 9.81
         self.velocities = None
         self.time = None
 
-        # todo generalize below
         self.deformation_wheels = None
-        self.deformation_track_at_wheels = None
         self.irregularities_at_wheels = None
         self.total_static_load = None
 
         self.contact_dofs = None
 
-        self.solver = None
-        self.mesh = None
 
     @property
     def bogies(self):
@@ -413,8 +389,14 @@ class TrainModel(GlobalSystem):
         return self.__wheels
 
     def set_mesh(self):
+
+        # initialise mesh
+        self.mesh = Mesh()
+
         for cart in self.carts:
-            cart.set_mesh()
+            cart.set_mesh(self.mesh)
+
+        self.nodes = list(self.mesh.nodes)
 
     def __get_bogies(self):
         self.__bogies = []
@@ -432,38 +414,12 @@ class TrainModel(GlobalSystem):
 
 
     def initialise_ndof(self):
-        # self.active_n_dof = sum([cart.active_n_dof for cart in self.carts])
 
-        ndof = 0
         index_dof = 0
         for cart in self.carts:
             index_dof = cart.calculate_active_n_dof(index_dof)
 
         self.total_n_dof = sum([cart.active_n_dof for cart in self.carts])
-        #     for node in cart.nodes:
-        #         node.index[1] = index_dof
-        #         index_dof += 1
-        #
-        #
-        # for node in self.nodes:
-        #     node.index_dof[0] = index_dof
-        #     index_dof += 1
-        #     node.index_dof[1] = index_dof
-        #     index_dof += 1
-        #     node.index_dof[2] = index_dof
-        #     index_dof += 1
-        #     ndof = ndof + len(node.index_dof)
-
-        # self.active_n_dof = ndof
-        #
-        # global_idx = 0
-        # for cart in self.carts:
-        #     for idx, cart_idx in enumerate(cart.index_dof):
-        #         cart.index_dof[idx] = global_idx
-        #         global_idx +=1
-        #     for bogie in self.bogies:
-
-
 
     def set_global_mass_matrix(self):
         """
@@ -543,18 +499,6 @@ class TrainModel(GlobalSystem):
         for cart in self.carts:
             cart.calculate_total_static_load(distributed_load)
 
-
-    # todo generalize functions below
-    # def calculate_static_wheel_load(self):
-    #
-    #     cart_load_on_wheel = self.static_force_vector[0, 0] / 4
-    #     bogie_load_on_wheel = self.static_force_vector[2, 0] / 2
-    #
-    #     static_wheel_load = self.static_force_vector[[6, 8, 10, 12], [0, 0, 0, 0]] \
-    #                         + cart_load_on_wheel + bogie_load_on_wheel
-    #
-    #     return static_wheel_load
-
     def calculate_static_wheel_deformation(self):
         self.calculate_total_static_load()
 
@@ -562,12 +506,6 @@ class TrainModel(GlobalSystem):
         self.static_wheel_deformation = self.herzian_contact_cof * np.sign(static_wheel_loads) * abs(static_wheel_loads) ** (1/self.herzian_power)
 
     def __calculate_elastic_wheel_deformation(self, t):
-        # elastic_wheel_deformation = (
-        #         # self.static_wheel_deformation
-        #         + self.deformation_wheels
-        #         - self.deformation_track_at_wheels
-        #         - self.irregularities_at_wheels[:, t]
-        # )
 
         elastic_wheel_deformation = (
             # self.static_wheel_deformation
@@ -577,34 +515,9 @@ class TrainModel(GlobalSystem):
         return elastic_wheel_deformation
 
 
-    def get_deformation_wheels(self):
-        self.deformation_wheels = np.zeros(len(self.wheels))
-
-    def get_deformation_track_at_wheels(self, track=None):
-        # todo get deformation from track
-
-        self.deformation_track_at_wheels = np.zeros(len(self.wheels))
-
-    def get_irregularities_track_at_wheels(self):
-        amplitude = 0.001
-        # self.irregularities_at_wheels = np.array([np.cos(wheel.distances * 2 * np.pi * 1) * amplitude for wheel in self.wheels])
-        self.irregularities_at_wheels = np.zeros((len(self.wheels),len(self.time)))
-
-
-    def calculate_wheel_rail_contact_force(self, t, du_wheels):
-
-        elastic_wheel_deformation = self.__calculate_elastic_wheel_deformation(t)
-
-        contact_force = np.sign(elastic_wheel_deformation - du_wheels) * np.nan_to_num((1 / self.herzian_contact_cof * abs((elastic_wheel_deformation - du_wheels))
-                        ) ** self.herzian_power)
-
-        return contact_force
-
-    def update_force_vector(self,u, t):
-        u_wheels = u[self.contact_dofs]
-        self.global_force_vector[self.contact_dofs,t] += self.calculate_wheel_rail_contact_force(t, u_wheels)
-        F = self.global_force_vector[:, t]
-        return F
+    def initialise_irregularities_at_wheels(self):
+        if self.irregularities_at_wheels is None:
+            self.irregularities_at_wheels =np.zeros((len(self.wheels), len(self.time)))
 
     def get_contact_dofs(self):
         wheel_dofs = []
@@ -617,113 +530,37 @@ class TrainModel(GlobalSystem):
         self.contact_dofs = wheel_dofs
 
     def initialize_force_vector(self):
-        # self.dynamic_force_vector = np.zeros((self.active_n_dof, len(self.time)))
         self.global_force_vector = np.zeros((self.total_n_dof, len(self.time)))
         self.set_static_force_vector()
 
         self.global_force_vector += self.static_force_vector
 
-    # def set_dynamic_force_vector(self, t):
-    #
-    #     # self.dynamic_force_vector[self.contact_dofs, t] = self.calculate_wheel_rail_contact_force(t)
-    #     self.dynamic_force_vector[self.contact_dofs,:] = self.calculate_wheel_rail_contact_force(t)
-
-    # def set_force_vector(self):
-    #     # self.force_vector = self.static_force_vector + self.dynamic_force_vector
-    #     self.force_vector = self.dynamic_force_vector
-
-    def create_cart(self, center_x=0):
-        cart_nodes = [
-            Node(center_x - 0.5 * self.length_cart, 2, 0),
-            Node(center_x + 0.5 * self.length_cart, 2, 0),
-        ]
-        cart_elements = [Element([cart_nodes[0], cart_nodes[1]])]
-        for node in cart_nodes:
-            node.z_rot_dof = True
-            node.y_disp_dof = True
-
-        bogie_1_nodes = [
-            Node(cart_nodes[0].coordinates[0] - 0.5 * self.length_bogie, 1, 0),
-            Node(cart_nodes[0].coordinates[0] + 0.5 * self.length_bogie, 1, 0),
-        ]
-        bogie_1_elements = [Element([bogie_1_nodes[0], bogie_1_nodes[1]])]
-
-        for node in bogie_1_nodes:
-            node.z_rot_dof = True
-            node.y_disp_dof = True
-
-        bogie_2_nodes = [
-            Node(cart_nodes[1].coordinates[0] - 0.5 * self.length_bogie, 1, 0),
-            Node(cart_nodes[1].coordinates[0] + 0.5 * self.length_bogie, 1, 0),
-        ]
-        bogie_2_elements = [Element([bogie_2_nodes[0], bogie_2_nodes[1]])]
-
-        for node in bogie_2_nodes:
-            node.z_rot_dof = True
-            node.y_disp_dof = True
-
-        wheels_nodes = [
-            Node(bogie_1_nodes[0].coordinates[0], 0, 0),
-            Node(bogie_1_nodes[1].coordinates[0], 0, 0),
-            Node(bogie_2_nodes[0].coordinates[0], 0, 0),
-            Node(bogie_2_nodes[1].coordinates[0], 0, 0),
-        ]
-        wheels_elements = [
-            Element([bogie_1_nodes[0]]),
-            Element([bogie_1_nodes[1]]),
-            Element([bogie_2_nodes[0]]),
-            Element([bogie_2_nodes[1]]),
-        ]
-
-        for node in wheels_nodes:
-            node.y_disp_dof = True
-
-        mesh = Mesh()
-        mesh.add_unique_nodes_to_mesh(cart_nodes)
-        mesh.add_unique_nodes_to_mesh(bogie_1_nodes)
-        mesh.add_unique_nodes_to_mesh(bogie_2_nodes)
-        mesh.add_unique_nodes_to_mesh(wheels_nodes)
-
-        mesh.add_unique_elements_to_mesh(cart_elements)
-        mesh.add_unique_elements_to_mesh(bogie_1_elements)
-        mesh.add_unique_elements_to_mesh(bogie_2_elements)
-        mesh.add_unique_elements_to_mesh(wheels_elements)
-
-        self.nodes = list(mesh.nodes)
-        self.elements = list(mesh.elements)
-
     def calculate_distances(self):
         """
-        Also sets mesh
+        Calculate the distance of each element of the train for each time step.
+        Set mesh of each element of the train.
         :return:
         """
 
-
         dt = np.diff(self.time)
+
+        # calculate distance from velocity and time
         distances = np.cumsum(np.append(0, self.velocities[:-1] * dt))
 
-        self.mesh = Mesh()
-
+        # calculated distance for each time step for each cart
         for i, cart in enumerate(self.carts):
             cart.distances = np.zeros(len(self.time))
             cart.distances = distances + self.cart_distances[i]
 
-            cart.nodes = [Node(distances[0], 2, 0)]
-            self.mesh.add_unique_nodes_to_mesh(cart.nodes)
-
+            # calculated distance for each time step for each bogie of cart
             for j, bogie in enumerate(cart.bogies):
                 bogie.distances = np.zeros(len(self.time))
                 bogie.distances = cart.distances + cart.bogie_distances[j]
 
-                bogie.nodes = [Node(cart.distances[0], 1, 0)]
-                self.mesh.add_unique_nodes_to_mesh(bogie.nodes)
+                # calculated distance for each time step for each wheel of bogie
                 for k, wheel in enumerate(bogie.wheels):
                     wheel.distances = np.zeros(len(self.time))
                     wheel.distances = bogie.distances + bogie.wheel_distances[k]
-                    wheel.nodes = [Node(wheel.distances[0], 0, 0)]
-                    self.mesh.add_unique_nodes_to_mesh(wheel.nodes)
-        self.nodes = list(self.mesh.nodes)
-
 
     def initialise_global_matrices(self):
 
@@ -735,29 +572,24 @@ class TrainModel(GlobalSystem):
         self.trim_global_matrices()
 
     def initialise(self):
-        # super().initialize()
+        # Setup geometry
         self.calculate_distances()
-        # self.calculate_active_n_dof()
-        # self.calculate_total_n_dof()
-        self.initialise_ndof()
-        self.set_static_force_vector()
-        # self.calculate_static_wheel_deformation()
-        self.get_train_parts()
-        self.get_irregularities_track_at_wheels()
+        self.set_mesh()
 
+        # Get bogies and wheels
+        self.get_train_parts()
+
+        self.initialise_irregularities_at_wheels()
+
+        # setup number degree of freedom
+        self.initialise_ndof()
         self.get_contact_dofs()
-        self.get_irregularities_track_at_wheels()
-        self.calculate_total_static_load()
 
         self.initialise_global_matrices()
+        self.calculate_total_static_load()
+
         self.set_stage_time_ids()
 
-        # self.solver.initialise(self.active_n_dof, self.time)
-
-
-    # def update(self):
-    #     super().update()
-    #     self.set_force_vector()
 
     def __trim_global_matrices_on_indices(self, row_indices: List, col_indices: List):
         """
@@ -782,7 +614,6 @@ class TrainModel(GlobalSystem):
         self.global_force_vector = utils.delete_from_lil(
             self.global_force_vector, row_indices=row_indices
         )
-
 
 
     def __recalculate_dof(self, removed_indices: np.array):
@@ -830,10 +661,11 @@ class TrainModel(GlobalSystem):
         ini_solver.calculate(K, F, 0, 1)
 
         self.solver.initialise(self.total_n_dof, self.time)
-        # todo take into account initial differential settlements between wheels, for now max displacement of wheel is taken
+        # todo take into account initial differential settlements between wheels, for now max displacement of wheel is
+        #  taken. This can improve numerical stability.
         mask = np.ones(self.solver.u[0,:].shape, bool)
         mask[wheel_dofs] = False
-        self.solver.u[0,mask] = ini_solver.u[1,:] + max(wheel_displacements)
+        self.solver.u[0, mask] = ini_solver.u[1, :] + max(wheel_displacements)
         self.solver.u[0, wheel_dofs] = wheel_displacements
         pass
 
@@ -885,8 +717,5 @@ class TrainModel(GlobalSystem):
 
         # calculate stages
         for i in range(len(self.stage_time_ids) - 1):
-            # self.update_stage(0, len(self.time) - 1)
-            # self.calculate_stage(0, len(self.time) - 1)
-
             self.update_stage(self.stage_time_ids[i], self.stage_time_ids[i + 1])
             self.calculate_stage(self.stage_time_ids[i], self.stage_time_ids[i + 1])
