@@ -7,6 +7,7 @@ from rose.utils import utils
 from rose.base.geometry import Node, Element, Mesh
 import time
 from rose.base.model_part import ElementModelPart
+from rose.base.global_system import GlobalSystem
 
 from rose.solver.solver import NewmarkSolver, StaticSolver, ZhaiSolver
 
@@ -370,7 +371,7 @@ class Cart(ElementModelPart):
             bogie.calculate_total_static_load(distributed_load)
 
 
-class TrainModel(ElementModelPart):
+class TrainModel(GlobalSystem):
     def __init__(self):
         super().__init__()
         self.carts = None
@@ -393,9 +394,9 @@ class TrainModel(ElementModelPart):
         self.time = None
 
         # todo generalize below
-        self.deformation_wheels = None #np.zeros((4, 1))
-        self.deformation_track_at_wheels = None #np.zeros((4, 1))
-        self.irregularities_at_wheels = None #np.zeros(4)
+        self.deformation_wheels = None
+        self.deformation_track_at_wheels = None
+        self.irregularities_at_wheels = None
         self.total_static_load = None
 
         self.contact_dofs = None
@@ -414,8 +415,6 @@ class TrainModel(ElementModelPart):
     def set_mesh(self):
         for cart in self.carts:
             cart.set_mesh()
-            # self.nodes.extend(cart.nodes)
-
 
     def __get_bogies(self):
         self.__bogies = []
@@ -432,7 +431,7 @@ class TrainModel(ElementModelPart):
         self.__get_wheels()
 
 
-    def calculate_active_n_dof(self):
+    def initialise_ndof(self):
         # self.active_n_dof = sum([cart.active_n_dof for cart in self.carts])
 
         ndof = 0
@@ -440,7 +439,7 @@ class TrainModel(ElementModelPart):
         for cart in self.carts:
             index_dof = cart.calculate_active_n_dof(index_dof)
 
-        self.active_n_dof = sum([cart.active_n_dof for cart in self.carts])
+        self.total_n_dof = sum([cart.active_n_dof for cart in self.carts])
         #     for node in cart.nodes:
         #         node.index[1] = index_dof
         #         index_dof += 1
@@ -472,7 +471,7 @@ class TrainModel(ElementModelPart):
         :return:
         """
 
-        self.global_mass_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
+        self.global_mass_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
         l = 0
         for cart in self.carts:
             cart.set_aux_mass_matrix()
@@ -488,7 +487,7 @@ class TrainModel(ElementModelPart):
         :return:
         """
 
-        self.global_stiffness_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
+        self.global_stiffness_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
         l = 0
         for cart in self.carts:
             cart.set_aux_stiffness_matrix()
@@ -505,7 +504,7 @@ class TrainModel(ElementModelPart):
         :return:
         """
 
-        self.global_damping_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
+        self.global_damping_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
         l = 0
         for cart in self.carts:
             cart.set_aux_damping_matrix()
@@ -523,7 +522,7 @@ class TrainModel(ElementModelPart):
         :return:
         """
 
-        self.static_force_vector = np.zeros((self.active_n_dof, 1))
+        self.static_force_vector = np.zeros((self.total_n_dof, 1))
 
         l = 0
         for cart in self.carts:
@@ -619,7 +618,7 @@ class TrainModel(ElementModelPart):
 
     def initialize_force_vector(self):
         # self.dynamic_force_vector = np.zeros((self.active_n_dof, len(self.time)))
-        self.global_force_vector = np.zeros((self.active_n_dof, len(self.time)))
+        self.global_force_vector = np.zeros((self.total_n_dof, len(self.time)))
         self.set_static_force_vector()
 
         self.global_force_vector += self.static_force_vector
@@ -736,9 +735,11 @@ class TrainModel(ElementModelPart):
         self.trim_global_matrices()
 
     def initialise(self):
-        super().initialize()
+        # super().initialize()
         self.calculate_distances()
-        self.calculate_active_n_dof()
+        # self.calculate_active_n_dof()
+        # self.calculate_total_n_dof()
+        self.initialise_ndof()
         self.set_static_force_vector()
         # self.calculate_static_wheel_deformation()
         self.get_train_parts()
@@ -801,7 +802,7 @@ class TrainModel(ElementModelPart):
                 else:
                     node.index_dof[idx] = index_dof + i
 
-        self.active_n_dof = self.active_n_dof + i
+        # self.active_n_dof = self.active_n_dof + i
         self.total_n_dof = self.total_n_dof + i
 
     def trim_global_matrices(self):
@@ -821,14 +822,14 @@ class TrainModel(ElementModelPart):
 
         wheel_dofs = [wheel.nodes[0].index_dof[1] for wheel in self.wheels]
         ini_solver = StaticSolver()
-        ini_solver.initialise(self.active_n_dof - len(wheel_dofs), self.time)
+        ini_solver.initialise(self.total_n_dof - len(wheel_dofs), self.time)
         K = utils.delete_from_lil(
             K, row_indices=wheel_dofs, col_indices=wheel_dofs).tocsc()
         F = utils.delete_from_lil(
             F, row_indices=wheel_dofs).tocsc()
         ini_solver.calculate(K, F, 0, 1)
 
-        self.solver.initialise(self.active_n_dof, self.time)
+        self.solver.initialise(self.total_n_dof, self.time)
         # todo take into account initial differential settlements between wheels, for now max displacement of wheel is taken
         mask = np.ones(self.solver.u[0,:].shape, bool)
         mask[wheel_dofs] = False
