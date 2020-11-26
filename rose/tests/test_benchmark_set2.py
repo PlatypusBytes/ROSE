@@ -743,7 +743,7 @@ class TestBenchmarkSet2:
 
         # Set parameters of beam and winkler foundation
         stiffness_spring = 123e6
-        distance_springs = 0.6 #0.6
+        distance_springs = 0.6
 
         youngs_mod_beam = 210e5
         intertia_beam = 2337.9e-3
@@ -756,7 +756,6 @@ class TestBenchmarkSet2:
         calculation_time_steps = 5000
 
         initialisation_time = np.linspace(0, 0.1, 1000)
-        # calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 5, calculation_time_steps)
         calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 1, calculation_time_steps)
         time = np.concatenate((initialisation_time, calculation_time[1:]))
 
@@ -842,7 +841,6 @@ class TestBenchmarkSet2:
 
         track.model_parts = list(itertools.chain.from_iterable(model_parts))
 
-
         # set up train
         mass_wheel = 1019.5
         mass_bogie = 16000 / 2
@@ -905,19 +903,21 @@ class TestBenchmarkSet2:
 
         coupled_model.main()
 
-        vertical_displacements_rail = np.array(
-            [node.displacements[0::10, 1] for node in coupled_model.track.model_parts[0].nodes])
-        coords = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[0].nodes])
+        # vertical_displacements_rail = np.array(
+        #     [node.displacements[0::10, 1] for node in coupled_model.track.model_parts[0].nodes])
+        # coords = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[0].nodes])
 
         # create_animation("temp_mov2.html", (coords),
         #                  (vertical_displacements_rail[:,:]))
 
-        # plt.plot(coupled_model.solver.u[:,601])
-        # plt.plot(coords, vertical_displacements_rail[:,1000])
-        # plt.plot(coords, vertical_displacements_rail[:, -1])
-        # plt.plot(coupled_model.solver.u[2000:10000, -1])
-        # plt.plot(coupled_model.solver.u[:, -1])
-        # plt.plot(coupled_model.solver.u[:, 1])
+        # plt.plot(coupled_model.solver.u[:,-1])
+        # plt.plot(coupled_model.solver.u[:, -2])
+        # # plt.plot(coupled_model.solver.u[:, -3])
+        # # plt.plot(coords, vertical_displacements_rail[:,1000])
+        # # plt.plot(coords, vertical_displacements_rail[:, -1])
+        # # plt.plot(coupled_model.solver.u[2000:10000, -1])
+        # # plt.plot(coupled_model.solver.u[:, -1])
+        # # plt.plot(coupled_model.solver.u[:, 1])
         # plt.show()
         # coupled_model.wheel_loads = None
 
