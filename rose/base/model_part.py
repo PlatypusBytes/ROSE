@@ -257,6 +257,12 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
 
         self.mass = None
 
+        self._normal_shape_functions = np.zeros(2)
+        self._y_shape_functions = np.zeros(4)
+        self._z_rot_shape_functions = np.zeros(4)
+
+
+
     @property
     def normal_dof(self):
         return True

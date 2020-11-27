@@ -800,7 +800,7 @@ class TestBenchmarkSet2:
         rail_model_part.radial_frequency_one = 2
         rail_model_part.radial_frequency_two = 500
 
-        rail_model_part.initialize()
+        # rail_model_part.initialize()
 
         rail_pad_model_part.mass = 5  # 5
         rail_pad_model_part.stiffness = stiffness_spring / 0.1
@@ -910,7 +910,7 @@ class TestBenchmarkSet2:
         # create_animation("temp_mov2.html", (coords),
         #                  (vertical_displacements_rail[:,:]))
 
-        # plt.plot(coupled_model.solver.u[:,-1])
+        plt.plot(coupled_model.solver.u[:,-1])
         # plt.plot(coupled_model.solver.u[:, -2])
         # # plt.plot(coupled_model.solver.u[:, -3])
         # # plt.plot(coords, vertical_displacements_rail[:,1000])
@@ -918,7 +918,7 @@ class TestBenchmarkSet2:
         # # plt.plot(coupled_model.solver.u[2000:10000, -1])
         # # plt.plot(coupled_model.solver.u[:, -1])
         # # plt.plot(coupled_model.solver.u[:, 1])
-        # plt.show()
+        plt.show()
         # coupled_model.wheel_loads = None
 
     @pytest.mark.parametrize("solver, n_timesteps, filename_expected",

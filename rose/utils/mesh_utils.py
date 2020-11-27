@@ -3,7 +3,7 @@ from rose.base.geometry import Node, Element, Mesh
 from rose.track.track import Rail, RailPad, Sleeper
 from rose.soil.soil import Soil
 from rose.base.model_part import ConstraintModelPart, ElementModelPart
-from rose.base.boundary_conditions import LineLoadCondition
+# from rose.base.boundary_conditions import LineLoadCondition, MovingPointLoad
 import rose.utils.utils as utils
 
 import itertools
@@ -24,7 +24,8 @@ INTERSECTION_TOLERANCE = 1e-6
 
 
 def set_load_vector_as_function_of_time(time, load, build_up_idxs, load_locations, lower_limit_location: float, upper_limit_location):
-    # set normal force location as a function of time
+
+
     moving_load = np.ones(len(time)) * load
     #
     moving_load[0:build_up_idxs] = np.linspace(
@@ -88,18 +89,20 @@ def add_moving_point_load_to_track(
     :return:
     """
 
+
     # set line load condition
     normal_dof = rail_model_part.normal_dof
     z_rot_dof = rail_model_part.z_rot_dof
     y_disp_dof = rail_model_part.y_disp_dof
 
-    force = LineLoadCondition(
+    force = MovingPointLoad(
         normal_dof=normal_dof, z_rot_dof=z_rot_dof, y_disp_dof=y_disp_dof
     )
     force.nodes = rail_model_part.nodes
     force.elements = rail_model_part.elements
     force.time = time
-    force.initialize_matrices()
+    force.contact_model_part = rail_model_part
+    # force.initialize_matrices()
 
     # if start coords are not given, set the first node as start coordinates
     if start_coords is None:
@@ -147,12 +150,9 @@ def add_moving_point_load_to_track(
         if i < len(cum_distances_nodes) - 2:
             if distance > cum_distances_nodes[i + 1]:
                 i += 1
-        # force.active_elements[i, idx] = i
         force.active_elements[i, idx] = True
 
     element_idxs = force.active_elements.nonzero()[0]
-
-    # force.active_elements = np.zeros(len(cum_distances_force))
 
     # set the load vector as a function of time
     #todo check what happens when more than 1 for type is added, e.g. both normal force and y force

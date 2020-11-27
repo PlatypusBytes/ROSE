@@ -1,6 +1,7 @@
 from rose.train_model.train_model import TrainModel
 from rose.base.global_system import GlobalSystem
 from rose.base.model_part import ElementModelPart, TimoshenkoBeamElementModelPart
+from rose.base.boundary_conditions import MovingPointLoad
 from rose.utils.utils import *
 from rose.utils.mesh_utils import *
 from rose.solver.solver import StaticSolver
@@ -354,16 +355,27 @@ class CoupledTrainTrack(GlobalSystem):
         """
         self.wheel_loads = []
         for wheel in self.train.wheels:
-            load = add_moving_point_load_to_track(
-                self.rail,
-                self.time,
-                0,
-                self.velocities,
-                y_load=wheel.total_static_load, start_coords=[wheel.distances[0], 0, 0]
-            )
+
+            load = MovingPointLoad(normal_dof=self.rail.normal_dof,y_disp_dof=self.rail.normal_dof,
+                                   z_rot_dof=self.rail.normal_dof, start_coord= [wheel.distances[0], 0, 0])
+            load.time = self.time
+            load.velocities = self.velocities
+            load.contact_model_part = self.rail
+            load.y_force = wheel.total_static_load
+            load.nodes = self.rail.nodes
+            load.elements = self.rail.elements
+
+            # load = add_moving_point_load_to_track(
+            #     self.rail,
+            #     self.time,
+            #     0,
+            #     self.velocities,
+            #     y_load=wheel.total_static_load, start_coords=[wheel.distances[0], 0, 0]
+            # )
             # todo set y and z start coords
 
-            self.wheel_loads.extend(list(load.values()))
+            # self.wheel_loads.extend(list(load.values()))
+            self.wheel_loads.append(load)
         self.track.model_parts.extend(self.wheel_loads)
 
     def initialise_track_wheel_interaction(self):
