@@ -150,17 +150,17 @@ class GlobalSystem:
             if condition.normal_dof:
                 self.global_force_vector[
                     node.index_dof[0], :
-                ] += condition.normal_force[i, :]
+                ] += condition.normal_force_matrix[i, :]
 
             # add load condition on y displacement dof
             if condition.y_disp_dof:
-                self.global_force_vector[node.index_dof[1], :] += condition.y_force[
+                self.global_force_vector[node.index_dof[1], :] += condition.y_force_matrix[
                     i, :
                 ]
 
             # add load condition on z rotation dof
             if condition.z_rot_dof:
-                self.global_force_vector[node.index_dof[2], :] += condition.z_moment[
+                self.global_force_vector[node.index_dof[2], :] += condition.z_moment_matrix[
                     i, :
                 ]
 

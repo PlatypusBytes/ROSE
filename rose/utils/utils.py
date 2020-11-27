@@ -16,6 +16,11 @@ from scipy.spatial import KDTree
 from scipy import sparse
 from scipy import interpolate
 
+def filer_location(locations: np.array, lower_limit: float, upper_limit: float):
+    locations[locations > upper_limit] = upper_limit
+    locations[locations < lower_limit] = lower_limit
+
+    return locations
 
 def filter_data_outside_range(
     data: np.array, locations: np.array, lower_limit: float, upper_limit: float
@@ -23,10 +28,12 @@ def filter_data_outside_range(
     # Set force at 0 when its located outside the range
     data[locations > upper_limit] = 0
     data[locations < lower_limit] = 0
-    locations[locations > upper_limit] = upper_limit
-    locations[locations < lower_limit] = lower_limit
 
-    return data, locations
+    # new_locations = copy.deepcopy(locations)
+    # new_locations[locations > upper_limit] = upper_limit
+    # new_locations[locations < lower_limit] = lower_limit
+
+    return data #, new_locations
 
 
 def calculate_cumulative_distance_of_coordinates(coordinates: np.array):
