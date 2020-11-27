@@ -390,9 +390,6 @@ class TrainModel(GlobalSystem):
 
     def set_mesh(self):
 
-        # initialise mesh
-        self.mesh = Mesh()
-
         for cart in self.carts:
             cart.set_mesh(self.mesh)
 
@@ -590,68 +587,31 @@ class TrainModel(GlobalSystem):
 
         self.set_stage_time_ids()
 
-
-    def __trim_global_matrices_on_indices(self, row_indices: List, col_indices: List):
-        """
-        Removes items in global stiffness, mass, damping and force vector on row and column indices
-        :param row_indices:
-        :param col_indices:
-        :return:
-        """
-
-        self.global_stiffness_matrix = utils.delete_from_lil(
-            self.global_stiffness_matrix,
-            row_indices=row_indices,
-            col_indices=col_indices,
-        )
-        self.global_mass_matrix = utils.delete_from_lil(
-            self.global_mass_matrix, row_indices=row_indices, col_indices=col_indices
-        )
-        self.global_damping_matrix = utils.delete_from_lil(
-            self.global_damping_matrix, row_indices=row_indices, col_indices=col_indices
-        )
-
-        self.global_force_vector = utils.delete_from_lil(
-            self.global_force_vector, row_indices=row_indices
-        )
-
-
-    def __recalculate_dof(self, removed_indices: np.array):
-        """
-        Recalculates the total number of degree of freedoms and the index of the nodal dof in the global matrices
-        :return:
-        """
-        i = 0
-        for node in self.nodes:
-            for idx, index_dof in enumerate(node.index_dof):
-                if index_dof in removed_indices:
-                    i -= 1
-                    node.index_dof[idx] = None
-                    node.set_dof(idx, False)
-                elif index_dof is None:
-                    node.set_dof(idx, False)
-                else:
-                    node.index_dof[idx] = index_dof + i
-
-        # self.active_n_dof = self.active_n_dof + i
-        self.total_n_dof = self.total_n_dof + i
+        self.solver.initialise(self.total_n_dof, self.time)
 
     def trim_global_matrices(self):
-        massless_indices = list(np.flip(np.where(np.isclose(self.global_mass_matrix.diagonal(), 0))[0]))
-        self.__trim_global_matrices_on_indices(massless_indices, massless_indices)
+        """
+        Removed obsolete indices from global matrices
+        :return:
+        """
 
-        # recalculate dof numbering
-        if len(massless_indices) > 0:
-            self.__recalculate_dof(np.array(massless_indices))
-            self.get_contact_dofs()
+        super().trim_all_global_matrices()
+        self.get_contact_dofs()
 
 
-    def calculate_initial_displacement(self, wheel_displacements):
+    def calculate_initial_displacement(self, wheel_displacements, shift_in_ndof=0):
+        """
+        Calculates the initial displacement of the train
+        :param wheel_displacements:
+        :param shift_in_ndof: shift in number degree of freedom, relevant in coupled systems, default is set at 0
+        :return:
+        """
+
         # transfer matrices to compressed sparsed column matrices
         K = sparse.lil_matrix(deepcopy(self.global_stiffness_matrix))
         F = sparse.lil_matrix(deepcopy(self.global_force_vector))
 
-        wheel_dofs = [wheel.nodes[0].index_dof[1] for wheel in self.wheels]
+        wheel_dofs = [wheel.nodes[0].index_dof[1] - shift_in_ndof for wheel in self.wheels]
         ini_solver = StaticSolver()
         ini_solver.initialise(self.total_n_dof - len(wheel_dofs), self.time)
         K = utils.delete_from_lil(
@@ -660,14 +620,12 @@ class TrainModel(GlobalSystem):
             F, row_indices=wheel_dofs).tocsc()
         ini_solver.calculate(K, F, 0, 1)
 
-        self.solver.initialise(self.total_n_dof, self.time)
         # todo take into account initial differential settlements between wheels, for now max displacement of wheel is
         #  taken. This can improve numerical stability.
         mask = np.ones(self.solver.u[0,:].shape, bool)
         mask[wheel_dofs] = False
         self.solver.u[0, mask] = ini_solver.u[1, :] + max(wheel_displacements)
         self.solver.u[0, wheel_dofs] = wheel_displacements
-        pass
 
     def calculate_stage(self, start_time_id, end_time_id):
         """
@@ -681,7 +639,7 @@ class TrainModel(GlobalSystem):
         K = sparse.csc_matrix(self.global_stiffness_matrix)
         F = sparse.csc_matrix(self.global_force_vector)
 
-
+        # run_stages with Zhai solver
         if isinstance(self.solver, ZhaiSolver):
             self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
 
