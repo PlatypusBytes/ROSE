@@ -3,41 +3,42 @@ from rose.base.boundary_conditions import LoadCondition
 from rose.base.geometry import Mesh
 from rose.base.exceptions import *
 
-from rose.solver.solver import NewmarkSolver, StaticSolver, ZhaiSolver
+from rose.solver.solver import NewmarkSolver, StaticSolver, ZhaiSolver, Solver
 from rose.utils import utils
 
 from scipy import sparse
 import numpy as np
 import logging
 from typing import List
+from copy import deepcopy
 
 
 
 class GlobalSystem:
     def __init__(self):
 
-        self.mesh = Mesh()
+        self.mesh: Mesh = Mesh()
 
-        self.global_mass_matrix = None
-        self.global_stiffness_matrix = None
-        self.global_damping_matrix = None
-        self.global_force_vector = None
+        self.global_mass_matrix: sparse = None
+        self.global_stiffness_matrix: sparse = None
+        self.global_damping_matrix: sparse = None
+        self.global_force_vector: sparse = None
 
-        self.solver = None
-        self.time = None
-        self.initialisation_time = None
-        self.stage_time_ids = None
-        self.time_out = None
+        self.solver: Solver = None
+        self.time: np.ndarray = None
+        self.initialisation_time: np.ndarray = None
+        self.stage_time_ids: np.ndarray = None
+        self.time_out: np.ndarray = None
 
-        self.model_parts = []  # type: List[ModelPart]
+        self.model_parts: List[ModelPart] = []
 
-        self.total_n_dof = None
+        self.total_n_dof: int = None
 
-        self.displacements = None
-        self.velocities = None
-        self.accelerations = None
+        self.displacements: np.ndarray = None
+        self.velocities: np.ndarray = None
+        self.accelerations: np.ndarray = None
 
-        self.g = 9.81
+        self.g: float = 9.81
 
     def validate_input(self):
         for model_part in self.model_parts:
@@ -163,7 +164,7 @@ class GlobalSystem:
                     i, :
                 ]
 
-    def __trim_global_matrices_on_indices(self, row_indices: List, col_indices: List):
+    def trim_global_matrices_on_indices(self, row_indices: List, col_indices: List):
         """
         Removes items in global stiffness, mass, damping and force vector on row and column indices
         :param row_indices:
@@ -187,7 +188,7 @@ class GlobalSystem:
             self.global_force_vector, row_indices=row_indices
         )
 
-    def __recalculate_dof(self, removed_indices: np.array):
+    def recalculate_dof(self, removed_indices: np.array):
         """
         Recalculates the total number of degree of freedoms and the index of the nodal dof in the global matrices
         :return:
@@ -198,6 +199,8 @@ class GlobalSystem:
                 if index_dof in removed_indices:
                     i -= 1
                     node.index_dof[idx] = None
+                    node.set_dof(idx, False)
+                elif index_dof is None:
                     node.set_dof(idx, False)
                 else:
                     node.index_dof[idx] = index_dof + i
@@ -245,11 +248,11 @@ class GlobalSystem:
         obsolete_indices = sorted(list(np.unique(constrained_row_indices + massless_indices)), reverse=True)
 
         # remove obsolete rows and columns from global matrices
-        self.__trim_global_matrices_on_indices(list(obsolete_indices), list(obsolete_indices))
+        self.trim_global_matrices_on_indices(list(obsolete_indices), list(obsolete_indices))
 
         # recalculate dof numbering
         if len(obsolete_indices) > 0:
-            self.__recalculate_dof(np.array(obsolete_indices))
+            self.recalculate_dof(np.array(obsolete_indices))
 
 
     def add_model_parts_to_global_matrices(self):
@@ -275,6 +278,23 @@ class GlobalSystem:
         # removes obsolete rows and columns from the global matrices
         self.trim_all_global_matrices()
 
+    def calculate_initial_displacement(self):
+        """
+        Calculates initial displacement of the system
+        :return:
+        """
+
+        # transfer matrices to compressed sparsed column matrices
+        K = sparse.csc_matrix(deepcopy(self.global_stiffness_matrix))
+        F = sparse.csc_matrix(deepcopy(self.global_force_vector[:, :3]))
+
+        # calculate system with static solver
+        ini_solver = StaticSolver()
+        ini_solver.initialise(self.total_n_dof, self.time[:3])
+        ini_solver.calculate(K, F, 0, 2)
+
+        # transfer result to solver main calculation
+        self.solver.u[0, :] = ini_solver.u[1, :]
 
     def initialise_global_matrices(self):
         """
@@ -294,8 +314,6 @@ class GlobalSystem:
             (self.total_n_dof, self.total_n_dof)
         )
         self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)))
-
-
 
     def initialise_ndof(self):
         """
@@ -397,8 +415,6 @@ class GlobalSystem:
         self.accelerations = self.solver.a_out
 
         self.time_out = self.solver.time_out
-
-
 
     def _assign_result_to_node(self, node):
         """
