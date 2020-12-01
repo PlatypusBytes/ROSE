@@ -4,6 +4,7 @@ import pytest
 from rose.base.global_system import *
 from rose.train_model.train_model import TrainModel
 from rose.base.model_part import Material, Section, TimoshenkoBeamElementModelPart, RodElementModelPart
+from rose.base.boundary_conditions import MovingPointLoad
 from rose.utils.mesh_utils import *
 from rose.utils.plot_utils import *
 
@@ -102,14 +103,17 @@ class TestBenchmarkSet1:
 
         # set load
         velocities = np.ones(len(time)) * 10
-        load = add_moving_point_load_to_track(
-            rail_model_part,
-            time,
-            len(initialisation_time),
-            velocities,
-            y_load=y_load,
-            start_coords=np.array([5, 0, 0]),
-        )
+
+        load = MovingPointLoad(normal_dof=rail_model_part.normal_dof, y_disp_dof=rail_model_part.normal_dof,
+                        z_rot_dof=rail_model_part.normal_dof, start_coord=np.array([5, 0, 0]))
+        load.time = time
+        load.contact_model_part = rail_model_part
+        load.y_force = y_load
+        load.velocities = velocities
+        load.initialisation_time = initialisation_time
+        load.elements = rail_model_part.elements
+        load.nodes = rail_model_part.nodes
+
 
         # set solver
         solver = NewmarkSolver()
@@ -124,7 +128,7 @@ class TestBenchmarkSet1:
         model_parts = [
             list(element_model_parts.values()),
             list(bottom_boundary.values()),
-            list(load.values()),
+            [load],
         ]
         global_system.model_parts = list(itertools.chain.from_iterable(model_parts))
 
@@ -189,7 +193,6 @@ class TestBenchmarkSet1:
         beam.damping_ratio = 0.00000
         beam.radial_frequency_one = 2
         beam.radial_frequency_two = 500
-        beam.initialize()
 
         # set up hinge foundation
         foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
@@ -200,7 +203,7 @@ class TestBenchmarkSet1:
 
         # set load on middle node
         load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
-        load.y_force = np.ones((1,len(time))) * F
+        load.y_force_matrix = np.ones((1,len(time))) * F
         load.time = time
         load.nodes = [beam_nodes[int((n_beams-1)/2)]]
 
@@ -286,8 +289,6 @@ class TestBenchmarkSet1:
         beam.radial_frequency_one = 2
         beam.radial_frequency_two = 500
 
-        # beam.initialize()
-
         foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
         foundation1.nodes = [beam_nodes[0]]
 
@@ -295,7 +296,7 @@ class TestBenchmarkSet1:
         foundation2.nodes = [beam_nodes[-1]]
 
         load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
-        load.y_force = np.ones((1, len(time))) * F
+        load.y_force_matrix = np.ones((1, len(time))) * F
 
         load.time = time
         load.nodes = [beam_nodes[int((n_beams-1) * x_F / L)]]
@@ -345,15 +346,13 @@ class TestBenchmarkSet1:
         beam.radial_frequency_one = 1e-12
         beam.radial_frequency_two = 1e-12
 
-        # initialise beam matrices
-        beam.initialize()
 
         # set time
         # time = np.array([0, 1e3, 2e3, 3e3, 4e3, 5e3])
         time = np.array([0,2.1333333333,	4.2666666667,	6.4,	8.5333333333,	10.666666667])
 
         # set moving load
-        force = LineLoadCondition(normal_dof=True, y_disp_dof=True, z_rot_dof=True)
+        force = MovingPointLoad(normal_dof=True, y_disp_dof=True, z_rot_dof=True)
         force.nodes = nodes_beam
         force.elements = elements_beam
         force.time = time
@@ -396,10 +395,6 @@ class TestBenchmarkSet1:
         global_system.main()
 
         y_displacement = global_system.displacements[:,1]
-
-
-
-
 
     def test_dynamic_shear_load_on_beam(self):
         """
@@ -460,7 +455,6 @@ class TestBenchmarkSet1:
         beam.radial_frequency_one = 2
         beam.radial_frequency_two = 500
 
-        beam.initialize()
 
         # setup cantilever foundation
         foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=False)
@@ -468,7 +462,7 @@ class TestBenchmarkSet1:
 
         # set load at beam end
         load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
-        load.y_force = np.ones((1, len(time))) * F
+        load.y_force_matrix = np.ones((1, len(time))) * F
         load.time = time
         load.nodes = [rod_nodes[-1]]
 

@@ -1,5 +1,5 @@
 from rose.base.geometry import Node, Element
-from rose.base.boundary_conditions import LineLoadCondition
+from rose.base.boundary_conditions import LineLoadCondition, MovingPointLoad
 
 from scipy import sparse
 import numpy as np
@@ -46,10 +46,12 @@ class TestBoundaryConditions:
         time = np.array([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6])
 
         # set moving load
-        force = LineLoadCondition(normal_dof=True, y_disp_dof=True, z_rot_dof=True)
+        force = MovingPointLoad(normal_dof=True, y_disp_dof=True, z_rot_dof=True)
         force.nodes = nodes_track
         force.elements = elements_track
         force.time = time
+
+
 
         force.initialize_matrices()
 
@@ -64,8 +66,27 @@ class TestBoundaryConditions:
             [1.5, 0.0, 0.0],
         ]
 
-        # sets moving load on timoshenko beam
-        force.set_moving_point_load(beam, moving_coords, time, y_force=np.array([1, 1, 1, 1, 1, 1, 1]))
+        active_elements = np.array([[True, True,True, True,False, False, False],
+                                   [False, False,False, False,True, True, True]])
+
+        force.moving_coords = moving_coords
+        force.moving_y_force =  np.array([1, 1, 1, 1, 1, 1, 1])
+        force.time = time
+        force.contact_model_part = beam
+
+        force.active_elements = active_elements
+
+        force.set_moving_point_load()
+
+        # self.distribute_point_load_on_nodes(
+        #     int(element_idxs[time_idx]),
+        #     time_idx,
+        #     self.moving_coords[time_idx],
+        #     self.moving_normal_force,
+        #     self.moving_z_moment,
+        #     self.moving_y_force,
+        # # sets moving load on timoshenko beam
+        # force.set_moving_point_load(beam, moving_coords, time, y_force=np.array([1, 1, 1, 1, 1, 1, 1]))
 
         # set expected values
         expected_y_force_matrix = [
@@ -77,7 +98,7 @@ class TestBoundaryConditions:
         # assert each value in force matrix
         for i in range(len(expected_y_force_matrix)):
             for j in range(len(expected_y_force_matrix[i])):
-                assert force.y_force[i, j] == pytest.approx(
+                assert force.y_force_matrix[i, j] == pytest.approx(
                     expected_y_force_matrix[i][j]
                 )
 
