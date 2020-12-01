@@ -32,8 +32,6 @@ def create_animation(filename, x_data: Union[Tuple, np.array], y_data: Union[Tup
     ims = []
     ax = fig.gca()
 
-    # ax.set_ylim(-0.007, 0.001)
-
     # set x_data and y_data as tuple
     if not isinstance(x_data, Tuple):
         x_data = (x_data,)

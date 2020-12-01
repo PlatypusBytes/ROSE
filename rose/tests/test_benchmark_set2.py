@@ -85,7 +85,7 @@ class TestBenchmarkSet2:
         foundation2.nodes = [rod_nodes[-1]]
 
         load = LoadCondition(normal_dof=True, y_disp_dof=False, z_rot_dof=False)
-        load.normal_force = np.ones((1, len(time))) * F
+        load.normal_force_matrix = np.ones((1, len(time))) * F
 
         load.time = time
         load.nodes = [rod_nodes[-1]]
@@ -198,7 +198,7 @@ class TestBenchmarkSet2:
         foundation2.nodes = [rod_nodes[-1]]
 
         load = LoadCondition(normal_dof=True, y_disp_dof=False, z_rot_dof=False)
-        load.normal_force = np.ones((1, len(time))) * F
+        load.normal_force_matrix = np.ones((1, len(time))) * F
 
         load.time = time
         load.nodes = [rod_nodes[-1]]
@@ -328,7 +328,7 @@ class TestBenchmarkSet2:
         foundation2.nodes = [beam_nodes[-1]]
 
         load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
-        load.y_force = np.ones((1, len(time))) * F
+        load.y_force_matrix = np.ones((1, len(time))) * F
 
         # load.y_force[0,:len(initialisation_time)] = np.linspace(0,F,len(initialisation_time))
 
@@ -446,7 +446,7 @@ class TestBenchmarkSet2:
         foundation2.nodes = [beam_nodes[-1]]
 
         load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
-        load.y_force = np.ones((1, len(time))) * F
+        load.y_force_matrix = np.ones((1, len(time))) * F
 
         load.time = time
         load.nodes = [beam_nodes[int((n_beams-1)/2)]]
@@ -628,13 +628,17 @@ class TestBenchmarkSet2:
         # set moving load on rail_model_part
         velocities = np.ones(len(time)) * velocity
         velocities[0:len(initialisation_time)] = 0
-        load = add_moving_point_load_to_track(
-            rail_model_part,
-            time,
-            len(initialisation_time),
-            velocities,
-            y_load=y_load,
-        )
+        #
+
+        load = MovingPointLoad(normal_dof=rail_model_part.normal_dof, y_disp_dof=rail_model_part.normal_dof,
+                        z_rot_dof=rail_model_part.normal_dof)
+        load.time = time
+        load.contact_model_part = rail_model_part
+        load.y_force = y_load
+        load.velocities = velocities
+        load.initialisation_time = initialisation_time
+        load.elements = rail_model_part.elements
+        load.nodes = rail_model_part.nodes
 
         # constraint rotation at the side boundaries
         side_boundaries = ConstraintModelPart(normal_dof=True, y_disp_dof=True, z_rot_dof=False)
@@ -652,12 +656,8 @@ class TestBenchmarkSet2:
 
         # get all element model parts from dictionary
         model_parts = [[rail_model_part, rail_pad_model_part, rail_pad_model_part_2, sleeper_model_part, soil_1, soil_2,
-                        side_boundaries],
-                       list(bottom_boundary_1.values()), list(bottom_boundary_2.values()), list(load.values())]
-        # get all element model parts from dictionary
-        # model_parts = [[rail_model_part, rail_pad_model_part, rail_pad_model_part_2, sleeper_model_part, soil_1, soil_2
-        #                 ],
-        #                list(bottom_boundary_1.values()), list(bottom_boundary_2.values()), list(load.values())]
+                        side_boundaries, load],
+                       list(bottom_boundary_1.values()), list(bottom_boundary_2.values())]
 
         global_system.model_parts = list(itertools.chain.from_iterable(model_parts))
 
@@ -984,7 +984,6 @@ class TestBenchmarkSet2:
         beam.radial_frequency_one = omega1
         beam.radial_frequency_two = omega2
 
-        beam.initialize()
         foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
         foundation1.nodes = [beam_nodes[0]]
         foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)

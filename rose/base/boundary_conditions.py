@@ -318,10 +318,6 @@ class MovingPointLoad(LineLoadCondition):
         :return:
         """
 
-        # initialises model part on which load is located
-        # todo move this method to a more logical location
-        # model_part.initialize()
-
         element_idxs = self.active_elements.nonzero()[0]
 
         for time_idx in range(len(self.time)):
@@ -333,5 +329,5 @@ class MovingPointLoad(LineLoadCondition):
                 self.moving_z_moment,
                 self.moving_y_force,
             )
-            return
+
 

@@ -104,7 +104,7 @@ class CoupledTrainTrack(GlobalSystem):
 
 
         # calculate absolute distance between 0-point and the first node for each contact element at time 0
-        initial_distance = np.array([[distance_np(np.array([0, 0, 0]), wheel_coords[0])
+        initial_distance = np.array([[distance_np(np.array([0, 0, 0]), wheel_coords[0]) * np.sign(wheel_coords[0, 0])
                                      for wheel_coords in nodal_coordinates]])
 
         # calculate cumulative distance of each first node of each contact element at each timestep
