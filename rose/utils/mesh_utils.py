@@ -17,7 +17,8 @@ from shapely.geometry import Point
 from scipy.spatial.distance import cdist
 from scipy.spatial import KDTree
 from scipy import sparse
-from typing import Union
+from typing import Union, Dict, List
+import operator
 
 INTERSECTION_TOLERANCE = 1e-6
 
@@ -59,140 +60,6 @@ def calculate_cum_distances_coordinate_array(coordinates):
         ),
     )
     return cum_distances_coordinates
-
-# def get_active_elements():
-
-
-
-def add_moving_point_load_to_track(
-    rail_model_part: ElementModelPart,
-    time: np.array,
-    build_up_idxs: int,
-    velocities: np.array,
-    normal_force: float = None,
-    z_moment: float = None,
-    y_load: float = None,
-    start_coords: np.array = None,
-):
-    """
-    Adds a moving point load to line elements, where the line elements and nodes are required to be ordered based on
-    occurrence.
-
-    :param rail_model_part:
-    :param time:
-    :param build_up_idxs:
-    :param velocities:
-    :param normal_force:
-    :param z_moment:
-    :param y_load:
-    :param start_coords:
-    :return:
-    """
-
-
-    # set line load condition
-    normal_dof = rail_model_part.normal_dof
-    z_rot_dof = rail_model_part.z_rot_dof
-    y_disp_dof = rail_model_part.y_disp_dof
-
-    force = MovingPointLoad(
-        normal_dof=normal_dof, z_rot_dof=z_rot_dof, y_disp_dof=y_disp_dof
-    )
-    force.nodes = rail_model_part.nodes
-    force.elements = rail_model_part.elements
-    force.time = time
-    force.contact_model_part = rail_model_part
-    # force.initialize_matrices()
-
-    # if start coords are not given, set the first node as start coordinates
-    if start_coords is None:
-        start_coords = np.array(force.nodes[0].coordinates)
-
-    # get numpy array of nodal coordinates
-    nodal_coordinates = np.array([node.coordinates for node in force.nodes])
-
-    # find element in which the start coordinates are located
-    element_idx = utils.find_intersecting_point_element(force.elements, start_coords)
-
-    # calculate cumulative distances between nodes and point load locations
-    cum_distances_nodes = calculate_cum_distances_coordinate_array(nodal_coordinates)
-
-    # calculate cumulative distance of the force location based on force velocity
-
-    # calculate distance from force
-    cum_distances_force = utils.calculate_cum_distance_from_velocity(time, velocities)
-
-    # add distance force to first node in first active element
-    cum_distances_force += utils.distance_np(
-            start_coords, np.array(force.elements[element_idx].nodes[0].coordinates)
-        )
-    # ???
-    cum_distances_force += cum_distances_nodes[force.nodes.index(force.elements[element_idx].nodes[0])]
-    # cum_distances_force += force.elements[element_idx].nodes[0].coordinates
-
-    # cum_distances_force = (
-    #         np.append(
-    #             0,
-    #             np.cumsum((time[1:] - time[:-1]) * velocities[:-1])
-    #         )
-    #     + utils.distance_np(
-    #         start_coords, np.array(force.elements[element_idx].nodes[0].coordinates)
-    #     )
-    #     + force.nodes.index(force.elements[element_idx].nodes[0])
-    # )
-
-    # get element idx where point load is located for each time step
-    # set_active_elements
-    # element_idxs = np.zeros(len(cum_distances_force))
-    force.active_elements = np.zeros((len(force.elements), len(cum_distances_force)))
-    i = element_idx
-    for idx, distance in enumerate(cum_distances_force):
-        if i < len(cum_distances_nodes) - 2:
-            if distance > cum_distances_nodes[i + 1]:
-                i += 1
-        force.active_elements[i, idx] = True
-
-    element_idxs = force.active_elements.nonzero()[0]
-
-    # set the load vector as a function of time
-    #todo check what happens when more than 1 for type is added, e.g. both normal force and y force
-
-    # set normal force vector as a function of time
-    moving_normal_force = None
-    if normal_force is not None:
-        moving_normal_force, cum_distances_force = set_load_vector_as_function_of_time(
-            time, normal_force, build_up_idxs, cum_distances_force, cum_distances_nodes[0], cum_distances_nodes[-1])
-
-    # set y force vector as a function of time
-    moving_y_force = None
-    if y_load is not None:
-        moving_y_force, cum_distances_force = set_load_vector_as_function_of_time(
-            time, y_load, build_up_idxs, cum_distances_force, cum_distances_nodes[0], cum_distances_nodes[-1])
-
-    # set z moment vector as a function of time
-    moving_z_moment = None
-    if z_moment is not None:
-        moving_z_moment, cum_distances_force = set_load_vector_as_function_of_time(
-            time, z_moment, build_up_idxs, cum_distances_force, cum_distances_nodes[0], cum_distances_nodes[-1])
-
-    # interpolate force distances on nodes
-    moving_coords = utils.interpolate_cumulative_distance_on_nodes(
-        cum_distances_nodes, nodal_coordinates, cum_distances_force
-    )
-
-    # set load
-    force.set_moving_point_load(
-        rail_model_part,
-        moving_coords,
-        time,
-        element_idxs=element_idxs,
-        normal_force=moving_normal_force,
-        y_force=moving_y_force,
-        z_moment=moving_z_moment,
-    )
-
-    return {"moving_load": force}
-
 
 def add_no_displacement_boundary_to_bottom(bottom_model_part):
     """
@@ -319,3 +186,75 @@ def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
         },
         mesh,
     )
+
+def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes: List[Mesh]):
+    """
+    Combines multiple horizontal track parts. This function takes a list of tracks and connects the track parts to a
+    model. The tracks in the list need to be ordered from left to right. Coordinates of the track parts
+    are automatically recalculated.
+
+    This function assumes horizontal tracks over the x-axis
+
+    :param tracks: Ordered list of dictionaries of model parts belonging to a horizontal track part
+    :param meshes: list of meshes belowing to the track parts
+    :return:
+    """
+
+    global_mesh = Mesh()
+
+    # loop over each mesh
+    for idx, mesh in enumerate(meshes):
+        if idx>0:
+            # move coordinates to the right
+            last_node = max(meshes[idx - 1].nodes, key=lambda item: item.coordinates[0])
+            dx = utils.distance_np(np.array(meshes[idx - 1].nodes[-1].coordinates),
+                                   np.array(meshes[idx - 1].nodes[-2].coordinates))
+
+            for node in mesh.nodes:
+                node.coordinates[0] += last_node.coordinates[0] + dx
+
+        # add mesh to global mesh
+        global_mesh.add_unique_nodes_to_mesh(mesh.nodes)
+        global_mesh.add_unique_elements_to_mesh(mesh.elements)
+
+    soil_model_parts = []
+    for idx, track in enumerate(tracks):
+        # add soil model parts to list
+        soil_model_parts.append(track["soil"])
+        if idx>0:
+            # combine rail elements in one model part
+            track["rail"].elements = tracks[idx-1]["rail"].elements + [Element([tracks[idx-1]["rail"].nodes[-1],
+                                                                                track["rail"].nodes[0]])]  \
+                                                                      + track["rail"].elements
+            track["rail"].nodes = tracks[idx-1]["rail"].nodes + track["rail"].nodes
+
+            # combine sleeper elements in one model part
+            track["sleeper"].nodes = tracks[idx-1]["sleeper"].nodes + track["sleeper"].nodes
+            track["sleeper"].elements = tracks[idx-1]["sleeper"].elements + track["sleeper"].elements
+
+            # combine sleeper elements in one model part
+            track["rail_pad"].nodes = tracks[idx - 1]["rail_pad"].nodes + track["rail_pad"].nodes
+            track["rail_pad"].elements = tracks[idx - 1]["rail_pad"].elements + track["rail_pad"].elements
+
+    # get combined model parts
+    rail_model_part = tracks[-1]["rail"]
+    sleeper_model_part = tracks[-1]["sleeper"]
+    rail_pad_model_part = tracks[-1]["rail_pad"]
+
+    # reorder node and element ids
+    global_mesh.reorder_node_ids()
+    global_mesh.reorder_element_ids()
+
+    return rail_model_part, sleeper_model_part, rail_pad_model_part, soil_model_parts, global_mesh
+
+
+if __name__ == "__main__":
+    tracks=[]
+    mesh1= Mesh()
+    mesh1.nodes =[Node(0,0,0),Node(1,0,0) ,Node(2,0,0) ]
+
+    mesh2 = Mesh()
+    mesh2.nodes = [Node(0, 0, 0), Node(1, 0, 0), Node(2, 0, 0)]
+
+    combine_horizontal_tracks(tracks, [mesh1, mesh2])
+
