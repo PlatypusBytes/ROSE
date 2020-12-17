@@ -608,8 +608,8 @@ class TrainModel(GlobalSystem):
         """
 
         # transfer matrices to compressed sparsed column matrices
-        K = sparse.lil_matrix(deepcopy(self.global_stiffness_matrix))
-        F = sparse.lil_matrix(deepcopy(self.global_force_vector))
+        K = sparse.lil_matrix(np.copy(self.global_stiffness_matrix))
+        F = sparse.lil_matrix(np.copy(self.global_force_vector))
 
         wheel_dofs = [wheel.nodes[0].index_dof[1] - shift_in_ndof for wheel in self.wheels]
         ini_solver = StaticSolver()
