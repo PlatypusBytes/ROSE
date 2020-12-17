@@ -60,20 +60,22 @@ class CoupledTrainTrack(GlobalSystem):
         :param t: time index
         :return:
         """
-        for idx, track_element in enumerate(contact_track_elements):
-            global_indices = np.array([track_element.nodes[0].index_dof[1], track_element.nodes[0].index_dof[2],
-                                       track_element.nodes[1].index_dof[1], track_element.nodes[1].index_dof[2]])
+        # t_idxs = np.ones((len(wheel_loads), 4), dtype=int) * t
 
-            force_vector = np.array([self.y_shape_factors[idx, t, 0] * wheel_loads[idx],
-                                     self.y_shape_factors[idx, t, 1] * wheel_loads[idx],
-                                     self.y_shape_factors[idx, t, 2] * wheel_loads[idx],
-                                     self.y_shape_factors[idx, t, 3] * wheel_loads[idx]])
+        global_indices = self.track_global_indices[:, t, :]
 
-            mask = [i for i in range(len(global_indices)) if global_indices[i] is not None]
-            t_idxs = np.ones(len(mask)) * t
+        # for idx, track_element in enumerate(contact_track_elements):
+        #     global_indices[idx] = np.array([track_element.nodes[0].index_dof[1], track_element.nodes[0].index_dof[2],
+        #                                track_element.nodes[1].index_dof[1], track_element.nodes[1].index_dof[2]])
 
-            self.track.global_force_vector[global_indices[mask],t_idxs] = force_vector[mask]
+        force_vector = self.y_shape_factors[:, t, :] * wheel_loads[:, None]
+        mask = global_indices != np.array(None)
 
+        track_global_force_vector = self.track.global_force_vector[:, t].toarray()[:,0]
+        # track_global_force_vector = self.track.global_force_vector[:, t]
+        # self.track.global_force_vector[global_indices[mask], t_idxs[mask]] = force_vector[mask]
+        track_global_force_vector[global_indices[mask].astype(int)] = force_vector[mask]
+        return track_global_force_vector
 
     def initialize_track_elements(self):
         """
@@ -81,12 +83,32 @@ class CoupledTrainTrack(GlobalSystem):
         :return:
         """
 
-        self.track_elements = []
+        self.track_elements = np.empty((len(self.wheel_loads), len(self.time)),dtype=Element)
+        self.track_global_indices = np.zeros((len(self.wheel_loads), len(self.time), 4), dtype=object)
+
+        # wheel_loads_np = np.array([np.array(wheel_load.elements) for wheel_load in self.wheel_loads])
+        # active_elements_ids = np.array([np.array(wheel_load.active_elements.nonzero()[0]) for wheel_load in self.wheel_loads])
+        # active_elements = wheel_loads_np[:, active_elements_ids]
+
+        # self.track_global_indices[:, :, :] = np.array([np.array([np.array([element.nodes[0].index_dof[1], element.nodes[0].index_dof[2],
+        #                                                  element.nodes[1].index_dof[1], element.nodes[1].index_dof[2]]) for element in wheel_load]) for wheel_load in active_elements])
+
         for idx, wheel_load in enumerate(self.wheel_loads):
             wheel_load_np = np.array(wheel_load.elements)
-            self.track_elements.append(wheel_load_np[wheel_load.active_elements.nonzero()[0]])
+            active_elements = wheel_load_np[wheel_load.active_elements.nonzero()[0]]
+            # for t, element in enumerate(test):
+            # global_indices_at_wheel = np.array([np.array([element.nodes[0].index_dof[1], element.nodes[0].index_dof[2],
+            #                                               element.nodes[1].index_dof[1], element.nodes[1].index_dof[2]]) for element in active_elements])
+            # mask = global_indices_at_wheel != np.array(None)
+            #
+            # self.track_global_indices[idx,:,:] = np.array([np.array([element.nodes[0].index_dof[1], element.nodes[0].index_dof[2],
+            #                                     element.nodes[1].index_dof[1], element.nodes[1].index_dof[2]]) for element in active_elements])
 
-        self.track_elements = np.array(self.track_elements)
+            self.track_global_indices[idx,:,:] = np.array([np.array([element.nodes[0].index_dof[1], element.nodes[0].index_dof[2],
+                                                                     element.nodes[1].index_dof[1], element.nodes[1].index_dof[2]]) for element in active_elements])
+
+            # self.track_elements.append(wheel_load_np[wheel_load.active_elements.nonzero()[0]])
+            self.track_elements[idx,:] = active_elements
 
     def calculate_distance_wheels_track_nodes(self):
         """
@@ -172,11 +194,14 @@ class CoupledTrainTrack(GlobalSystem):
         :return:
         """
 
+        if np.isnan(du_wheels).any():
+            raise ValueError("displacement in wheels is NAN, check if wheels are on track or reduce time steps")
+
         elastic_wheel_deformation = self.__calculate_elastic_wheel_deformation(t)
 
         contact_force = np.sign(elastic_wheel_deformation - du_wheels) * \
-                        np.nan_to_num((1 / self.herzian_contact_coef * abs((elastic_wheel_deformation - du_wheels))
-                        ) ** self.herzian_power)
+                        np.nan_to_num(np.power(1 / self.herzian_contact_coef * np.abs((elastic_wheel_deformation - du_wheels))
+                        , self.herzian_power))
 
         return contact_force
 
@@ -188,31 +213,20 @@ class CoupledTrainTrack(GlobalSystem):
         :param u: displacements at time t
         :return:
         """
-        disp_at_wheels = np.zeros(len(track_elements))
-        for idx, track_element in enumerate(track_elements):
 
-            # Get indices of the contact track nodes
-            global_indices = [track_element.nodes[0].index_dof[1], track_element.nodes[0].index_dof[2],
-                              track_element.nodes[1].index_dof[1], track_element.nodes[1].index_dof[2]]
+        global_indices = self.track_global_indices[:,t,:]
+        disp = np.zeros(global_indices.shape)
 
-            # get displacement at indices
-            if None not in global_indices:
-                disp = u[global_indices]
-            else:
-                # set displacement on inactive dofs at 0
-                disp = np.zeros(len(global_indices))
-                for i, v in enumerate(global_indices):
-                    if v is None:
-                        disp[i] = 0
-                    else:
-                        disp[i] = u[v]
+        # get displacement at indices
+        mask = global_indices != np.array(None)
+        # mask = ~np.isnan(global_indices)
+        disp[mask] = u[global_indices[mask].astype(int)]
 
-            # calculate displacement at the location of the wheels
-            disp_at_wheels[idx] = np.sum(disp * self.y_shape_factors[idx,t,:])
-
+        # calculate displacement at the location of the wheels
+        disp_at_wheels = np.sum(disp * self.y_shape_factors[:, t, :], axis=1)
         return disp_at_wheels
 
-    def update_force_vector_contact(self, u: np.ndarray, t: int, F: sparse.lil_matrix) -> sparse.lil_matrix:
+    def update_force_vector_contact(self, u: np.ndarray, t: int, F: np.ndarray) -> np.ndarray:
         """
         Updates the complete force vector due to wheel-rail contact forces
 
@@ -223,24 +237,26 @@ class CoupledTrainTrack(GlobalSystem):
         """
 
         # get displacement of wheels
-        u_wheels = u[self.train.contact_dofs]
+        # u_wheels = u[self.train.contact_dofs]
 
         # determine contact force
         u_stat = self.static_contact_deformation
         contact_track_elements = self.get_track_element_at_wheels(t)
         disp_at_wheels = self.get_disp_track_at_wheels(contact_track_elements, t, u)
-        contact_force = self.calculate_wheel_rail_contact_force(t, u_wheels + u_stat - disp_at_wheels)
+        contact_force = self.calculate_wheel_rail_contact_force(t, u[self.train.contact_dofs] + u_stat - disp_at_wheels)
 
         # add contact force to train
-        F[self.train.contact_dofs] += np.reshape(contact_force, (contact_force.size, 1))
+        # F[self.train.contact_dofs] += np.reshape(contact_force, (contact_force.size, 1))
 
+        F[self.train.contact_dofs] += contact_force
         # add contact force to track
-        self.set_wheel_load_on_track(contact_track_elements, -contact_force, t)
-        F[:self.track.total_n_dof] = self.track.global_force_vector[:, t].toarray()
+        track_global_force_vector = self.set_wheel_load_on_track(contact_track_elements, -contact_force, t)
+        # F[:self.track.total_n_dof] = self.track.global_force_vector[:, t].toarray()[:,0]
+        F[:self.track.total_n_dof] = track_global_force_vector
 
         return F
 
-    def update_force_vector(self, u: np.ndarray, t: int) -> sparse.lil_matrix:
+    def update_force_vector(self, u: np.ndarray, t: int) -> np.ndarray:
         """
         Updates the complete force vector at time t
 
@@ -250,12 +266,13 @@ class CoupledTrainTrack(GlobalSystem):
         """
 
         # Get force vector at time t
-        F = copy.deepcopy(self.global_force_vector[:, t])
-
+        # F = self.global_force_vector[:, t].copy()
+        # F = self.global_force_vector[:, t].copy()
         # Update force vector due to contact force between rail and wheels
-        F = self.update_force_vector_contact(u, t, F)
-
-        return F
+        # F = self.update_force_vector_contact(u, t, F)
+        # F = self.update_force_vector_contact(u, t, self.global_force_vector[:, t])
+        return self.update_force_vector_contact(u, t, self.global_force_vector[:, t].toarray()[:, 0])
+        # return self.update_force_vector_contact(u, t, self.global_force_vector[:, t])
 
     def combine_global_matrices(self):
         """
@@ -338,7 +355,7 @@ class CoupledTrainTrack(GlobalSystem):
         Calculates initial state of coupled track and train system
         :return:
         """
-
+        print("Initial static displacement of the train and the track")
         self.calculate_initial_displacement_track()
 
         contact_track_elements = self.get_track_element_at_wheels(0)
@@ -380,13 +397,14 @@ class CoupledTrainTrack(GlobalSystem):
 
     def initialise_track_wheel_interaction(self):
         """
-        Initialises interaction between wheel and track.
+        Initialises interaction between wheel and track. And vectorises relevant arrays
             Finds elements which are in contact with the wheels at time t
             Calculates distance between wheel and node 1 of contact track element at time t
             Calculates y-shape factors of the track elements at time t
 
         :return:
         """
+        print("Initialising track wheel interaction")
         self.initialize_track_elements()
         self.calculate_distance_wheels_track_nodes()
         self.calculate_y_shape_factors_rail()
@@ -396,6 +414,8 @@ class CoupledTrainTrack(GlobalSystem):
         Initialises train
         :return:
         """
+        print("Initialising train")
+
         self.train.solver = self.solver.__class__()
         self.train.initialise()
 
@@ -405,6 +425,8 @@ class CoupledTrainTrack(GlobalSystem):
             Adds wheel loads to track
         :return:
         """
+        print("Initialising track and subsoil")
+
         self.track.solver = self.solver.__class__()
         self.initialize_wheel_loads()
         self.track.initialise()
@@ -429,6 +451,13 @@ class CoupledTrainTrack(GlobalSystem):
         # initialise solver
         self.solver.initialise(self.total_n_dof, self.time)
         self.solver.load_func = self.update_force_vector
+
+    def calculate_stage(self, start_time_id, end_time_id):
+        
+        self.track.global_force_vector = self.track.global_force_vector.tocsc()
+        super(CoupledTrainTrack, self).calculate_stage(start_time_id, end_time_id)
+    
+    
 
     def finalise(self):
         """

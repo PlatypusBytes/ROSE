@@ -6,7 +6,7 @@ class Node:
     def __init__(self, x, y, z):
         self.index = None
         self.index_dof = np.array([None, None, None])
-        self.coordinates = [x, y, z]
+        self.coordinates = np.array([x, y, z])
         self.normal_dof = True
         self.z_rot_dof = True
         self.y_disp_dof = True
@@ -52,18 +52,25 @@ class Node:
 
     def __eq__(self, other: Node):
         abs_tol = 1e-9
+        # if ~np.allclose(self.coordinates, other.coordinates, atol=abs_tol):
+        #     return False
         for idx, coordinate in enumerate(self.coordinates):
             if abs(coordinate - other.coordinates[idx]) > abs_tol:
                 return False
 
-        self.index_dof = np.array(
-            [
-                other.index_dof[idx]
-                if other.index_dof[idx] is not None
-                else self.index_dof[idx]
-                for idx in range(len(self.index_dof))
-            ]
-        )
+        # self.index_dof = np.array(
+        #     [
+        #         other.index_dof[idx]
+        #         if other.index_dof[idx] is not None
+        #         else self.index_dof[idx]
+        #         for idx in range(len(self.index_dof))
+        #     ]
+        # )
+
+        mask = other.index_dof != np.array(None)
+        self.index_dof[mask] = other.index_dof[mask]
+
+
         self.normal_dof = self.normal_dof + other.normal_dof
         self.z_rot_dof = self.z_rot_dof + other.z_rot_dof
         self.y_disp_dof = self.y_disp_dof + other.y_disp_dof

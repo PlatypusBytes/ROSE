@@ -56,6 +56,9 @@ def create_animation(filename, x_data: Union[Tuple, np.array], y_data: Union[Tup
 
         ims.append(tuple(plts))
 
+    plt.xlabel('distance [m]')
+    plt.ylabel('displacement track [m]')
+
     # create animation
     writer = animation.writers[format](fps=fps)
     im_ani = animation.ArtistAnimation(fig, ims,
