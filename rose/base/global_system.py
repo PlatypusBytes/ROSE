@@ -286,8 +286,8 @@ class GlobalSystem:
         """
 
         # transfer matrices to compressed sparsed column matrices
-        K = sparse.csc_matrix(self.global_stiffness_matrix.copy())
-        F = sparse.csc_matrix(self.global_force_vector[:, :3].copy())
+        K = sparse.csc_matrix(self.global_stiffness_matrix.copy(), dtype=float)
+        F = sparse.csc_matrix(self.global_force_vector[:, :3].copy(), dtype=float)
 
         # calculate system with static solver
         ini_solver = StaticSolver()
@@ -307,16 +307,16 @@ class GlobalSystem:
 
         # initialise global lil matrices
         self.global_stiffness_matrix = sparse.lil_matrix(
-            (self.total_n_dof, self.total_n_dof)
+            (self.total_n_dof, self.total_n_dof), dtype=float
         )
         self.global_damping_matrix = sparse.lil_matrix(
-            (self.total_n_dof, self.total_n_dof)
+            (self.total_n_dof, self.total_n_dof), dtype=float
         )
         self.global_mass_matrix = sparse.lil_matrix(
-            (self.total_n_dof, self.total_n_dof)
+            (self.total_n_dof, self.total_n_dof), dtype=float
         )
 
-        self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)))
+        self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)),dtype=float)
 
     def initialise_ndof(self):
         """
