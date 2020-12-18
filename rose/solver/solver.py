@@ -1,14 +1,12 @@
 import numpy as np
 from scipy.sparse.linalg import spsolve, inv
-from scipy.sparse import csc_matrix, diags, issparse
+from scipy.sparse import issparse
 import os
 import pickle
 from tqdm import tqdm
 
 from rose.base.exceptions import *
 import logging
-import copy
-
 
 def init(m_global, c_global, k_global, force_ini, u, v):
     r"""
@@ -29,7 +27,6 @@ def init(m_global, c_global, k_global, force_ini, u, v):
 
     # initial acceleration
     a = inv(m_global).dot(force_ini - c_part - k_part)
-    # a=np.zeros((len(k_part)))
     return a
 
 
@@ -115,7 +112,8 @@ class ZhaiSolver(Solver):
         :param v0:  initial velocity
         :return:
         """
-        inv_M = inv(M)
+        inv_M = inv(M).tocsr()
+
         a0 = self.evaluate_acceleration(inv_M, C, K, F, u0, v0)
         return inv_M, a0
 
@@ -132,7 +130,7 @@ class ZhaiSolver(Solver):
         if self.load_func is not None:
             force = self.load_func(u, t)
             if issparse(force):
-                force = force.toarray()[:,0]
+                force = force.toarray()[:, 0]
         else:
             force = F[:, t]
             force = force.toarray()[:, 0]
@@ -213,10 +211,8 @@ class ZhaiSolver(Solver):
             (t_end_idx - t_start_idx))
 
         # initial force conditions: for computation of initial acceleration
-        # force = F[:, t_start_idx].toarray()[0]
         force = F[:, t_start_idx].toarray()
         force = force[:,0]
-
 
         u = self.u0
         v = self.v0
@@ -238,6 +234,8 @@ class ZhaiSolver(Solver):
 
         is_initial = True
         for t in range(t_start_idx + 1, t_end_idx + 1):
+            # update progress bar
+            pbar.update(1)
 
             # check if current timestep is the initial timestep
             if t > 1:
@@ -267,11 +265,11 @@ class ZhaiSolver(Solver):
             self.a[t, :] = a_new
 
             # set vectors for next time step
-            u = copy.deepcopy(u_new)
-            v = copy.deepcopy(v_new)
+            u = np.copy(u_new)
+            v = np.copy(v_new)
 
-            a_old = copy.deepcopy(a)
-            a = copy.deepcopy(a_new)
+            a_old = np.copy(a)
+            a = np.copy(a_new)
 
         # close the progress bar
         pbar.close()
