@@ -315,7 +315,6 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
                     * self.section.shear_factor
                 )
             )
-            # self.__timoshenko_factor = 0
 
     def __set_translational_aux_mass_matrix(self):
         """
@@ -438,8 +437,8 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         self.aux_stiffness_matrix[[1, 1, 2, 5], [2, 5, 1, 1]] = 6 * l
         self.aux_stiffness_matrix[[2, 4, 4, 5], [4, 2, 5, 4]] = -6 * l
 
-        self.aux_stiffness_matrix[[2, 5], [2, 5]] = (4+ phi) * l ** 2 # (4 + phi) * l ** 2
-        self.aux_stiffness_matrix[[2, 5], [5, 2]] = (2 - phi) * l ** 2 # (2 - phi) * l ** 2
+        self.aux_stiffness_matrix[[2, 5], [2, 5]] = (4 + phi) * l ** 2
+        self.aux_stiffness_matrix[[2, 5], [5, 2]] = (2 - phi) * l ** 2
 
         self.aux_stiffness_matrix = self.aux_stiffness_matrix.dot(constant)
         self.aux_stiffness_matrix = utils.reshape_aux_matrix(

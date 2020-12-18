@@ -52,24 +52,15 @@ class Node:
 
     def __eq__(self, other: Node):
         abs_tol = 1e-9
-        # if ~np.allclose(self.coordinates, other.coordinates, atol=abs_tol):
-        #     return False
+
+        # return not equal if any coordinate in other node is different from current node
         for idx, coordinate in enumerate(self.coordinates):
             if abs(coordinate - other.coordinates[idx]) > abs_tol:
                 return False
 
-        # self.index_dof = np.array(
-        #     [
-        #         other.index_dof[idx]
-        #         if other.index_dof[idx] is not None
-        #         else self.index_dof[idx]
-        #         for idx in range(len(self.index_dof))
-        #     ]
-        # )
-
+        # if nodes are at equal location, combine degree of freedom indices
         mask = other.index_dof != np.array(None)
         self.index_dof[mask] = other.index_dof[mask]
-
 
         self.normal_dof = self.normal_dof + other.normal_dof
         self.z_rot_dof = self.z_rot_dof + other.z_rot_dof
