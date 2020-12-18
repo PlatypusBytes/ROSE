@@ -315,8 +315,7 @@ class GlobalSystem:
         self.global_mass_matrix = sparse.lil_matrix(
             (self.total_n_dof, self.total_n_dof)
         )
-        # self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)))
-        # self.global_force_vector = np.zeros((self.total_n_dof, len(self.time)))
+
         self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)))
 
     def initialise_ndof(self):
@@ -394,7 +393,6 @@ class GlobalSystem:
         K = self.global_stiffness_matrix.tocsc()
         self.global_force_vector = self.global_force_vector.tocsc()
         F = self.global_force_vector
-        # F = self.global_force_vector
 
         # run_stages with Zhai solver
         if isinstance(self.solver, ZhaiSolver):
@@ -415,6 +413,8 @@ class GlobalSystem:
         Finalises calculation
         :return:
         """
+
+        print("Finalising calculation")
 
         self.solver.finalise()
 

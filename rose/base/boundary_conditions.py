@@ -17,13 +17,6 @@ class NoDispRotCondition(ConditionModelPart):
     def __init__(self):
         super().__init__()
 
-    # def normal_dof(self):
-    #     return
-    #     self.normal_dof = False
-    #     self.z_rot_dof = False
-    #     self.y_disp_dof = False
-
-
 class LoadCondition(ConditionModelPart):
     def __init__(self, normal_dof=False, y_disp_dof=False, z_rot_dof=False):
         super().__init__()
@@ -67,7 +60,7 @@ class LoadCondition(ConditionModelPart):
             self.y_force_matrix = sparse.lil_matrix((len(self.nodes), len(self.time)))
 
 
-    def set_load_vector_as_function_of_time(self, load, build_up_idxs):
+    def set_load_vector_as_function_of_time(self, load: float, build_up_idxs: int) -> np.ndarray:
 
         time_load = np.ones(len(self.time)) * load
         #
@@ -158,6 +151,10 @@ class MovingPointLoad(LineLoadCondition):
 
 
     def filter_load_outside_range(self):
+        """
+        Filter normal load, vertical load an z rotation moment outside range
+        :return:
+        """
         if self.moving_normal_force is not None:
             self.moving_normal_force = utils.filter_data_outside_range(
                 self.moving_normal_force,
@@ -220,35 +217,23 @@ class MovingPointLoad(LineLoadCondition):
 
     def distribute_point_load_on_nodes(
         self,
-        element_idx,
-        node_indices,
-        time_idx,
-        distance,
-        normal_force,
-        z_moment,
-        y_force,
+        node_indices: np.ndarray,
+        time_idx: int,
+        distance: float,
+        normal_force: np.ndarray,
+        z_moment: np.ndarray,
+        y_force: np.ndarray,
     ):
         """
-
-        :param element_idx: idx of intersected element
+        Distribute point load on surrounding nodes at timestep t
+        :param node_indices: indices of surrounding nodes at time t
         :param time_idx: idx of time step
-        :param intersection_point: intersected point
-        :param normal_force:
-        :param z_moment:
-        :param y_force:
+        :param distance: distance point load to first node of element at time t
+        :param normal_force: normal force
+        :param z_moment: z rotation moment
+        :param y_force: vertical force
         :return:
         """
-        # determine interpolation factors
-        # calculate distance between first point in element and intersection point
-        # distance = np.sqrt(
-        #     np.sum(
-        #         (
-        #             (self.elements[element_idx].nodes[0].coordinates)
-        #             - np.array(intersection_point)
-        #         )
-        #         ** 2
-        #     )
-        # )
 
         # todo make calling of shapefunctions more general, for now it only works on a beam with normal, y and z-rot dof
         # add normal_load_to_nodes
@@ -305,150 +290,9 @@ class MovingPointLoad(LineLoadCondition):
                     z_moment[time_idx] * y_interp_factors[idx]
                 )
 
-
-    def distribute_point_load_on_nodes_2(
-            self,
-            element_idxs,
-            intersection_points,
-            normal_force,
-            z_moment,
-            y_force,
-    ):
-        """
-
-        :param element_idx: idx of intersected element
-        :param time_idx: idx of time step
-        :param intersection_point: intersected point
-        :param normal_force:
-        :param z_moment:
-        :param y_force:
-        :return:
-        """
-        #todo correct this vectorized method
-
-        # determine interpolation factors
-        # calculate distance between first point in element and intersection point
-        np_elements = np.array(self.elements)
-
-        coordinates = np.array([np.array(element.nodes[0].coordinates) for element in np_elements[element_idxs]])
-        sq_diff_coords = np.power(coordinates - intersection_points, 2)
-        distances = np.sqrt(np.sum(sq_diff_coords, axis=1))
-
-
-
-        node_indices = np.array([np.array([self.nodes.index(node) for node in element.nodes]) for element in np_elements[element_idxs]])
-        # todo make calling of shapefunctions more general, for now it only works on a beam with normal, y and z-rot dof
-        # add normal_load_to_nodes
-        if normal_force is not None:
-            normal_interp_factors = np.zeros((distances.size,2))
-            for idx, distance in enumerate(distances):
-                self.contact_model_part.set_normal_shape_functions(distance)
-                normal_interp_factors[idx,:] = self.contact_model_part.normal_shape_functions
-
-            # self.contact_model_part.set_normal_shape_functions(distance)
-            # normal_interp_factors = [
-            #     self.contact_model_part.normal_shape_functions[0],
-            #     self.contact_model_part.normal_shape_functions[1],
-            # ]
-
-            # node_indices = np.array([np.array([self.nodes.index(node) for node in element]) for element in np_elements[element_idxs]])
-
-            for idx, node in enumerate(self.elements[element_idx].nodes):
-                self.normal_force_matrix[self.nodes.index(node), time_idx] += (
-                        normal_force[time_idx] * normal_interp_factors[idx]
-                )
-
-        # add y_load_to_nodes
-        if y_force is not None:
-
-            y_interp_factors = np.zeros((distances.size,2))
-            z_mom_interp_factors = np.zeros((distances.size,2))
-            for idx, distance in enumerate(distances):
-                self.contact_model_part.set_y_shape_functions(distance)
-                y_interp_factors[idx,:] = self.contact_model_part.y_shape_functions[0], self.contact_model_part.y_shape_functions[2]
-                z_mom_interp_factors[idx,:] = self.contact_model_part.y_shape_functions[1], self.contact_model_part.y_shape_functions[3]
-
-
-
-            z_moment_matrix = self.z_moment_matrix.toarray()
-            y_force_matrix = self.y_force_matrix.toarray()
-
-            z_moment_matrix[node_indices[:,0], :] += (
-                    y_force * z_mom_interp_factors[:,0]
-            )
-            z_moment_matrix[node_indices[:,1], :] += (
-                    y_force * z_mom_interp_factors[:,1]
-            )
-            self.z_moment_matrix = sparse.lil_matrix(z_moment_matrix)
-
-
-            y_force_matrix[node_indices[:,0], :] += (
-                    y_force * y_interp_factors[:,0]
-            )
-            y_force_matrix[node_indices[:,1], :] += (
-                    y_force * y_interp_factors[:,1]
-            )
-            self.y_force_matrix = sparse.lil_matrix(y_force_matrix)
-
-        # add z_moment
-        if z_moment is not None:
-
-            y_interp_factors = np.zeros((distances.size,2))
-            z_mom_interp_factors = np.zeros((distances.size,2))
-            for idx, distance in enumerate(distances):
-                self.contact_model_part.set_z_rot_shape_functions(distance)
-                y_interp_factors[idx,:] = self.contact_model_part.z_rot_shape_functions[0], self.contact_model_part.z_rot_shape_functions[2]
-                z_mom_interp_factors[idx,:] = self.contact_model_part.z_rot_shape_functions[1], self.contact_model_part.z_rot_shape_functions[3]
-
-
-
-            z_moment_matrix = self.z_moment_matrix.toarray()
-            y_force_matrix = self.y_force_matrix.toarray()
-
-            z_moment_matrix[node_indices[:,0], :] += (
-                    y_force * z_mom_interp_factors[:,0]
-            )
-            z_moment_matrix[node_indices[:,1], :] += (
-                    y_force * z_mom_interp_factors[:,1]
-            )
-            self.z_moment_matrix = sparse.lil_matrix(z_moment_matrix)
-
-
-            y_force_matrix[node_indices[:,0], :] += (
-                    y_force * y_interp_factors[:,0]
-            )
-            y_force_matrix[node_indices[:,1], :] += (
-                    y_force * y_interp_factors[:,1]
-            )
-            self.y_force_matrix = sparse.lil_matrix(y_force_matrix)
-
-
-            # self.contact_model_part.set_z_rot_shape_functions(distance)
-            # y_interp_factors = [
-            #     self.contact_model_part.z_rot_shape_functions[0],
-            #     self.contact_model_part.z_rot_shape_functions[2],
-            # ]
-            # z_mom_interp_factors = [
-            #     self.contact_model_part.z_rot_shape_functions[1],
-            #     self.contact_model_part.z_rot_shape_functions[3],
-            # ]
-            #
-            # for idx, node in enumerate(self.elements[element_idx].nodes):
-            #     self.z_moment_matrix[self.nodes.index(node), time_idx] += (
-            #             z_moment[time_idx] * z_mom_interp_factors[idx]
-            #     )
-            #     self.y_force_matrix[self.nodes.index(node), time_idx] += (
-            #             z_moment[time_idx] * y_interp_factors[idx]
-            #     )
-
     def set_moving_point_load(self):
         """
         Sets a moving point load on the condition elements.
-        :param coordinates:
-        :param time:
-        :param normal_force:
-        :param z_moment:
-        :param y_force:
         :return:
         """
 
@@ -480,7 +324,6 @@ class MovingPointLoad(LineLoadCondition):
         # time steps or nodes are present
         for time_idx in range(len(self.time)):
             self.distribute_point_load_on_nodes(
-                int(element_idxs[time_idx]),
                 node_indices[time_idx, :],
                 time_idx,
                 distances[time_idx],
