@@ -289,7 +289,6 @@ class NewmarkSolver(Solver):
         if issparse(force):
             force = force.toarray()[:, 0]
         d_force = force - F_previous
-        # F_total = copy.deepcopy(force)
         F_total = np.copy(force)
 
         return d_force, F_total
@@ -321,7 +320,6 @@ class NewmarkSolver(Solver):
         # initial force conditions: for computation of initial acceleration
         d_force = F[:, t_start_idx].toarray()
         d_force = d_force[:, 0]
-        # d_force = F[:, t_start_idx]
 
         # initial conditions u, v, a
         u = self.u0
@@ -347,7 +345,6 @@ class NewmarkSolver(Solver):
         # initialise Force from load function
         if self.load_func is not None:
             F_previous = F[:, t_start_idx].toarray()[:, 0]
-            # F_previous = F[:, t_start_idx]
         else:
             F_previous = F[:, t_start_idx]
 

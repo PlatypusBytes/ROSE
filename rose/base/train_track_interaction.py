@@ -325,8 +325,7 @@ class CoupledTrainTrack(GlobalSystem):
         print("Initial static displacement of the train and the track")
         self.calculate_initial_displacement_track()
 
-        contact_track_elements = self.get_track_element_at_wheels(0)
-        disp_at_wheels = self.get_disp_track_at_wheels(contact_track_elements, 0, self.track.solver.u[0,:])
+        disp_at_wheels = self.get_disp_track_at_wheels(0, self.track.solver.u[0,:])
 
         self.calculate_initial_displacement_train(disp_at_wheels)
         self.calculate_static_contact_deformation()
