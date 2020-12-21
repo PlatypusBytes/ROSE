@@ -235,7 +235,7 @@ def write_output(path_results, name, data, omega, freq):
     res = {"omega": omega.tolist(),
            "complex dynamic stiffness": data.K_dyn.tolist(),
            "stiffness": np.real(data.K_dyn).tolist(),
-           "damping": (np.imag(data.K_dyn) / (omega * data.radius / np.real(data.cs[1]))).tolist(),
+           "damping": (np.imag(data.K_dyn) / omega).tolist(),
            }
 
     # dump json
