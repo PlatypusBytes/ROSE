@@ -127,6 +127,9 @@ class ReadSosScenarios:
 
                 for j in idx_segment:
                     name = self.profiles[j][2]
+                    # ignore this layer
+                    if name == "H_Aa_ht_ophoging":
+                        continue
 
                     aux["soil_name"].append(name)
                     aux["top_level"].append(float(self.profiles[j][1]))
