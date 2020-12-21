@@ -4,7 +4,7 @@ import json
 from rose.wolf import LayeredHalfSpace
 
 
-def run_wolf(layers_file, omega, output="./", freq=False):
+def run_wolf(layers_file, omega, output="./", freq=False, plots=True):
     r"""
     Dynamic stiffness according to Wolf and Deeks (2004)
 
@@ -21,7 +21,7 @@ def run_wolf(layers_file, omega, output="./", freq=False):
         data.static_cone()
         data.dynamic_stiffness(omega)
 
-        LayeredHalfSpace.write_output(output, layers[0], data, omega, freq)
+        LayeredHalfSpace.write_output(output, layers[0], data, omega, freq, plots=plots)
 
     return data
 
@@ -64,5 +64,5 @@ if __name__ == "__main__":
     layers = read_file(r"./SOS/SOS.json", emb)
     import time
     t_ini = time.time()
-    run_wolf(layers, np.linspace(0, 2 * np.pi * 10, 51), output=r"./wolf/dyn_stiffness")
+    run_wolf(layers, np.linspace(0, 2 * np.pi * 10, 51), output=r"./wolf/dyn_stiffness", plots=False)
     print(f"Time: {time.time() - t_ini}")
