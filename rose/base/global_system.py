@@ -12,8 +12,6 @@ import logging
 from typing import List
 from copy import deepcopy
 
-
-
 class GlobalSystem:
     def __init__(self):
 
@@ -39,6 +37,11 @@ class GlobalSystem:
         self.accelerations: np.ndarray = None
 
         self.g: float = 9.81
+
+        self.is_rayleigh_damping: bool = False
+        self.damping_ratio: float = 0
+        self.radial_frequency_one: float = 0
+        self.radial_frequency_two: float = 0
 
     def validate_input(self):
         for model_part in self.model_parts:
@@ -252,8 +255,8 @@ class GlobalSystem:
         self.trim_global_matrices_on_indices(list(obsolete_indices), list(obsolete_indices))
 
         # recalculate dof numbering
-        if len(obsolete_indices) > 0:
-            self.recalculate_dof(np.array(obsolete_indices))
+        #if len(obsolete_indices) > 0:
+        self.recalculate_dof(np.array(obsolete_indices))
 
 
     def add_model_parts_to_global_matrices(self):
@@ -318,6 +321,29 @@ class GlobalSystem:
 
         self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)),dtype=float)
 
+
+    def __calculate_rayleigh_damping_factors(self):
+        """
+        Calculate rayleigh damping coefficients
+        :return:
+        """
+        constant = (
+                2
+                * self.damping_ratio
+                / (self.radial_frequency_one + self.radial_frequency_two)
+        )
+        a0 = self.radial_frequency_one * self.radial_frequency_two * constant
+        a1 = constant
+        return a0, a1
+
+    def calculate_rayleigh_damping(self):
+
+        if self.is_rayleigh_damping:
+            a0, a1 = self.__calculate_rayleigh_damping_factors()
+
+            rayleigh_damping_matrix = self.global_mass_matrix.dot(a0) + self.global_stiffness_matrix.dot(a1)
+            self.global_damping_matrix += rayleigh_damping_matrix
+
     def initialise_ndof(self):
         """
         Initialise total number of degrees of freedom in the global system and sets nodal dof index in the global
@@ -365,6 +391,7 @@ class GlobalSystem:
         self.initialise_ndof()
         self.initialise_global_matrices()
         self.add_model_parts_to_global_matrices()
+        self.calculate_rayleigh_damping()
 
         self.set_stage_time_ids()
 
@@ -430,11 +457,13 @@ class GlobalSystem:
         :param node:
         :return:
         """
+
         node_ids_dofs = list(node.index_dof[node.index_dof != None])
         node.assign_result(
             self.solver.u[:, node_ids_dofs],
             self.solver.v[:, node_ids_dofs],
             self.solver.a[:, node_ids_dofs],
+            force = self.solver.f[:, node_ids_dofs]
         )
         return node
 
@@ -443,9 +472,8 @@ class GlobalSystem:
         Assigns all solver results to all nodes in the mesh
         :return:
         """
-        self.mesh.nodes = list(
-            map(lambda node: self._assign_result_to_node(node), self.mesh.nodes)
-        )
+        vec_f = np.vectorize(self._assign_result_to_node)
+        self.mesh.nodes = vec_f(self.mesh.nodes)
 
     def main(self):
 
