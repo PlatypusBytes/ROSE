@@ -398,8 +398,9 @@ class NewmarkSolver(Solver):
             self.u[t, :] = u
             self.v[t, :] = v
             self.a[t, :] = a
-            self.f[t, :] = force_ext
+            # self.f[t, :] = force_ext
 
+        self.f[:, :] = np.transpose(K.dot(np.transpose(self.u)))
         # close the progress bar
         pbar.close()
         return
