@@ -14,6 +14,7 @@ class Node:
         self.displacements = None
         self.velocities = None
         self.accelerations = None
+        self.force = None
 
         self.model_parts = []
 
@@ -26,29 +27,21 @@ class Node:
             self.z_rot_dof = is_active
 
 
-    def assign_result(self, displacements, velocities, accelerations):
+    def assign_result(self, displacements, velocities, accelerations, force=None):
         ndof = 3  # todo increase for 3d
 
-        self.displacements = np.zeros((displacements.shape[0], ndof))
-        self.velocities = np.zeros((velocities.shape[0], ndof))
-        self.accelerations = np.zeros((accelerations.shape[0], ndof))
+        self.displacements = np.empty((displacements.shape[0], ndof), dtype=float)
+        self.velocities = np.empty((velocities.shape[0], ndof), dtype=float)
+        self.accelerations = np.empty((accelerations.shape[0], ndof), dtype=float)
 
-        dof_idx = 0
-        if self.normal_dof:
-            self.displacements[:, 0] = displacements[:, dof_idx]
-            self.velocities[:, 0] = velocities[:, dof_idx]
-            self.accelerations[:, 0] = accelerations[:, dof_idx]
-            dof_idx += 1
-        if self.y_disp_dof:
-            self.displacements[:, 1] = displacements[:, dof_idx]
-            self.velocities[:, 1] = velocities[:, dof_idx]
-            self.accelerations[:, 1] = accelerations[:, dof_idx]
-            dof_idx += 1
-        if self.z_rot_dof:
-            self.displacements[:, 2] = displacements[:, dof_idx]
-            self.velocities[:, 2] = velocities[:, dof_idx]
-            self.accelerations[:, 2] = accelerations[:, dof_idx]
-            dof_idx += 1
+        mask = [bool(self.normal_dof), bool(self.y_disp_dof), bool(self.z_rot_dof)]
+
+        self.displacements[:, mask] = displacements[:, :]
+        self.velocities[:, mask] = velocities[:, :]
+        self.accelerations[:, mask] = accelerations[:, :]
+        if force is not None:
+            self.force = np.empty((accelerations.shape[0], ndof), dtype=float)
+            self.force[:, mask] = force[:, :]
 
     def __eq__(self, other: Node):
         abs_tol = 1e-9
@@ -59,7 +52,7 @@ class Node:
                 return False
 
         # if nodes are at equal location, combine degree of freedom indices
-        mask = other.index_dof != np.array(None)
+        mask = other.index_dof != None
         self.index_dof[mask] = other.index_dof[mask]
 
         self.normal_dof = self.normal_dof + other.normal_dof

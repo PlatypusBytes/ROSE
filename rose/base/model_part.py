@@ -251,10 +251,6 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         self.length_element = None
         self.nodal_ndof = 3
 
-        self.damping_ratio = None
-        self.radial_frequency_one = None
-        self.radial_frequency_two = None
-
         self.mass = None
 
         self._normal_shape_functions = np.zeros(2)
@@ -445,29 +441,8 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
             2, [True, True, True], self.aux_stiffness_matrix
         )
 
-    def __calculate_rayleigh_damping_factors(self):
-        """
-        Calculate rayleigh damping coefficients
-        :return:
-        """
-        constant = (
-            2
-            * self.damping_ratio
-            / (self.radial_frequency_one + self.radial_frequency_two)
-        )
-        a0 = self.radial_frequency_one * self.radial_frequency_two * constant
-        a1 = constant
-        return a0, a1
-
     def set_aux_damping_matrix(self):
-        """
-        Damping matrix is calculated with the assumption of Rayleigh damping
-        :return:
-        """
-        a0, a1 = self.__calculate_rayleigh_damping_factors()
-        self.aux_damping_matrix = self.aux_mass_matrix.dot(
-            a0
-        ) + self.aux_stiffness_matrix.dot(a1)
+        self.aux_damping_matrix = np.zeros((6, 6))
 
     def initialize_shape_functions(self):
         self._normal_shape_functions = np.zeros(2)

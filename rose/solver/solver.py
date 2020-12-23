@@ -40,6 +40,7 @@ class Solver:
         self.u = []
         self.v = []
         self.a = []
+        self.f = [] # external force vector
         self.time = []
 
         # load function
@@ -65,6 +66,7 @@ class Solver:
         self.u = np.zeros((len(time), number_equations))
         self.v = np.zeros((len(time), number_equations))
         self.a = np.zeros((len(time), number_equations))
+        self.f = np.zeros((len(time), number_equations))
 
     def update(self, t_start_idx):
         self.u0 = self.u[t_start_idx, :]
@@ -328,6 +330,7 @@ class NewmarkSolver(Solver):
         self.u[t_start_idx, :] = u
         self.v[t_start_idx, :] = v
         self.a[t_start_idx, :] = a
+        self.f[t_start_idx, :] = d_force
 
         # combined stiffness matrix
         K_till = K + C.dot(gamma / (beta * t_step)) + M.dot(1 / (beta * t_step ** 2))
@@ -395,6 +398,7 @@ class NewmarkSolver(Solver):
             self.u[t, :] = u
             self.v[t, :] = v
             self.a[t, :] = a
+            self.f[t, :] = force_ext
 
         # close the progress bar
         pbar.close()
