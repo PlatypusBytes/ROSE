@@ -344,7 +344,7 @@ class CoupledTrainTrack(GlobalSystem):
             load = MovingPointLoad(normal_dof=self.rail.normal_dof,y_disp_dof=self.rail.normal_dof,
                                    z_rot_dof=self.rail.normal_dof, start_coord= [wheel.distances[0], 0, 0])
             load.time = self.time
-            load.velocities = self.velocities
+            load.velocities = self.train.velocities
             load.contact_model_part = self.rail
             load.y_force = wheel.total_static_load
             load.nodes = self.rail.nodes

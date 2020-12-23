@@ -32,9 +32,9 @@ class GlobalSystem:
 
         self.total_n_dof: int = None
 
-        self.displacements: np.ndarray = None
-        self.velocities: np.ndarray = None
-        self.accelerations: np.ndarray = None
+        self.displacements_out: np.ndarray = None
+        self.velocities_out: np.ndarray = None
+        self.accelerations_out: np.ndarray = None
 
         self.g: float = 9.81
 
@@ -445,9 +445,9 @@ class GlobalSystem:
 
         self.solver.finalise()
 
-        self.displacements = self.solver.u_out
-        self.velocities = self.solver.v_out
-        self.accelerations = self.solver.a_out
+        self.displacements_out = self.solver.u_out
+        self.velocities_out = self.solver.v_out
+        self.accelerations_out = self.solver.a_out
 
         self.time_out = self.solver.time_out
 

@@ -3,16 +3,10 @@
 
 import os
 from os.path import isfile, join
-import json
 import pickle
-import copy
 
 from rose.read_wolf import read_wolf
-
-from rose.base.global_system import *
 from rose.base.model_part import Material, Section, TimoshenkoBeamElementModelPart, RodElementModelPart
-from rose.utils.mesh_utils import *
-from rose.utils.plot_utils import *
 from rose.train_model.train_model import *
 from rose.base.train_track_interaction import *
 import rose.solver.solver as solver_c
@@ -27,9 +21,9 @@ def set_base_model():
     depth_soil = [1]      # depth of the soil [m] per segment
 
     # Set soil parameters of each segment
-    stiffness_soils = [180e6 * sleeper_distance]
+    stiffness_soils = [180e6 * sleeper_distance] # will be overwritten
     # damping_soils = [1500e3 * sleeper_distance, 1500e3 * sleeper_distance]
-    damping_soils = [0 * sleeper_distance]
+    damping_soils = [0 * sleeper_distance] # will be overwritten
     # set parameters of the rail
     youngs_mod_beam = 210e9     # youngs modulus rail
     poison_beam = 0.0           # poison ration rail
@@ -37,7 +31,7 @@ def set_base_model():
     rho = 7860                  # density of the rail
     rail_area = 69.6e-2
     shear_factor_rail = 0
-    damping_ratio_rail = 0.05
+    damping_ratio_rail = 0.02
     omega_one_rail = 6.283          # first radial_frequency rail
     omega_two_rail = 125.66        # second radial_frequency rail
 
@@ -158,16 +152,11 @@ def set_base_model():
     side_boundaries = ConstraintModelPart(normal_dof=False, y_disp_dof=True, z_rot_dof=True)
     side_boundaries.nodes = [rail_model_part.nodes[0], rail_model_part.nodes[-1]]
 
-
     # populate global system
     track = GlobalSystem()
     track.mesh = all_mesh
     track.time = time
 
-    track.is_rayleigh_damping = False
-    track.damping_ratio = damping_ratio_rail
-    track.radial_frequency_one = omega_one_rail
-    track.radial_frequency_two = omega_two_rail
     # collect all model parts track
     model_parts = [rail_model_part, rail_pad_model_part, sleeper_model_part, side_boundaries] \
                   + soil_model_parts + bottom_boundaries
@@ -222,13 +211,10 @@ def set_base_model():
 
     coupled_model.solver = solver
 
-    coupled_model.velocities = velocities
-
     coupled_model.is_rayleigh_damping = True
     coupled_model.damping_ratio = damping_ratio_rail
     coupled_model.radial_frequency_one = omega_one_rail
     coupled_model.radial_frequency_two = omega_two_rail
-
 
     return coupled_model
 
@@ -240,43 +226,58 @@ def calculate(soil_stiffness, soil_damping, coupled_model):
     # calculate
     coupled_model.main()
 
-def write_results(coupled_model, segment_id, omega, output_dir):
+def write_results(coupled_model, segment_id, omega, output_dir, output_interval=10):
 
     # collect results
     vertical_displacements_rail = np.array(
-        [node.displacements[0::10, 1] for node in coupled_model.track.model_parts[0].nodes])
+        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[0].nodes])
+    vertical_force_rail = np.array(
+        [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[0].nodes])
     coords_rail = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[0].nodes])
 
-    vertical_force_rail = np.array(
-        [node.force[0::10, 1] for node in coupled_model.track.model_parts[0].nodes])
-
     vertical_displacements_rail_pad = np.array(
-        [node.displacements[0::10, 1] for node in coupled_model.track.model_parts[1].nodes])
+        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[1].nodes])
+    vertical_force_rail_pad = np.array(
+        [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[1].nodes])
     coords_rail_pad = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[1].nodes])
 
     vertical_displacements_sleeper = np.array(
-        [node.displacements[0::10, 1] for node in coupled_model.track.model_parts[2].nodes])
+        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
+    vertical_force_sleeper = np.array(
+        [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
     coords_sleeper = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[2].nodes])
 
     vertical_displacements_soil = np.array(
-        [node.displacements[0::10, 1] for node in coupled_model.track.model_parts[4].nodes])
+        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[4].nodes])
+    vertical_force_soil = np.array(
+        [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[4].nodes])
     coords_soil = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[4].nodes])
+
+    vertical_displacements_train = np.array([node.displacements[0::output_interval, 1] for node in coupled_model.train.nodes])
+    vertical_force_train = np.array([node.force[0::output_interval, 1] for node in coupled_model.train.nodes])
 
     result_track = {"name": segment_id,
                     "omega": omega,
+                    "time": coupled_model.time[0::output_interval].tolist(),
+                    "velocity": coupled_model.train.velocities[0::output_interval].tolist(),
                     "vert_disp_rail": vertical_displacements_rail.tolist(),
                     "vert_force_rail": vertical_force_rail.tolist(),
                     "coords_rail": coords_rail.tolist(),
                     "vertical_displacements_rail_pad": vertical_displacements_rail_pad.tolist(),
+                    "vertical_force_rail_pad": vertical_force_rail_pad.tolist(),
                     "coords_rail_pad": coords_rail_pad.tolist(),
                     "vertical_displacements_sleeper": vertical_displacements_sleeper.tolist(),
+                    "vertical_force_sleeper": vertical_force_sleeper.tolist(),
                     "coords_sleeper": coords_sleeper.tolist(),
                     "vertical_displacements_soil": vertical_displacements_soil.tolist(),
+                    "vertical_force_soil": vertical_force_soil.tolist(),
                     "coords_soil": coords_soil.tolist(),
+                    "vertical_displacements_train": vertical_displacements_train.tolist(),
+                    "vertical_force_train": vertical_force_train.tolist(),
                     }
 
 
-    file_name = f'res_{segment_id}_temp_load.pickle'
+    file_name = f'res_{segment_id}.pickle'
 
     with open(os.path.join(output_dir, file_name), "wb") as f:
         pickle.dump(result_track, f)
@@ -304,24 +305,19 @@ def main():
     max_damping, min_damping = max(dampings), min(dampings)
 
     # check limits
-    stiffnesses =[max_stiffness, min_stiffness]
-    dampings =[0, 0]
-    dampings =[max_damping, min_damping]
+    # stiffnesses =[max_stiffness, min_stiffness]
+    # dampings =[max_damping, min_damping]
 
     # new_coupled_model = copy.deepcopy(coupled_model)
     # calculate(stiffness, damping, new_coupled_model)
 
-    for stiffness, damping, segment_id, omega in zip(stiffnesses, dampings,segment_ids, omegas):
+    for stiffness, damping, segment_id, omega in zip(stiffnesses, dampings, segment_ids, omegas):
         new_coupled_model = copy.deepcopy(coupled_model)
         calculate(stiffness, damping, new_coupled_model)
-        write_results(new_coupled_model, segment_id, omega, output_dir)
-        break
+        write_results(new_coupled_model, segment_id, omega, output_dir, output_interval=10)
 
 if __name__ == "__main__":
     main()
-
-    # max_stiffness, min_stiffness = max(stiffnesses), min(stiffnesses)
-    # max_damping, min_damping = max(dampings), min(dampings)
 
 
 
