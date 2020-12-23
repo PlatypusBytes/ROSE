@@ -121,12 +121,12 @@ class CoupledTrainTrack(GlobalSystem):
         :return:
         """
 
-        self.y_shape_factors = np.zeros((len(self.wheel_node_dist),len(self.wheel_node_dist[0]), 4))
+        self.y_shape_factors = np.zeros((len(self.wheel_node_dist), len(self.wheel_node_dist[0]), 4))
         for w_idx , w_track_elements in enumerate(self.track_elements):
             for idx, element in enumerate(w_track_elements):
                 for model_part in element.model_parts:
                     if isinstance(model_part, TimoshenkoBeamElementModelPart):
-                        model_part.set_y_shape_functions(self.wheel_node_dist[0, idx])
+                        model_part.set_y_shape_functions(self.wheel_node_dist[w_idx, idx])
                         self.y_shape_factors[w_idx,idx, :] = copy.deepcopy(model_part.y_shape_functions)
 
 
@@ -177,7 +177,7 @@ class CoupledTrainTrack(GlobalSystem):
         elastic_wheel_deformation = self.__calculate_elastic_wheel_deformation(t)
 
         contact_force = np.sign(elastic_wheel_deformation - du_wheels) * \
-                        np.nan_to_num(np.power(1 / self.herzian_contact_coef * np.abs((elastic_wheel_deformation - du_wheels))
+                        np.nan_to_num(np.power(1 / self.herzian_contact_coef * (elastic_wheel_deformation - du_wheels)
                         , self.herzian_power))
 
         return contact_force
@@ -216,10 +216,10 @@ class CoupledTrainTrack(GlobalSystem):
 
         # determine contact force
         u_stat = self.static_contact_deformation
-        contact_track_elements = self.get_track_element_at_wheels(t)
+        # contact_track_elements = self.get_track_element_at_wheels(t)
         disp_at_wheels = self.get_disp_track_at_wheels(t, u)
+        # contact_force = self.calculate_wheel_rail_contact_force(t, u_wheels - disp_at_wheels)
         contact_force = self.calculate_wheel_rail_contact_force(t, u_wheels + u_stat - disp_at_wheels)
-
         # add contact force to train
         F[self.train.contact_dofs] += contact_force
 
@@ -330,6 +330,7 @@ class CoupledTrainTrack(GlobalSystem):
         self.calculate_initial_displacement_train(disp_at_wheels)
         self.calculate_static_contact_deformation()
         self.combine_global_matrices()
+        self.calculate_rayleigh_damping()
 
     def initialize_wheel_loads(self):
         """
