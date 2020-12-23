@@ -95,22 +95,24 @@ def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     """
     # define constants
     track_level = 0.0
-    sleeper_thickness = 0.1
+    sleeper_thickness = 1.0
+
+    n_rail_per_sleeper = 1
 
     # initialise mesh
     mesh = Mesh()
 
     # add track nodes and elements to mesh
-    nodes_track = [Node(i * sleeper_distance, track_level, 0.0) for i in range(n_sleepers)]
+    nodes_track = [Node(i * sleeper_distance/n_rail_per_sleeper, track_level, 0.0) for i in range(n_sleepers * n_rail_per_sleeper)]
     mesh.add_unique_nodes_to_mesh(nodes_track)
     elements_track = [
-        Element([nodes_track[i], nodes_track[i + 1]]) for i in range(n_sleepers - 1)
+        Element([nodes_track[i], nodes_track[i + 1]]) for i in range(n_sleepers * n_rail_per_sleeper - 1)
     ]
     mesh.add_unique_elements_to_mesh(elements_track)
 
     # add railpad nodes and elements to mesh
     points_rail_pad = [
-        [nodes_track[i], Node(i * sleeper_distance, -sleeper_thickness, 0.0)]
+        [nodes_track[i*n_rail_per_sleeper], Node(i * sleeper_distance, -sleeper_thickness, 0.0)]
         for i in range(n_sleepers)
     ]
     points_rail_pad = list(itertools.chain.from_iterable(points_rail_pad))
