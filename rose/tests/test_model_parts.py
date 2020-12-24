@@ -119,38 +119,19 @@ class TestTimoshenkoBeamElementModelPart:
                     expected_mass_matrix[i][j]
                 )
 
-    def test_euler_damping_matrix(
-            self, set_up_euler_beam, expected_euler_beam_damping_matrix
-    ):
-        beam = set_up_euler_beam
-        beam.set_aux_mass_matrix()
-        beam.set_aux_stiffness_matrix()
-
-        beam.set_aux_damping_matrix()
-        beam_damping_matrix = beam.aux_damping_matrix
-
-        expected_damping_matrix = expected_euler_beam_damping_matrix
-
-        for i in range(len(expected_damping_matrix)):
-            for j in range(len(expected_damping_matrix[i])):
-                assert beam_damping_matrix[i, j] == pytest.approx(
-                    expected_damping_matrix[i][j]
-                )
-
     def test_initialize_euler_beam(
-            self, set_up_euler_beam, expected_euler_beam_damping_matrix
+            self, set_up_euler_beam, expected_euler_beam_stiffness_matrix, expected_euler_beam_mass_matrix
     ):
         beam = set_up_euler_beam
         beam.initialize()
 
-        beam_damping_matrix = beam.aux_damping_matrix
-        expected_damping_matrix = expected_euler_beam_damping_matrix
-
-        assert beam.timoshenko_factor == 0
-        for i in range(len(expected_damping_matrix)):
-            for j in range(len(expected_damping_matrix[i])):
-                assert beam_damping_matrix[i, j] == pytest.approx(
-                    expected_damping_matrix[i][j]
+        for i in range(len(expected_euler_beam_mass_matrix)):
+            for j in range(len(expected_euler_beam_mass_matrix[i])):
+                assert beam.aux_mass_matrix[i, j] == pytest.approx(
+                    expected_euler_beam_mass_matrix[i][j]
+                )
+                assert beam.aux_stiffness_matrix[i, j] == pytest.approx(
+                    expected_euler_beam_stiffness_matrix[i][j]
                 )
 
     def test_initialize_timoshenko_beam(self, set_up_euler_beam):
@@ -196,9 +177,6 @@ def set_up_euler_beam(set_up_material, set_up_euler_section):
 
     beam.calculate_mass()
 
-    beam.damping_ratio = 0.0502
-    beam.radial_frequency_one = 2
-    beam.radial_frequency_two = 500
     return beam
 
 
@@ -242,30 +220,30 @@ def expected_euler_beam_mass_matrix_with_rotation():
     return expected_mass_matrix
 
 
-@pytest.fixture
-def expected_euler_beam_damping_matrix():
-    expected_damping_matrix = [
-        [4005.33333333, 0.00000000, 0.00000000, -3997.33333333, 0.00000000, 0.00000000],
-        [0.00000000, 15.54285714, 56.38095238, 0.00000000, -7.54285714, 43.04761905],
-        [0.00000000, 56.38095238, 335.23809524, 0.00000000, -43.04761905, 148.57142857],
-        [- 3997.33333333, 0.00000000, 0.00000000, 4005.33333333, 0.00000000, 0.00000000],
-        [0.00000000, -7.54285714, -43.04761905, 0.00000000, 15.54285714, -56.38095238],
-        [0.00000000, 43.04761905, 148.57142857, 0.00000000, -56.38095238, 335.23809524]
-    ]
-    return expected_damping_matrix
+# @pytest.fixture
+# def expected_euler_beam_damping_matrix():
+#     expected_damping_matrix = [
+#         [4005.33333333, 0.00000000, 0.00000000, -3997.33333333, 0.00000000, 0.00000000],
+#         [0.00000000, 15.54285714, 56.38095238, 0.00000000, -7.54285714, 43.04761905],
+#         [0.00000000, 56.38095238, 335.23809524, 0.00000000, -43.04761905, 148.57142857],
+#         [- 3997.33333333, 0.00000000, 0.00000000, 4005.33333333, 0.00000000, 0.00000000],
+#         [0.00000000, -7.54285714, -43.04761905, 0.00000000, 15.54285714, -56.38095238],
+#         [0.00000000, 43.04761905, 148.57142857, 0.00000000, -56.38095238, 335.23809524]
+#     ]
+#     return expected_damping_matrix
 
-
-@pytest.fixture
-def expected_euler_beam_damping_matrix_with_rotation():
-    expected_damping_matrix = [
-        [4005.33333333, 0.00000000, 0.00000000, -3997.33333333, 0.00000000, 0.00000000],
-        [0.00000000, 15.54669714, 56.38415238, 0.00000000, -7.54669714, 43.05081905],
-        [0.00000000, 56.38415238, 335.28076190, 0.00000000, -43.05081905, 148.56076190],
-        [-3997.33333333, 0.00000000, 0.00000000, 4005.33333333, 0.00000000, 0.00000000],
-        [0.00000000, -7.54669714, -43.05081905, 0.00000000, 15.54669714, -56.38415238],
-        [0.00000000, 43.05081905, 148.56076190, 0.00000000, -56.38415238, 335.28076190],
-    ]
-    return expected_damping_matrix
+#
+# @pytest.fixture
+# def expected_euler_beam_damping_matrix_with_rotation():
+#     expected_damping_matrix = [
+#         [4005.33333333, 0.00000000, 0.00000000, -3997.33333333, 0.00000000, 0.00000000],
+#         [0.00000000, 15.54669714, 56.38415238, 0.00000000, -7.54669714, 43.05081905],
+#         [0.00000000, 56.38415238, 335.28076190, 0.00000000, -43.05081905, 148.56076190],
+#         [-3997.33333333, 0.00000000, 0.00000000, 4005.33333333, 0.00000000, 0.00000000],
+#         [0.00000000, -7.54669714, -43.05081905, 0.00000000, 15.54669714, -56.38415238],
+#         [0.00000000, 43.05081905, 148.56076190, 0.00000000, -56.38415238, 335.28076190],
+#     ]
+#     return expected_damping_matrix
 
 
 
