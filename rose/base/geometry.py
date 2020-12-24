@@ -30,9 +30,9 @@ class Node:
     def assign_result(self, displacements, velocities, accelerations, force=None):
         ndof = 3  # todo increase for 3d
 
-        self.displacements = np.empty((displacements.shape[0], ndof), dtype=float)
-        self.velocities = np.empty((velocities.shape[0], ndof), dtype=float)
-        self.accelerations = np.empty((accelerations.shape[0], ndof), dtype=float)
+        self.displacements = np.zeros((displacements.shape[0], ndof), dtype=float)
+        self.velocities = np.zeros((velocities.shape[0], ndof), dtype=float)
+        self.accelerations = np.zeros((accelerations.shape[0], ndof), dtype=float)
 
         mask = [bool(self.normal_dof), bool(self.y_disp_dof), bool(self.z_rot_dof)]
 
