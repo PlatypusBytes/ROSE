@@ -315,11 +315,6 @@ class TestBenchmarkSet2:
         beam.material = material
         beam.section = section
         beam.length_element = length_beam
-        beam.damping_ratio = damping_ratio
-        beam.radial_frequency_one = omega1
-        beam.radial_frequency_two = omega2
-
-        beam.initialize()
 
         foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
         foundation1.nodes = [beam_nodes[0]]
@@ -346,6 +341,11 @@ class TestBenchmarkSet2:
         global_system.mesh = mesh
         global_system.time = time
         global_system.solver = solver
+
+        global_system.is_rayleigh_damping = True
+        global_system.damping_ratio = damping_ratio
+        global_system.radial_frequency_one = omega1
+        global_system.radial_frequency_two = omega2
 
         global_system.model_parts = model_parts
 
@@ -598,11 +598,6 @@ class TestBenchmarkSet2:
 
         rail_model_part.section = section
         rail_model_part.material = material
-        rail_model_part.damping_ratio = 0.3
-        rail_model_part.radial_frequency_one = 2
-        rail_model_part.radial_frequency_two = 500
-
-        rail_model_part.initialize()
 
         rail_pad_model_part.mass = 0.000001  # 5
         rail_pad_model_part.stiffness = stiffness_spring / 0.1
@@ -654,6 +649,11 @@ class TestBenchmarkSet2:
         global_system.time = time
         global_system.solver = solver
 
+        global_system.is_rayleigh_damping = True
+        global_system.damping_ratio = 0.3
+        global_system.radial_frequency_one = 2
+        global_system.radial_frequency_two = 500
+
         # get all element model parts from dictionary
         model_parts = [[rail_model_part, rail_pad_model_part, rail_pad_model_part_2, sleeper_model_part, soil_1, soil_2,
                         side_boundaries, load],
@@ -703,31 +703,6 @@ class TestBenchmarkSet2:
             with open(os.path.join(TEST_PATH, 'test_data', 'beam_on_varying_winkler_foundation.json'),
                       "w") as f:
                 json.dump(result, f, indent=2)
-
-        # calculate analytical solution
-        position = np.linspace(rail_model_part.nodes[0].coordinates[0],
-                               rail_model_part.nodes[-1].coordinates[0], calculation_time_steps)
-        p = MovingLoad(a=0.005)
-        p.parameters(position, velocity, youngs_mod_beam, intertia_beam, rho, [winkler_mod_1, winkler_mod_2],
-                     y_load)
-        p.solve()
-
-        # # todo check time discreatisation and force build-up
-        # plt.plot(coords,
-        #          vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 1 / 4)],
-        #          color="k")
-        # plt.plot(coords,
-        #          vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 2 / 4)],
-        #          color="k")
-        # plt.plot(coords,
-        #          vertical_displacements_rail[:, int(len(initialisation_time) + len(calculation_time) * 3 / 4)],
-        #          color="k")
-        # plt.plot(p.position, p.displacement[:, int(len(p.time) * 1 / 4)], color="r", marker='x')
-        # plt.plot(p.position, p.displacement[:, int(len(p.time) * 2 / 4)], color="r", marker='x')
-        # plt.plot(p.position, p.displacement[:, int(len(p.time) * 3 / 4)], color="r", marker='x')
-        # # plt.plot(p.qsi, p.displacement[:, int(n_sleepers*2)], color="k")
-        # plt.show()
-
 
         # retrieve results from file
         with open(os.path.join(TEST_PATH, 'test_data', 'beam_on_varying_winkler_foundation.json')) as f:
@@ -796,9 +771,6 @@ class TestBenchmarkSet2:
 
         rail_model_part.section = section
         rail_model_part.material = material
-        rail_model_part.damping_ratio = 2.04
-        rail_model_part.radial_frequency_one = 2
-        rail_model_part.radial_frequency_two = 500
 
         # rail_model_part.initialize()
 
@@ -833,6 +805,10 @@ class TestBenchmarkSet2:
         track = GlobalSystem()
         track.mesh = all_mesh
         track.time = time
+        track.is_rayleigh_damping = True
+        track.damping_ratio = 2.04
+        track.radial_frequency_one = 2
+        track.radial_frequency_two = 500
 
         # get all element model parts from dictionary
         model_parts = [[rail_model_part, rail_pad_model_part, sleeper_model_part, soil_1,
