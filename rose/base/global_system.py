@@ -1,4 +1,4 @@
-from rose.base.model_part import ElementModelPart, ConstraintModelPart, ModelPart
+from rose.base.model_part import ElementModelPart, ConstraintModelPart, ModelPart, RodElementModelPart
 from rose.base.boundary_conditions import LoadCondition
 from rose.base.geometry import Mesh
 from rose.base.exceptions import *
@@ -435,6 +435,51 @@ class GlobalSystem:
 
         self.assign_results_to_nodes()
 
+    def calculate_force_in_elements(self):
+        """
+        Calculates force in each element
+
+        :return:
+        """
+        # loop over elements
+        for element in self.mesh.elements:
+
+            # get auxiliar stiffness matrix of element
+
+            for model_part in element.model_parts:
+                if isinstance(model_part, ElementModelPart):
+                    aux_matrix = model_part.aux_stiffness_matrix
+                    mask = [model_part.normal_dof, model_part.y_disp_dof, model_part.z_rot_dof]
+                    break
+            else:
+                model_part = None
+                aux_matrix = None
+                mask = None
+
+            # if element has 2 nodes, calculate force in element
+            #todo make general for 2 or 3D elements
+            if len(element.nodes) == 2 and model_part is not None and aux_matrix is not None and mask is not None:
+                # get nodal displacements and stack them
+                displacements = np.concatenate([node.displacements for node in element.nodes], axis=1)
+
+                # get element rotation matrix
+                rot_matrix = model_part.rotation_matrix
+
+                # rotate displacements if rotate matrix is present
+                # calculate nodal force
+                if rot_matrix is not None:
+                    inv_rot_matrix = np.linalg.inv(model_part.rotation_matrix)
+                    force = aux_matrix.dot(inv_rot_matrix.dot(displacements.T))
+                else:
+                    force = aux_matrix.dot(displacements.T)
+
+                # calculate mean of nodal forces, taking into account direction and assign to element
+                nodal_force = np.array_split(force, len(element.nodes), axis=0)
+                element_force = (nodal_force[0]  - nodal_force[1]) /2
+                element_force = element_force.T[:, mask]
+                element.assign_force(element_force, mask)
+
+
     def finalise(self):
         """
         Finalises calculation
@@ -444,7 +489,7 @@ class GlobalSystem:
         print("Finalising calculation")
 
         self.solver.finalise()
-
+        self.calculate_force_in_elements()
         self.displacements_out = self.solver.u_out
         self.velocities_out = self.solver.v_out
         self.accelerations_out = self.solver.a_out

@@ -71,6 +71,7 @@ class Element:
         self.index = None
         self.nodes = nodes
         self.model_parts = []
+        self.force = None
 
     def __eq__(self, other):
         for node in self.nodes:
@@ -86,6 +87,13 @@ class Element:
             self.model_parts.append(model_part)
             for node in self.nodes:
                 node.model_parts.append(model_part)
+
+    def assign_force(self, force, mask):
+
+        ndof = 3  # todo increase for 3d
+
+        self.force = np.zeros((force.shape[0], ndof), dtype=float)
+        self.force[:, mask] = force[:, :]
 
 
 class Mesh:
