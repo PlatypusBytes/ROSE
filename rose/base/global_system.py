@@ -475,7 +475,7 @@ class GlobalSystem:
 
                 # calculate mean of nodal forces, taking into account direction and assign to element
                 nodal_force = np.array_split(force, len(element.nodes), axis=0)
-                element_force = (nodal_force[0]  - nodal_force[1]) /2
+                element_force = (nodal_force[0] - nodal_force[1]) /2
                 element_force = element_force.T[:, mask]
                 element.assign_force(element_force, mask)
 

@@ -83,10 +83,10 @@ class CoupledTrainTrack(GlobalSystem):
             wheel_load_np = np.array(wheel_load.elements)
             active_elements = wheel_load_np[wheel_load.active_elements.nonzero()[0]]
 
-            self.track_global_indices[idx,:,:] = np.array([np.array([element.nodes[0].index_dof[1], element.nodes[0].index_dof[2],
+            self.track_global_indices[idx, :, :] = np.array([np.array([element.nodes[0].index_dof[1], element.nodes[0].index_dof[2],
                                                                      element.nodes[1].index_dof[1], element.nodes[1].index_dof[2]]) for element in active_elements])
 
-            self.track_elements[idx,:] = active_elements
+            self.track_elements[idx, :] = active_elements
 
     def calculate_distance_wheels_track_nodes(self):
         """
@@ -128,7 +128,6 @@ class CoupledTrainTrack(GlobalSystem):
                     if isinstance(model_part, TimoshenkoBeamElementModelPart):
                         model_part.set_y_shape_functions(self.wheel_node_dist[w_idx, idx])
                         self.y_shape_factors[w_idx,idx, :] = copy.deepcopy(model_part.y_shape_functions)
-
 
     def get_track_element_at_wheels(self, t: int) -> np.ndarray:
         """
@@ -428,6 +427,7 @@ class CoupledTrainTrack(GlobalSystem):
         """
 
         super().finalise()
+        self.track.calculate_force_in_elements()
         self.assign_results_to_nodes()
 
     def main(self):
