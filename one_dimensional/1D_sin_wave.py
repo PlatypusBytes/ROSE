@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pylab as plt
 from scipy import sparse
-import solver
+from rose.solver.solver import NewmarkSolver
 import json
 import os
 
@@ -68,25 +68,25 @@ def main(omega=range(50, 100, 10), out_fold="./"):
     :return: None
     """
     # properties
-    L = 15  # length of column
+    L = 1  # length of column
     rho = 2000  # density solid
     kappa = 20e6  # bulk modulus solid
     # poisson = 0.3  # poisson ratio
-    discretisation = 0.1  # element size
+    discretisation = 0.01  # element size
     # settings
     settings_newmark = {"gamma": 0.5, "beta": 0.25}
 
     # solid discretisation
     H_discre = np.linspace(0, L, int(np.ceil(L / discretisation) + 1))
     # time discretisation
-    time = np.linspace(0, 0.15, 10000)
+    tim = np.linspace(0, 0.05, 1000)
 
     # create matrices
     M = mass_matrix(H_discre, rho)
     K = stiff_matrix(H_discre, kappa)
     C = sparse.lil_matrix(K.shape)
     # Force vector
-    F = sparse.lil_matrix((len(H_discre), len(time)))
+    F = sparse.lil_matrix((len(H_discre), len(tim)))
 
     # apply boundary conditions
     M, C, K, F = apply_BC(M, C, K, F, H_discre, -1)
@@ -97,17 +97,17 @@ def main(omega=range(50, 100, 10), out_fold="./"):
     # for each frequency
     for w in omega:
         # add sinusoidal force to the surface (node 0)
-        F[0, :] = np.sin(w * time)
+        F[0, :] = np.sin(w * tim)
         # newmark solver
-        res = solver.Solver(K.shape[0])
-        res.newmark(
-            settings_newmark,
+        res = NewmarkSolver()
+        res.initialise(K.shape[0], tim)
+        res.calculate(
             M.tocsc(),
             C.tocsc(),
             K.tocsc(),
             F.tocsc(),
-            time[1] - time[0],
-            time[-1],
+            int(0),
+            int(len(tim)-1),
         )
         # add the maximum displacement
         max_disp.append(np.max(res.u))
@@ -118,9 +118,7 @@ def main(omega=range(50, 100, 10), out_fold="./"):
     ax[1].set_position([0.55, 0.11, 0.40, 0.8])
 
     ax[0].plot(omega, max_disp, color="k")
-    ax[1].plot(
-        omega, [1 / i for i in max_disp], color="k"
-    )  # check if it should be 1 or the sin force
+    ax[1].plot(omega, [1 / i for i in max_disp], color="k")  # check if it should be 1 or the sin force
     ax[0].set_xlabel(r"$\omega$")
     ax[1].set_xlabel(r"$\omega$")
     ax[0].set_ylabel("Displacement")
@@ -137,4 +135,4 @@ def main(omega=range(50, 100, 10), out_fold="./"):
 
 
 if __name__ == "__main__":
-    main(omega=range(50, 500, 50))
+    main(omega=range(50, 500, 10))
