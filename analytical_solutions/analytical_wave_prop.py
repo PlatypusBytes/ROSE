@@ -25,6 +25,7 @@ class OneDimWavePropagation:
         self.v = []  # velocities
         self.p = []  # stress
         self.time = []  # time
+        self.result = []
         return
 
     def properties(self, rho, K, p0, L, nb_ele, time=None):
@@ -100,17 +101,14 @@ class OneDimWavePropagation:
 
         return
 
+
 if __name__ == '__main__':
-
-
-    with open('results_temp.json') as json_file:
-        test = json.load(json_file)
 
     p = OneDimWavePropagation()
     p.properties(1000, 20e6, 10, 1, 11)
     p.solution()
     p.write_results()
+
     import matplotlib.pylab as plt
     plt.plot(p.time, p.p[5, :])
     plt.show()
-
