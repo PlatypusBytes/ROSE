@@ -36,8 +36,10 @@ class AccumulationModel:
         self.number_cycles = []  # number of loading cycles
         self.force = []
         self.cumulative_time = []
+        self.cumulative_nb_cycles = []
         self.nodes = []
         self.displacement = []
+        self.results = {}
         self.nb_nodes = []  # number of nodes
         self.histogram_force = []  # force histogram
         self.force_max = []  # maximum force / train
@@ -74,6 +76,8 @@ class AccumulationModel:
         self.number_trains = len(self.trains)
         # define cumulative time
         self.cumulative_time = np.linspace(0, time_days, int(np.max(self.number_cycles) + 1))
+        # define cumulative nb cycles
+        self.cumulative_nb_cycles = np.linspace(0, int(np.sum(self.number_cycles)), int(np.max(self.number_cycles) + 1))
 
         # check if number of nodes is the same for all the trains
         if all(nb_nodes[0] == x for x in nb_nodes):
@@ -164,6 +168,22 @@ class AccumulationModel:
 
         # compute displacements
         self.displacement = np.cumsum(disp, axis=1) / self.disp_scl_fct
+        # create results dic
+        self.create_results()
+        return
+
+    def create_results(self):
+        """
+        Creates the results dictionary
+        """
+        # collect displacements
+        aux = {}
+        for i, n in enumerate(self.nodes):
+            aux.update({str(n): self.displacement[i].tolist()})
+
+        # create results dict
+        self.results = {"time": self.cumulative_time.tolist(),
+                        "settlement": aux}
         return
 
     def dump(self, output_file: str):
@@ -177,17 +197,8 @@ class AccumulationModel:
         if not os.path.isdir(os.path.split(output_file)[0]):
             os.makedirs(os.path.split(output_file)[0])
 
-        # collect displacements
-        aux = {}
-        for i, n in enumerate(self.nodes):
-            aux.update({str(n): self.displacement[i].tolist()})
-
-        # create results dict
-        results = {"time": self.cumulative_time.tolist(),
-                   "settlement": aux}
-
-        # dump ditch
+        # dump dict
         with open(output_file, "w") as f:
-            json.dump(results, f, indent=2)
+            json.dump(self.results, f, indent=2)
 
         return
