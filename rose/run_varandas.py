@@ -21,10 +21,10 @@ if __name__ == "__main__":
 
     sett = Varandas.AccumulationModel()
     sett.read_traffic(train_info, 20)
-    sett.settlement()
+    sett.settlement(idx=[100])
 
     fig, ax = plt.subplots(1, 1, figsize=(6, 5))
-    ax.plot(sett.cumulative_time, sett.displacement[100, :])
+    ax.plot(sett.cumulative_time, sett.displacement[0, :])
     ax.grid()
     ax.set_xlabel("Time [d]")
     ax.set_ylabel("Vertical displacement [m]")

@@ -81,7 +81,7 @@ class AccumulationModel:
 
         return
 
-    def settlement(self):
+    def settlement(self, idx: list = None):
         """
         Computes cumulative settlement following the methodology proposed by Varandas :cite:`varandas_2014`.
 
@@ -101,19 +101,31 @@ class AccumulationModel:
             M_{\alpha\beta} = \frac{F_{0}^{\alpha + 1}}{\alpha + 1} \sum_{n=1}^{N_{0}} \left(\frac{1}{n}\right)^{\beta}
 
         :math:`h(F)` corresponds to the load histogram.
+
+
+        Parameters
+        ----------
+        :param idx: (optional, default None) node to compute the calculations.
+                    if None computes the calculations for all nodes
         """
+
+        # if index is None compute for all nodes
+        if not idx:
+            idx = range(int(self.nb_nodes))
 
         # compute maximum force
         for j in range(self.number_trains):
             # histogram.extend(self.number_cycles[j] * [np.max(np.abs(self.force[j]), axis=1) / self.force_scl_fct])
-            self.force_max.append(np.max(np.abs(self.force[j]), axis=1) / self.force_scl_fct)
+            self.force_max.append(np.max(np.abs(self.force[j]), axis=1)[idx] / self.force_scl_fct)
 
         # histogram
-        hist = np.ones((int(self.nb_nodes), int(np.sum(self.number_cycles)))) * np.inf
+        hist = np.ones((int(len(idx)), int(np.sum(self.number_cycles)))) * np.inf
         # cumulative displacement
-        self.displacement = np.zeros((int(self.nb_nodes), int(np.max(self.number_cycles))))
+        self.displacement = np.zeros((int(len(idx)), int(np.max(self.number_cycles))))
         # displacement due to cycle n
-        disp = np.zeros((int(self.nb_nodes), int(np.max(self.number_cycles)) + 1))
+        disp = np.zeros((int(len(idx)), int(np.max(self.number_cycles)) + 1))
+        # Vector F for integration
+        F = np.linspace(0, np.max(self.force_max, axis=0), self.nb_int_step)
 
         # incremental number of cycles
         nb_cycle = 0
@@ -127,9 +139,6 @@ class AccumulationModel:
                 if nb_cycle > self.number_cycles[j]:
                     nb_cycle += 1
                     continue
-
-                # Vector F for integration
-                F = np.linspace(0, np.max(self.force_max, axis=0), self.nb_int_step)
 
                 # add force to histogram
                 hist[:, nb_cycle] = self.force_max[j]
@@ -151,35 +160,3 @@ class AccumulationModel:
         # compute displacements
         self.displacement = np.cumsum(disp, axis=1) / self.disp_scl_fct
         return
-
-
-if __name__ == "__main__":
-
-    import pickle
-    with open(r"../tests/test_data/res_KDyn_Segment 1001_scenario 1_damping_70.pickle", "rb") as f:
-        data = pickle.load(f)
-
-    train_info = {"dubbeldekker": {"forces": data['vertical_force_soil'],
-                                   "nb-per-hour": 6,
-                                   "nb-hours": 5,
-                                   "nb-axles": 4},
-                  "sprinter": {"forces": np.array(data['vertical_force_soil']) / 2,
-                               "nb-per-hour": 4,
-                               "nb-hours": 12,
-                               "nb-axles": 4},
-                  }
-
-    import time
-    t_ini = time.time()
-    sett = AccumulationModel()
-    sett.read_traffic(train_info, 300)
-    sett.settlement()
-    print(f"time: {time.time() - t_ini} s")
-
-    import matplotlib.pylab as plt
-    fig, ax = plt.subplots(1, 1, figsize=(6, 5))
-    ax.plot(sett.cumulative_time, sett.displacement[100, :])
-    ax.grid()
-    ax.set_xlabel("Time [d]")
-    ax.set_ylabel("Vertical displacement [m]")
-    plt.show()
