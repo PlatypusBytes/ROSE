@@ -22,6 +22,7 @@ if __name__ == "__main__":
     sett = Varandas.AccumulationModel()
     sett.read_traffic(train_info, 20)
     sett.settlement(idx=[100])
+    sett.dump("./settlement.json")
 
     fig, ax = plt.subplots(1, 1, figsize=(6, 5))
     ax.plot(sett.cumulative_time, sett.displacement[0, :])

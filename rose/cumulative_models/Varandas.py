@@ -1,6 +1,8 @@
 import sys
 import numpy as np
 from scipy.integrate import trapz
+import os
+import json
 
 
 class AccumulationModel:
@@ -113,6 +115,9 @@ class AccumulationModel:
         if not idx:
             idx = range(int(self.nb_nodes))
 
+        # assign nodes
+        self.nodes = idx
+
         # compute maximum force
         for j in range(self.number_trains):
             # histogram.extend(self.number_cycles[j] * [np.max(np.abs(self.force[j]), axis=1) / self.force_scl_fct])
@@ -159,4 +164,30 @@ class AccumulationModel:
 
         # compute displacements
         self.displacement = np.cumsum(disp, axis=1) / self.disp_scl_fct
+        return
+
+    def dump(self, output_file: str):
+        """
+        Writes results to json file
+
+        :param output_file: filename of the results
+        """
+
+        # check if path to output file exists. if not creates
+        if not os.path.isdir(os.path.split(output_file)[0]):
+            os.makedirs(os.path.split(output_file)[0])
+
+        # collect displacements
+        aux = {}
+        for i, n in enumerate(self.nodes):
+            aux.update({str(n): self.displacement[i].tolist()})
+
+        # create results dict
+        results = {"time": self.cumulative_time.tolist(),
+                   "settlement": aux}
+
+        # dump ditch
+        with open(output_file, "w") as f:
+            json.dump(results, f, indent=2)
+
         return
