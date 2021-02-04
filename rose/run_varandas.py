@@ -1,11 +1,11 @@
 from cumulative_models import Varandas
 import numpy as np
 import matplotlib.pylab as plt
+import pickle
 
 
 if __name__ == "__main__":
 
-    import pickle
     with open(r"./tests/test_data/res_KDyn_Segment 1001_scenario 1_damping_70.pickle", "rb") as f:
         data = pickle.load(f)
 
