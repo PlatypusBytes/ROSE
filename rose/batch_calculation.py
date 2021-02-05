@@ -1,6 +1,6 @@
 
 
-
+import gc
 import os
 from os.path import isfile, join
 import pickle
@@ -232,25 +232,25 @@ def write_results(coupled_model, segment_id, omega, output_dir, output_interval=
     vertical_displacements_rail = np.array(
         [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[0].nodes])
     vertical_force_rail = np.array(
-        [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[0].nodes])
+        [element.force[0::output_interval, 1] for element in coupled_model.track.model_parts[0].elements])
     coords_rail = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[0].nodes])
 
     vertical_displacements_rail_pad = np.array(
         [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[1].nodes])
     vertical_force_rail_pad = np.array(
-        [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[1].nodes])
+        [element.force[0::output_interval, 1] for element in coupled_model.track.model_parts[1].elements])
     coords_rail_pad = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[1].nodes])
 
     vertical_displacements_sleeper = np.array(
         [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
-    vertical_force_sleeper = np.array(
-        [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
-    coords_sleeper = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[2].nodes])
+    # vertical_force_sleeper = np.array(
+    #     [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
+    # coords_sleeper = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[2].nodes])
 
     vertical_displacements_soil = np.array(
         [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[4].nodes])
     vertical_force_soil = np.array(
-        [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[4].nodes])
+        [element.force[0::output_interval, 0] for element in coupled_model.track.model_parts[4].elements])
     coords_soil = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[4].nodes])
 
     vertical_displacements_train = np.array([node.displacements[0::output_interval, 1] for node in coupled_model.train.nodes])
@@ -267,8 +267,8 @@ def write_results(coupled_model, segment_id, omega, output_dir, output_interval=
                     "vertical_force_rail_pad": vertical_force_rail_pad.tolist(),
                     "coords_rail_pad": coords_rail_pad.tolist(),
                     "vertical_displacements_sleeper": vertical_displacements_sleeper.tolist(),
-                    "vertical_force_sleeper": vertical_force_sleeper.tolist(),
-                    "coords_sleeper": coords_sleeper.tolist(),
+                    # "vertical_force_sleeper": vertical_force_sleeper.tolist(),
+                    # "coords_sleeper": coords_sleeper.tolist(),
                     "vertical_displacements_soil": vertical_displacements_soil.tolist(),
                     "vertical_force_soil": vertical_force_soil.tolist(),
                     "coords_soil": coords_soil.tolist(),
@@ -315,6 +315,9 @@ def main():
         new_coupled_model = copy.deepcopy(coupled_model)
         calculate(stiffness, damping, new_coupled_model)
         write_results(new_coupled_model, segment_id, omega, output_dir, output_interval=10)
+        
+        del new_coupled_model
+        gc.collect()
 
 if __name__ == "__main__":
     main()
