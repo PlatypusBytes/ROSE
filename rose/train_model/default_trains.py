@@ -1,7 +1,7 @@
 
 from rose.train_model.train_model import TrainModel, Cart, Bogie, Wheel
 
-def set_intercity_train(time, velocities):
+def set_intercity_train(time, velocities, start_coord):
     """
     Sets a train model with the default parameters for the dutch intercity train
     :return:
@@ -11,6 +11,7 @@ def set_intercity_train(time, velocities):
 
     intercity_train.time = time
     intercity_train.velocities = velocities
+    intercity_train.cart_distances = [start_coord]
     intercity_train.carts = [Cart()]
 
     cart = intercity_train.carts[0]
@@ -42,7 +43,7 @@ def set_intercity_train(time, velocities):
     return intercity_train
 
 
-def set_sprinter_train(time, velocities):
+def set_sprinter_train(time, velocities, start_coord):
     """
     Sets a train model with the default parameters for the dutch local sprinter train
     :return:
@@ -53,6 +54,7 @@ def set_sprinter_train(time, velocities):
     sprinter_train.time = time
     sprinter_train.velocities = velocities
     sprinter_train.carts = [Cart()]
+    sprinter_train.cart_distances = [start_coord]
 
     cart = sprinter_train.carts[0]
     cart.bogie_distances = [-10.3, 10.3]
@@ -83,7 +85,7 @@ def set_sprinter_train(time, velocities):
     return sprinter_train
 
 
-def set_cargo_train(time, velocities):
+def set_cargo_train(time, velocities, start_coord):
     """
     Sets a train model with the default parameters for the dutch cargo train
     :return:
@@ -94,6 +96,7 @@ def set_cargo_train(time, velocities):
     cargo_train.time = time
     cargo_train.velocities = velocities
     cargo_train.carts = [Cart()]
+    cargo_train.cart_distances = [start_coord]
 
     cart = cargo_train.carts[0]
     cart.bogie_distances = [-8.33, 8.33]
