@@ -16,7 +16,7 @@ def set_intercity_train(time, velocities):
     cart = intercity_train.carts[0]
     cart.bogie_distances = [-10, 10]
     cart.inertia = 128.8e3
-    cart.mass = 75.5e3
+    cart.mass = 50e3
     cart.stiffness = 2708e3
     cart.damping = 64e3
     cart.length = 28
@@ -37,7 +37,7 @@ def set_intercity_train(time, velocities):
         # setup wheels per bogie
         bogie.wheels = [Wheel() for idx in range(len(bogie.wheel_distances))]
         for wheel in bogie.wheels:
-            wheel.mass = 3.5e3
+            wheel.mass = 1.5e3
 
     return intercity_train
 
@@ -48,13 +48,13 @@ def set_sprinter_train(time, velocities):
     :return:
     """
 
-    intercity_train = TrainModel()
+    sprinter_train = TrainModel()
 
-    intercity_train.time = time
-    intercity_train.velocities = velocities
-    intercity_train.carts = [Cart()]
+    sprinter_train.time = time
+    sprinter_train.velocities = velocities
+    sprinter_train.carts = [Cart()]
 
-    cart = intercity_train.carts[0]
+    cart = sprinter_train.carts[0]
     cart.bogie_distances = [-10.3, 10.3]
     cart.inertia = 73.4e3
     cart.mass = 48.8e3
@@ -80,4 +80,45 @@ def set_sprinter_train(time, velocities):
         for wheel in bogie.wheels:
             wheel.mass = 1.5e3
 
-    return intercity_train
+    return sprinter_train
+
+
+def set_cargo_train(time, velocities):
+    """
+    Sets a train model with the default parameters for the dutch cargo train
+    :return:
+    """
+
+    cargo_train = TrainModel()
+
+    cargo_train.time = time
+    cargo_train.velocities = velocities
+    cargo_train.carts = [Cart()]
+
+    cart = cargo_train.carts[0]
+    cart.bogie_distances = [-8.33, 8.33]
+    cart.inertia = 784.2e3
+    cart.mass = 65e3
+    cart.stiffness = 3270e3
+    cart.damping = 80.2e3
+    cart.length = 21.7
+    cart.calculate_total_n_dof()
+
+
+    # setup bogies per cart
+    cart.bogies = [Bogie() for idx in range(len(cart.bogie_distances))]
+    for bogie in cart.bogies:
+        bogie.wheel_distances = [-0.9, 0.9]
+        bogie.mass = 5.2e3
+        bogie.inertia = 2.1e3
+        bogie.stiffness = 32700e3
+        bogie.damping = 0.8e3
+        bogie.length = 1.8
+        bogie.calculate_total_n_dof()
+
+        # setup wheels per bogie
+        bogie.wheels = [Wheel() for idx in range(len(bogie.wheel_distances))]
+        for wheel in bogie.wheels:
+            wheel.mass = 1.5e3
+
+    return cargo_train
