@@ -3,6 +3,7 @@ import json
 from zipfile import ZipFile
 from pyproj import Transformer
 from tqdm import tqdm
+from datetime import datetime
 
 
 def read_csv(file_name: str, key: list, header: int = 0) -> dict:
@@ -78,21 +79,32 @@ def read_csv_traces(file_name: str, key: list, header: int = 0) -> dict:
                 i3 = data[0].index("time")
 
                 for j in id:
+                    # convert time
+                    datetime_object = datetime.strptime(data[j][i3], "%Y-%m-%d %H:%M:%S")
                     data_dic[k][typ]["position"].extend(data[0][4:])
-                    data_dic[k][typ]["time"].extend([data[j][i3]] * len(data[0][4:]))
+                    # data_dic[k][typ]["time"].extend([(datetime_object - datetime(1900, 1, 1)).total_seconds()] * len(data[0][4:]))
+                    data_dic[k][typ]["time"].extend([str(datetime_object)] * len(data[0][4:]))
                     data_dic[k][typ]["value"].extend(data[j][4:])
 
         # old file format
         else:
-            # find remaining indexes
-            i3 = data[0].index("time")
-            i4 = data[0].index("position")
-            i5 = data[0].index("value")
-            # add data to results dict
-            for i in idx:
-                data_dic[k][data[i][i2]]["time"].append(data[i][i3])
-                data_dic[k][data[i][i2]]["position"].append(data[i][i4])
-                data_dic[k][data[i][i2]]["value"].append(data[i][i5])
+            for typ in nb_tracks:
+                # indices containing the key and name
+                id = [i for i, val in enumerate(data) if val[i1] == k and val[i2] == typ]
+
+                # find remaining indexes
+                i3 = data[0].index("time")
+                i4 = data[0].index("position")
+                i5 = data[0].index("value")
+
+                # add data to results dict
+                for i in id:
+                    # convert time
+                    datetime_object = datetime.strptime(data[i][i3].split(".")[0].replace("Z", ""), "%Y-%m-%dT%H:%M:%S")
+                    # data_dic[k][data[i][i2]]["time"].append((datetime_object - datetime(1900, 1, 1)).total_seconds())
+                    data_dic[k][data[i][i2]]["time"].append(str(datetime_object))
+                    data_dic[k][data[i][i2]]["position"].append(data[i][i4])
+                    data_dic[k][data[i][i2]]["value"].append(data[i][i5])
 
     return data_dic
 
@@ -312,10 +324,11 @@ def unzip_file(file_name: str, output_location: str) -> None:
 
 
 if __name__ == "__main__":
-    unzip_file("../../data/ProRail/Culemborg.zip", "../../data/ProRail/Culemborg")
+    # unzip_file("../../data/ProRail/Culemborg.zip", "../../data/ProRail/Culemborg")
     sens = sensor_location(r"../../data/ProRail/Culemborg_sensor_locaties.csv")
-    res = collect_files_moisture(sens, r"../../data/ProRail/Culemborg/measurements", ["name", "time", "value"], "name")
-    save_data(res, "../../data/ProRail/processed/processed_moisture.json")
+
+    # res = collect_files_moisture(sens, r"../../data/ProRail/Culemborg/measurements", ["name", "time", "value"], "name")
+    # save_data(res, "../../data/ProRail/processed/processed_moisture.json")
 
     res = collect_files_traces(sens, r"../../data/ProRail/Culemborg/traces",
                                ["temperature", "cant", "settlement"],
