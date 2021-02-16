@@ -71,7 +71,8 @@ def main():
             ax.grid()
             ax.set_xlabel("Time [d]")
             ax.set_ylabel("Vertical displacement [m]")
-            plt.show()
+            plt.save(Path(out_dir,out_name + "_incl_cargo_100d.png"))
+            plt.close()
         except:
             pass
 
