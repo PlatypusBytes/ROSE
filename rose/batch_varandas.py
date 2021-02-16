@@ -21,14 +21,20 @@ def main():
     sprinter_files = [os.path.join(inp_dir, f) for f in os.listdir(inp_dir) if isfile(join(inp_dir, f))
                       and f.endswith("sprinter.pickle")]
 
+    cargo_files = [os.path.join(inp_dir, f) for f in os.listdir(inp_dir) if isfile(join(inp_dir, f))
+                      and f.endswith("cargo.pickle")]
+
     assert len(intercity_files) == len(sprinter_files)
 
-    for intercity_file, sprinter_file in zip(intercity_files, sprinter_files):
+    for intercity_file, sprinter_file, cargo_file in zip(intercity_files, sprinter_files, cargo_files):
         with open(intercity_file, "rb") as f:
             intercity_data = pickle.load(f)
 
         with open(sprinter_file, "rb") as f:
             sprinter_data = pickle.load(f)
+
+        with open(cargo_file, "rb") as f:
+            cargo_data = pickle.load(f)
 
     # for intercity_file in intercity_files:
     #     with open(intercity_file, "rb") as f:
@@ -44,6 +50,10 @@ def main():
                                    "nb-per-hour": 6,
                                    "nb-hours": 16,
                                    "nb-axles": 16},
+                      "cargo": {"forces": cargo_data['vertical_force_soil'],
+                                   "nb-per-hour": 27,
+                                   "nb-hours": 1,
+                                   "nb-axles": 10*4},
                       }
 
         try:
@@ -53,7 +63,7 @@ def main():
             sett = Varandas.AccumulationModel()
             sett.read_traffic(train_info, 100)
             sett.settlement(idx=[100])
-            sett.dump(Path(out_dir,out_name + "_100d.json"))
+            sett.dump(Path(out_dir,out_name + "_incl_cargo_100d.json"))
 
             fig, ax = plt.subplots(1, 1, figsize=(6, 5))
             print(time()-t)
