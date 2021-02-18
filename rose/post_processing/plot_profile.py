@@ -98,7 +98,7 @@ def plot_profile(data_list: list, time: float, data_type: list,
     leg.get_frame().set_linewidth(0.25)
 
     plt.savefig(output_file)
-    plt.show()
+    plt.close()
 
     return
 
