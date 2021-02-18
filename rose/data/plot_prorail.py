@@ -1,4 +1,3 @@
-import os
 import json
 import numpy as np
 import matplotlib.pylab as plt
@@ -40,7 +39,7 @@ def plot_time_series(data: dict) -> None:
 
             ax.set_xlabel("Time")
             ax.set_ylabel(f"{v}")
-            ax.set_ylim((-20, 60))
+            # ax.set_ylim((-20, 30))
             ax.grid()
             ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0., fontsize=6)
             plt.savefig(f"./{v}_{t}.png")
