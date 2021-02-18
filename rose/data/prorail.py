@@ -4,6 +4,7 @@ from zipfile import ZipFile
 from pyproj import Transformer
 from tqdm import tqdm
 from datetime import datetime
+import copy
 
 
 def read_csv(file_name: str, key: list, header: int = 0) -> dict:
@@ -213,9 +214,9 @@ def collect_files_traces(sensor: dict, folder: str, key: list, track: list, keys
 
     # collect all files in folder
     aux_dic = dict(zip(keys_data, ([] for _ in keys_data)))
-    aux_dic = dict(zip(track, (aux_dic for _ in track)))
+    aux_dic = dict(zip(track, (copy.deepcopy(aux_dic) for _ in track)))
 
-    csv_data = dict(zip(key, (aux_dic for _ in key)))
+    csv_data = dict(zip(key, (copy.deepcopy(aux_dic) for _ in key)))
 
     # go through all the csv files in folder
     for root, dirs, files in os.walk(folder):
@@ -327,8 +328,8 @@ if __name__ == "__main__":
     # unzip_file("../../data/ProRail/Culemborg.zip", "../../data/ProRail/Culemborg")
     sens = sensor_location(r"../../data/ProRail/Culemborg_sensor_locaties.csv")
 
-    # res = collect_files_moisture(sens, r"../../data/ProRail/Culemborg/measurements", ["name", "time", "value"], "name")
-    # save_data(res, "../../data/ProRail/processed/processed_moisture.json")
+    res = collect_files_moisture(sens, r"../../data/ProRail/Culemborg/measurements", ["name", "time", "value"], "name")
+    save_data(res, "../../data/ProRail/processed/processed_moisture.json")
 
     res = collect_files_traces(sens, r"../../data/ProRail/Culemborg/traces",
                                ["temperature", "cant", "settlement"],
