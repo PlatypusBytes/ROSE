@@ -86,8 +86,73 @@ def get_batch_dynamic_stiffnesses(res_dir, sos_fn, node_nr, train_type):
             res_dict["data"][segment_id][scenario_id]["data"] = [max_dyn_stiffness]
             res_dict["data"][segment_id][scenario_id]["probability"] = probability
 
+            prev_segment_id = segment_id
+
     return res_dict
 
+def get_segment_and_scenario_from_fn(file_name):
+    """
+    Gets segment and scenario id from the file name
+    :param file_name:
+    :return:
+    """
+    str_parts = file_name.split("_")
+    segment_id = scenario_id = ""
+
+    for part in str_parts:
+        if "segment" in part.lower():
+            segment_id = part
+        if "scenario" in part.lower():
+            scenario_id = part
+    return segment_id, scenario_id
+
+
+def get_batch_cumulative_settlement(res_dir, sos_fn, node_nr, time_step=-1):
+    """
+    Gets cumulative settlement from batch output and stores it in a dictionary
+
+    :param res_dir: cumulative settlement directory
+    :param sos_fn: SOS file name
+    :param node_nr: node number of the result
+    :param time_step: time step index of result, default is the last step
+    :return:
+    """
+    with open(sos_fn, 'r') as f:
+        sos_data = json.load(f)
+
+    res_dict = {"time": [time_step],
+                "coordinates": {},
+                "data": {}}
+
+    for segment,v in sos_data.items():
+        res_dict["coordinates"][segment] = list(v.values())[0]["coordinates"]
+
+    prev_segment_id = ""
+
+    for file in os.listdir(res_dir):
+        if file.endswith(".json"):
+
+            with open(os.path.join(res_dir, file)) as f:
+                res_numerical = json.load(f)
+
+            settlement = res_numerical["settlement"][str(node_nr)][time_step]
+
+            segment_id, scenario_id = get_segment_and_scenario_from_fn(file)
+
+            probability = sos_data[segment_id][scenario_id]['probability']/100
+
+            if prev_segment_id != segment_id:
+                res_dict["data"][segment_id] = {}
+
+            res_dict["data"][segment_id][scenario_id] = {"data": None,
+                                                         "probability": None}
+
+            res_dict["data"][segment_id][scenario_id]["data"] = [settlement]
+            res_dict["data"][segment_id][scenario_id]["probability"] = probability
+
+            prev_segment_id = segment_id
+
+    return res_dict
 
 def get_results(res_dir, sos_dir, sos_fn, wolf_dir, node_nr):
 
@@ -131,6 +196,7 @@ def get_results(res_dir, sos_dir, sos_fn, wolf_dir, node_nr):
 if __name__ == "__main__":
 
     res_dir = "batch_results/intercity"
+    res_dir = "batch_results/varandas"
     sos_dir = "SOS"
     sos_fn = "SOS.json"
 
@@ -144,10 +210,11 @@ if __name__ == "__main__":
     # calculate_weighted_disp(res_dict)
     # write_gis_csv(res_dict)
 
+    res_dict = get_batch_cumulative_settlement(res_dir, os.path.join(sos_dir,sos_fn), node_nr)
 
-    res_dict = get_batch_dynamic_stiffnesses(res_dir, os.path.join(sos_dir,sos_fn), node_nr, "intercity")
+    # res_dict = get_batch_dynamic_stiffnesses(res_dir, os.path.join(sos_dir,sos_fn), node_nr, "intercity")
 
-    with open(r"batch_results/intercity/dyn_stiffness_profile.json", "w") as f:
+    with open(r"batch_results/intercity/cumulative_settlement_profile.json", "w") as f:
         json.dump(res_dict, f)
 
     # fn = r'D:\software_development\ROSE\rose\batch_results\varandas\s_Kdyn_Segment 1001_scenario 2__incl_cargo_100d.json'
