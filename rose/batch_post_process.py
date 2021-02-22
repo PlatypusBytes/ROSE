@@ -2,6 +2,8 @@ import pickle
 import json
 import os
 
+import matplotlib.pyplot as plt
+
 def write_gis_csv(res_dict):
     header = f"x-coordinate; y-coordinate; segment; max_disp; stiffness\n"
     lines = [header]
@@ -20,6 +22,26 @@ def calculate_weighted_disp(res_dict):
             v['w_disp'] += v2['min_disp'] * v2['probability']
             v['w_stiffness'] += v2['stiffness'] * v2['probability']
 
+def plot_cumulative_results(file_name):
+    """
+    Plots vertical displacement over time after using a cumulative model
+    :param file_name: cumulative result file
+    :return:
+    """
+
+    with open(file_name, 'r') as f:
+        sett = json.load(f)
+
+    fig, ax = plt.subplots(1, 1, figsize=(6, 5))
+    ax.plot(sett['time'], sett['settlement']['100'])
+    ax.grid()
+    ax.set_xlabel("Time [d]")
+    ax.set_ylabel("Vertical displacement [m]")
+    plt.show()
+
+
+# def get_all_varandas_results(varandas_dir):
+#
 
 def get_results(res_dir, sos_dir, sos_fn, wolf_dir):
 
@@ -62,12 +84,22 @@ def get_results(res_dir, sos_dir, sos_fn, wolf_dir):
 
 if __name__ == "__main__":
 
-    res_dir = "batch_results"
-    sos_dir = "SOS"
-    sos_fn = "SOS.json"
+    # res_dir = "batch_results"
+    # sos_dir = "SOS"
+    # sos_fn = "SOS.json"
+    #
+    # wolf_dir = r"wolf/dyn_stiffness"
+    #
+    # res_dict = get_results(res_dir, sos_dir, sos_fn, wolf_dir)
+    # calculate_weighted_disp(res_dict)
+    # write_gis_csv(res_dict)
 
-    wolf_dir = r"wolf/dyn_stiffness"
 
-    res_dict = get_results(res_dir, sos_dir, sos_fn, wolf_dir)
-    calculate_weighted_disp(res_dict)
-    write_gis_csv(res_dict)
+
+    fn = r'D:\software_development\ROSE\rose\batch_results\varandas\s_Kdyn_Segment 1001_scenario 2__incl_cargo_100d.json'
+
+    plot_cumulative_results(fn)
+
+    fn2 = r'D:\software_development\ROSE\rose\batch_results\varandas\s_Kdyn_Segment 1001_scenario 2__100d.json'
+
+    plot_cumulative_results(fn2)
