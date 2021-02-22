@@ -43,7 +43,7 @@ def plot_cumulative_results(file_name):
 def calculate_dynamic_stiffness(dynamic_displacement, dynamic_force):
     return np.array(dynamic_force)/np.array(dynamic_displacement)
 
-def get_batch_dynamic_stiffnesses(res_dir, sos_fn, node_nr):
+def get_batch_dynamic_stiffnesses(res_dir, sos_fn, node_nr, train_type):
     """
     Gets dynamic stiffnesses per SOS scenario and collects them in a dictionary
     :param res_dir: dynamic stiffness directory
@@ -65,7 +65,7 @@ def get_batch_dynamic_stiffnesses(res_dir, sos_fn, node_nr):
     prev_segment_id = ""
 
     for file in os.listdir(res_dir):
-        if file.endswith(".pickle"):
+        if file.endswith(train_type+".pickle"):
 
             with open(os.path.join(res_dir, file), 'rb') as f:
                 res_numerical = pickle.load(f)
@@ -103,7 +103,7 @@ def get_results(res_dir, sos_dir, sos_fn, wolf_dir, node_nr):
             with open(os.path.join(res_dir, file), 'rb') as f:
                 res_numerical = pickle.load(f)
 
-            min_disp = min(res_numerical['vertical_displacements_soil'][200])
+            min_disp = min(res_numerical['vertical_displacements_soil'][node_nr])
             _, segment_id, scenario_id = res_numerical["name"].split("_")
             probability = sos_data[segment_id][scenario_id]['probability']/100
 
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     # write_gis_csv(res_dict)
 
 
-    res_dict = get_batch_dynamic_stiffnesses(res_dir, os.path.join(sos_dir,sos_fn), node_nr)
+    res_dict = get_batch_dynamic_stiffnesses(res_dir, os.path.join(sos_dir,sos_fn), node_nr, "intercity")
 
     with open(r"batch_results/intercity/dyn_stiffness_profile.json", "w") as f:
         json.dump(res_dict, f)
