@@ -118,16 +118,16 @@ def plot_profile(data_list: list, time: float, data_type: list,
 
                 closest_idx = np.array([dist_first_first,dist_first_last,dist_last_first,dist_last_last]).argmin()
 
-            if closest_idx == 0:
-                coords.extend(np.array(data["coordinates"][seg]))
-            elif closest_idx ==1:
-                coords = list(np.flip(coords))
-                coords.extend(np.array(data["coordinates"][seg]))
+            if closest_idx ==0:
+                coords = list(np.flip(coords,axis=0))
+                coords.extend(data["coordinates"][seg])
+            elif closest_idx == 1:
+                coords.extend(data["coordinates"][seg])
             elif closest_idx ==2:
-                coords.extend(np.flip(data["coordinates"][seg],axis=0))
+                coords = list(np.flip(coords,axis=0))
+                coords.extend(list(np.flip(data["coordinates"][seg],axis=0)))
             else:
-                coords = list(np.flip(coords))
-                coords.extend(np.flip(data["coordinates"][seg],axis=0))
+                coords.extend(list(np.flip(data["coordinates"][seg],axis=0)))
 
 
         # compute distance
