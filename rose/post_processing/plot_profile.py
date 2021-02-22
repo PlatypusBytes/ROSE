@@ -12,6 +12,9 @@ color_shad = [[0.5, 0.5, 0.5], "b", "r"]
 color_alpha = [0.25, 0.15, 0.15]
 font_size = 10
 
+def compute_distance(coord_1, coord_2):
+    return np.sqrt(np.power(coord_1[0]-coord_2[0],2) + np.power(coord_1[1]-coord_2[1],2))
+
 def compute_cumulative_distance(coords):
     """
     computes cumulative distance of the track
@@ -41,6 +44,11 @@ def weighted_avg_and_std(values: np.ndarray, weights: np.ndarray) -> [np.ndarray
 
     return average, np.sqrt(variance)
 
+
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return array[idx], idx
 
 def plot_profile(data_list: list, time: float, data_type: list,
                  fct: float = 1.96,
@@ -80,6 +88,8 @@ def plot_profile(data_list: list, time: float, data_type: list,
         seg_std = []
         coords = []
 
+        end_coords =[]
+
         for seg in data["data"]:
             mean_val = []
             prob_val = []
@@ -92,10 +102,33 @@ def plot_profile(data_list: list, time: float, data_type: list,
             # append to results mean, std and coordinates
             seg_mean.extend(np.ones(len(data["coordinates"][seg])) * res[0])
             seg_std.extend(np.ones(len(data["coordinates"][seg])) * res[1])
-            if are_coords_inverted:
+
+            if coords:
+                end_coords = [coords[0], coords[-1]]
+
+            seg_coords = np.array(data["coordinates"][seg])
+
+            # sort coordinate arrays such that the coordinates are connected
+            closest_idx = 0
+            if end_coords:
+                dist_first_first = compute_distance(seg_coords[0], end_coords[0])
+                dist_first_last = compute_distance(seg_coords[0], end_coords[1])
+                dist_last_first = compute_distance(seg_coords[1], end_coords[0])
+                dist_last_last = compute_distance(seg_coords[1], end_coords[1])
+
+                closest_idx = np.array([dist_first_first,dist_first_last,dist_last_first,dist_last_last]).argmin()
+
+            if closest_idx == 0:
+                coords.extend(np.array(data["coordinates"][seg]))
+            elif closest_idx ==1:
+                coords = list(np.flip(coords))
+                coords.extend(np.array(data["coordinates"][seg]))
+            elif closest_idx ==2:
                 coords.extend(np.flip(data["coordinates"][seg],axis=0))
             else:
-                coords.extend(np.array(data["coordinates"][seg]))
+                coords = list(np.flip(coords))
+                coords.extend(np.flip(data["coordinates"][seg],axis=0))
+
 
         # compute distance
         dist = compute_cumulative_distance(coords)
