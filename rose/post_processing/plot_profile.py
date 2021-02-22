@@ -2,6 +2,8 @@ import os
 import matplotlib.pylab as plt
 import numpy as np
 
+import json
+
 # settings for the plot
 color = ["k", "b", "r"]
 style = ["-", ":", "--"]
@@ -10,6 +12,20 @@ color_shad = [[0.5, 0.5, 0.5], "b", "r"]
 color_alpha = [0.25, 0.15, 0.15]
 font_size = 10
 
+def compute_cumulative_distance(coords):
+    """
+    computes cumulative distance of the track
+
+    :param coords: array of sorted coordinates
+    :return:
+    """
+    np_coords = np.array(coords)
+    diffs = np.diff(np_coords,axis=0)
+    distance = np.cumsum(np.sqrt(np.power(diffs[:,0],2) + np.power(diffs[:,1],2)))
+
+    distance = np.concatenate([[0],distance])
+
+    return distance
 
 def weighted_avg_and_std(values: np.ndarray, weights: np.ndarray) -> [np.ndarray, np.ndarray]:
     """
@@ -30,7 +46,7 @@ def plot_profile(data_list: list, time: float, data_type: list,
                  fct: float = 1.96,
                  xlabel: str = "Distance [km]", ylabel: str = "Value [-]",
                  xlim: list = None, ylim: list = None,
-                 output_file: str = "./result.png") -> None:
+                 output_file: str = "./result.png", are_coords_inverted: bool = True) -> None:
     """
 
     @param label:
@@ -76,11 +92,13 @@ def plot_profile(data_list: list, time: float, data_type: list,
             # append to results mean, std and coordinates
             seg_mean.extend(np.ones(len(data["coordinates"][seg])) * res[0])
             seg_std.extend(np.ones(len(data["coordinates"][seg])) * res[1])
-            coords.extend(data["coordinates"][seg])
+            if are_coords_inverted:
+                coords.extend(np.flip(data["coordinates"][seg],axis=0))
+            else:
+                coords.extend(np.array(data["coordinates"][seg]))
 
         # compute distance
-        dist = np.sqrt((np.array(coords)[:, 0] - np.min(np.array(coords)[:, 0])) ** 2 +
-                       (np.array(coords)[:, 0] - np.min(np.array(coords)[:, 0])) ** 2)
+        dist = compute_cumulative_distance(coords)
 
         # plot for data list
         ax.plot(dist, seg_mean, color=color[idx], linewidth=width[idx], linestyle=style[idx], label=data_type[idx])
@@ -106,33 +124,39 @@ def plot_profile(data_list: list, time: float, data_type: list,
 if __name__ == "__main__":
 
     time = [0, 1, 2, 3, 4, 5]
-    data = {"time": time,
-            "data": {"Segment 1": {"Scenario 1": {"data": np.random.normal(5, 1, len(time)).tolist(),
-                                                  "probability": 0.5},
-                                   "Scenario 2": {"data": np.random.normal(6, .5, len(time)).tolist(),
-                                                  "probability": 0.3},
-                                   "Scenario 3": {"data": np.random.normal(4, .3, len(time)).tolist(),
-                                                  "probability": 0.2},
-                                   },
-                     "Segment 2": {"Scenario 1": {"data": np.random.normal(10, 1, len(time)).tolist(),
-                                                  "probability": 0.75},
-                                   "Scenario 2": {"data": np.random.normal(12, 1, len(time)).tolist(),
-                                                  "probability": 0.25},
-                                   },
-                     "Segment 3": {"Scenario 1": {"data": np.random.normal(1, 1, len(time)).tolist(),
-                                                  "probability": 0.8},
-                                   "Scenario 2": {"data": np.random.normal(2, 1, len(time)).tolist(),
-                                                  "probability": 0.15},
-                                   "Scenario 3": {"data": np.random.normal(3, 1, len(time)).tolist(),
-                                                  "probability": 0.05},
-                                   },
-                     },
-            "coordinates": {"Segment 1": [[0, 0], [1, 1], [2, 2]],
-                            "Segment 2": [[2, 2], [3, 3], [5, 5]],
-                            "Segment 3": [[5, 5], [10, 10]],
-                            }}
+    # data = {"time": time,
+    #         "data": {"Segment 1": {"Scenario 1": {"data": np.random.normal(5, 1, len(time)).tolist(),
+    #                                               "probability": 0.5},
+    #                                "Scenario 2": {"data": np.random.normal(6, .5, len(time)).tolist(),
+    #                                               "probability": 0.3},
+    #                                "Scenario 3": {"data": np.random.normal(4, .3, len(time)).tolist(),
+    #                                               "probability": 0.2},
+    #                                },
+    #                  "Segment 2": {"Scenario 1": {"data": np.random.normal(10, 1, len(time)).tolist(),
+    #                                               "probability": 0.75},
+    #                                "Scenario 2": {"data": np.random.normal(12, 1, len(time)).tolist(),
+    #                                               "probability": 0.25},
+    #                                },
+    #                  "Segment 3": {"Scenario 1": {"data": np.random.normal(1, 1, len(time)).tolist(),
+    #                                               "probability": 0.8},
+    #                                "Scenario 2": {"data": np.random.normal(2, 1, len(time)).tolist(),
+    #                                               "probability": 0.15},
+    #                                "Scenario 3": {"data": np.random.normal(3, 1, len(time)).tolist(),
+    #                                               "probability": 0.05},
+    #                                },
+    #                  },
+    #         "coordinates": {"Segment 1": [[0, 0], [1, 1], [2, 2]],
+    #                         "Segment 2": [[2, 2], [3, 3], [5, 5]],
+    #                         "Segment 3": [[5, 5], [10, 10]],
+    #                         }}
+
+    with open(r"../batch_results/intercity/dyn_stiffness_profile.json", "r") as f:
+        data = json.load(f)
+
 
     new_data = [data, data]
 
-    plot_profile([data], 3, ["case 1"], xlabel="Distance [m]", ylabel="Dynamic stiffness", xlim=[0, 20], ylim=[0, 15], output_file="./folder/results.png")
-    plot_profile(new_data, 3, ["case 1", "case 2"], xlabel="Distance [m]", ylabel="Dynamic stiffness", xlim=[0, 20], ylim=[0, 15], output_file="./folder/results.png")
+    # plot_profile([data], 3, ["case 1"], xlabel="Distance [m]", ylabel="Dynamic stiffness", xlim=[0, 20], ylim=[0, 15], output_file="./folder/results.png")
+    # plot_profile(new_data, 3, ["case 1", "case 2"], xlabel="Distance [m]", ylabel="Dynamic stiffness", xlim=[0, 20], ylim=[0, 15], output_file="./folder/results.png")
+
+    plot_profile([data], 3, ["case 1"], xlabel="Distance [m]", ylabel="Dynamic stiffness", output_file="./folder/results_tmp.png")
