@@ -3,6 +3,7 @@ import json
 import os
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 def write_gis_csv(res_dict):
     header = f"x-coordinate; y-coordinate; segment; max_disp; stiffness\n"
@@ -39,11 +40,56 @@ def plot_cumulative_results(file_name):
     ax.set_ylabel("Vertical displacement [m]")
     plt.show()
 
+def calculate_dynamic_stiffness(dynamic_displacement, dynamic_force):
+    return np.array(dynamic_force)/np.array(dynamic_displacement)
 
-# def get_all_varandas_results(varandas_dir):
-#
+def get_batch_dynamic_stiffnesses(res_dir, sos_fn, node_nr):
+    """
+    Gets dynamic stiffnesses per SOS scenario and collects them in a dictionary
+    :param res_dir: dynamic stiffness directory
+    :param sos_fn: SOS filename
+    :param node_nr: node number for the results
+    :return:
+    """
+    with open(sos_fn, 'r') as f:
+        sos_data = json.load(f)
 
-def get_results(res_dir, sos_dir, sos_fn, wolf_dir):
+    res_dict = {"time": [0],
+                "coordinates": {},
+                "data": {}}
+
+    for segment,v in sos_data.items():
+        res_dict["coordinates"][segment] = list(v.values())[0]["coordinates"]
+
+
+    prev_segment_id = ""
+
+    for file in os.listdir(res_dir):
+        if file.endswith(".pickle"):
+
+            with open(os.path.join(res_dir, file), 'rb') as f:
+                res_numerical = pickle.load(f)
+
+
+            max_dyn_stiffness = calculate_dynamic_stiffness(np.max(np.abs(res_numerical['vertical_displacements_soil'][node_nr])),
+                                                                      np.max(np.abs(res_numerical['vertical_force_soil'][node_nr])))
+
+            _, segment_id, scenario_id = res_numerical["name"].split("_")
+            probability = sos_data[segment_id][scenario_id]['probability']/100
+
+            if prev_segment_id != segment_id:
+                res_dict["data"][segment_id] = {}
+
+            res_dict["data"][segment_id][scenario_id] = {"data": None,
+                                                         "probability": None}
+
+            res_dict["data"][segment_id][scenario_id]["data"] = [max_dyn_stiffness]
+            res_dict["data"][segment_id][scenario_id]["probability"] = probability
+
+    return res_dict
+
+
+def get_results(res_dir, sos_dir, sos_fn, wolf_dir, node_nr):
 
     with open(os.path.join(sos_dir, sos_fn), 'r') as f:
         sos_data = json.load(f)
@@ -84,22 +130,30 @@ def get_results(res_dir, sos_dir, sos_fn, wolf_dir):
 
 if __name__ == "__main__":
 
-    # res_dir = "batch_results"
-    # sos_dir = "SOS"
-    # sos_fn = "SOS.json"
-    #
-    # wolf_dir = r"wolf/dyn_stiffness"
-    #
-    # res_dict = get_results(res_dir, sos_dir, sos_fn, wolf_dir)
+    res_dir = "batch_results/intercity"
+    sos_dir = "SOS"
+    sos_fn = "SOS.json"
+
+    wolf_dir = r"wolf/dyn_stiffness"
+
+    node_nr = 100
+
+    data_type = "dynamic_stiffness_soil"
+
+    # res_dict = get_results(res_dir, sos_dir, sos_fn, wolf_dir,node_nr)
     # calculate_weighted_disp(res_dict)
     # write_gis_csv(res_dict)
 
 
+    res_dict = get_batch_dynamic_stiffnesses(res_dir, os.path.join(sos_dir,sos_fn), node_nr)
 
-    fn = r'D:\software_development\ROSE\rose\batch_results\varandas\s_Kdyn_Segment 1001_scenario 2__incl_cargo_100d.json'
+    with open(r"batch_results/intercity/dyn_stiffness_profile.json", "w") as f:
+        json.dump(res_dict, f)
 
-    plot_cumulative_results(fn)
-
-    fn2 = r'D:\software_development\ROSE\rose\batch_results\varandas\s_Kdyn_Segment 1001_scenario 2__100d.json'
-
-    plot_cumulative_results(fn2)
+    # fn = r'D:\software_development\ROSE\rose\batch_results\varandas\s_Kdyn_Segment 1001_scenario 2__incl_cargo_100d.json'
+    #
+    # plot_cumulative_results(fn)
+    #
+    # fn2 = r'D:\software_development\ROSE\rose\batch_results\varandas\s_Kdyn_Segment 1001_scenario 2__100d.json'
+    #
+    # plot_cumulative_results(fn2)
