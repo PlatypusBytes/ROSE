@@ -6,11 +6,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def write_gis_csv(res_dict):
-    header = f"x-coordinate; y-coordinate; segment; max_disp; stiffness\n"
+    header = f"x-coordinate; y-coordinate; segment; max_disp; stiffness; dyn_stiffness; cum_settlement\n"
     lines = [header]
     for k,v in res_dict.items():
         for coordinate in v["coordinates"]:
-            line = f"{coordinate[0]}; {coordinate[1]}; {k}; {v['w_disp']}; {v['w_stiffness']}\n "
+            line = f"{coordinate[0]}; {coordinate[1]}; {k}; {v['w_disp']}; {v['w_stiffness']}; {v['dyn_stiffness']}; {v['cum_settlement']}\n "
             lines.append(line)
 
     with open('sos_disp_res.csv', 'w') as f:
@@ -154,7 +154,31 @@ def get_batch_cumulative_settlement(res_dir, sos_fn, node_nr, time_step=-1):
 
     return res_dict
 
-def get_results(res_dir, sos_dir, sos_fn, wolf_dir, node_nr):
+def plot_max_disp_vs_velocity(res_dir, start_time_idx):
+
+    max_disps = []
+    velocities = []
+    for file in os.listdir(res_dir):
+        if file.endswith(".pickle"):
+
+            with open(os.path.join(res_dir, file), 'rb') as f:
+                res_numerical = pickle.load(f)
+
+            disp = np.array(res_numerical['vertical_displacements_soil'])[:,start_time_idx:]
+
+            # max_disps.append(max(np.abs(res_numerical['vertical_displacements_soil'][node_nr])))
+            max_disps.append(np.max(np.abs(disp))*1000)
+            velocities.append(res_numerical['velocity'][-1]*3.6)
+
+    plt.plot(np.array(velocities)[:],np.array(max_disps)[:], 'o')
+
+    plt.xlabel('Velocity [km/u]')
+    plt.ylabel('Displacement [mm]')
+    plt.show()
+
+
+
+def get_results(res_dir, sos_dir, sos_fn, wolf_dir, cum_dir, node_nr):
 
     with open(os.path.join(sos_dir, sos_fn), 'r') as f:
         sos_data = json.load(f)
@@ -196,26 +220,30 @@ def get_results(res_dir, sos_dir, sos_fn, wolf_dir, node_nr):
 if __name__ == "__main__":
 
     res_dir = "batch_results/intercity"
-    res_dir = "batch_results/varandas"
+    cum_dir = "batch_results/varandas"
+    res_dir = r"D:\software_development\ROSE\rose\batch_results\velocity_no_damping"
     sos_dir = "SOS"
     sos_fn = "SOS.json"
 
     wolf_dir = r"wolf/dyn_stiffness"
 
-    node_nr = 100
+    node_nr = 200
+    start_time_idx = 1000
 
     data_type = "dynamic_stiffness_soil"
 
-    # res_dict = get_results(res_dir, sos_dir, sos_fn, wolf_dir,node_nr)
+    res_dict = get_results(res_dir, sos_dir, sos_fn, wolf_dir,cum_dir,node_nr)
     # calculate_weighted_disp(res_dict)
     # write_gis_csv(res_dict)
 
-    res_dict = get_batch_cumulative_settlement(res_dir, os.path.join(sos_dir,sos_fn), node_nr)
+    plot_max_disp_vs_velocity(res_dir, start_time_idx)
 
-    # res_dict = get_batch_dynamic_stiffnesses(res_dir, os.path.join(sos_dir,sos_fn), node_nr, "intercity")
-
-    with open(r"batch_results/intercity/cumulative_settlement_profile.json", "w") as f:
-        json.dump(res_dict, f)
+    # res_dict = get_batch_cumulative_settlement(res_dir, os.path.join(sos_dir,sos_fn), node_nr)
+    #
+    # # res_dict = get_batch_dynamic_stiffnesses(res_dir, os.path.join(sos_dir,sos_fn), node_nr, "intercity")
+    #
+    # with open(r"batch_results/intercity/cumulative_settlement_profile.json", "w") as f:
+    #     json.dump(res_dict, f)
 
     # fn = r'D:\software_development\ROSE\rose\batch_results\varandas\s_Kdyn_Segment 1001_scenario 2__incl_cargo_100d.json'
     #
