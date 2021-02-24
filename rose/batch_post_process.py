@@ -64,7 +64,8 @@ def get_batch_dynamic_stiffnesses(res_dir, sos_fn, node_nr, train_type):
 
     res_dict = {"time": [0],
                 "coordinates": {},
-                "data": {}}
+                "data": {},
+                "weighted_data": {}}
 
     prev_segment_id = ""
 
@@ -267,9 +268,10 @@ if __name__ == "__main__":
     #
     # plot_max_disp_vs_velocity(res_dir, start_time_idx)
 
-    res_dict = get_batch_cumulative_settlement(cum_dir, os.path.join(sos_dir,sos_fn), node_nr)
+    # res_dict = get_batch_cumulative_settlement(cum_dir, os.path.join(sos_dir,sos_fn), node_nr)
+    res_dict = get_batch_dynamic_stiffnesses(res_dir, os.path.join(sos_dir,sos_fn), node_nr, "intercity")
     # write_gis_csv_cum_settlement(res_dict)
-    write_gis_csv_2(res_dict, "cum_settlement")
+    write_gis_csv_2(res_dict, "dyn_stiffness")
     #
     # # res_dict = get_batch_dynamic_stiffnesses(res_dir, os.path.join(sos_dir,sos_fn), node_nr, "intercity")
     #
