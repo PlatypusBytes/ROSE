@@ -16,12 +16,20 @@ def write_gis_csv(res_dict):
     with open('sos_disp_res.csv', 'w') as f:
         f.writelines(lines)
 
-def calculate_weighted_disp(res_dict):
+def calculate_weighted_values(res_dict, key, res_key):
+    """
+    Calculates weighted values from segment and scenario dictionary
+
+    :param res_dict: results dictonary
+    :param key: value key
+    :param res_key: result key
+    :return:
+    """
 
     for k,v in res_dict.items():
-        for k2,v2 in v['scenarios'].items():
-            v['w_disp'] += v2['min_disp'] * v2['probability']
-            v['w_stiffness'] += v2['stiffness'] * v2['probability']
+        v[res_key] = 0
+        for k2, v2 in v['scenarios'].items():
+            v[res_key] += v2[key] * v2['probability']
 
 def plot_cumulative_results(file_name):
     """
@@ -58,10 +66,6 @@ def get_batch_dynamic_stiffnesses(res_dir, sos_fn, node_nr, train_type):
                 "coordinates": {},
                 "data": {}}
 
-    for segment,v in sos_data.items():
-        res_dict["coordinates"][segment] = list(v.values())[0]["coordinates"]
-
-
     prev_segment_id = ""
 
     for file in os.listdir(res_dir):
@@ -79,14 +83,18 @@ def get_batch_dynamic_stiffnesses(res_dir, sos_fn, node_nr, train_type):
 
             if prev_segment_id != segment_id:
                 res_dict["data"][segment_id] = {}
+                res_dict["weighted_data"][segment_id] = np.array([0.0],)
 
-            res_dict["data"][segment_id][scenario_id] = {"data": None,
-                                                         "probability": None}
+            res_dict["data"][segment_id][scenario_id] = {"data": [max_dyn_stiffness],
+                                                         "probability": probability}
 
-            res_dict["data"][segment_id][scenario_id]["data"] = [max_dyn_stiffness]
-            res_dict["data"][segment_id][scenario_id]["probability"] = probability
+            res_dict["weighted_data"][segment_id] += np.array(res_dict["data"][segment_id][scenario_id]["data"])*probability
 
             prev_segment_id = segment_id
+
+    for segment,v in sos_data.items():
+        if segment in res_dict["data"]:
+            res_dict["coordinates"][segment] = list(v.values())[0]["coordinates"]
 
     return res_dict
 
@@ -106,6 +114,18 @@ def get_segment_and_scenario_from_fn(file_name):
             scenario_id = part
     return segment_id, scenario_id
 
+def write_gis_csv_2(res_dict, data_type):
+    header = f"x-coordinate; y-coordinate; segment; {data_type}\n"
+    lines = [header]
+
+    for (coord_seg_k, coord_seg_v), (data_seg_k, data_seg_v) in zip(res_dict["coordinates"].items(), res_dict["weighted_data"].items()):
+        if coord_seg_k == data_seg_k:
+            for coordinate in coord_seg_v:
+                line = f"{coordinate[0]}; {coordinate[1]}; {coord_seg_k}; {data_seg_v[-1]}\n "
+                lines.append(line)
+
+    with open(f"{data_type}_res.csv", 'w') as f:
+        f.writelines(lines)
 
 def get_batch_cumulative_settlement(res_dir, sos_fn, node_nr, time_step=-1):
     """
@@ -122,10 +142,8 @@ def get_batch_cumulative_settlement(res_dir, sos_fn, node_nr, time_step=-1):
 
     res_dict = {"time": [time_step],
                 "coordinates": {},
-                "data": {}}
-
-    for segment,v in sos_data.items():
-        res_dict["coordinates"][segment] = list(v.values())[0]["coordinates"]
+                "data": {},
+                "weighted_data": {}}
 
     prev_segment_id = ""
 
@@ -143,14 +161,18 @@ def get_batch_cumulative_settlement(res_dir, sos_fn, node_nr, time_step=-1):
 
             if prev_segment_id != segment_id:
                 res_dict["data"][segment_id] = {}
+                res_dict["weighted_data"][segment_id] = np.array([0.0],)
 
-            res_dict["data"][segment_id][scenario_id] = {"data": None,
-                                                         "probability": None}
+            res_dict["data"][segment_id][scenario_id] = {"data": [settlement],
+                                                         "probability": probability}
 
-            res_dict["data"][segment_id][scenario_id]["data"] = [settlement]
-            res_dict["data"][segment_id][scenario_id]["probability"] = probability
+            res_dict["weighted_data"][segment_id] += np.array(res_dict["data"][segment_id][scenario_id]["data"])*probability
 
             prev_segment_id = segment_id
+
+    for segment,v in sos_data.items():
+        if segment in res_dict["data"]:
+            res_dict["coordinates"][segment] = list(v.values())[0]["coordinates"]
 
     return res_dict
 
@@ -221,24 +243,33 @@ if __name__ == "__main__":
 
     res_dir = "batch_results/intercity"
     cum_dir = "batch_results/varandas"
-    res_dir = r"D:\software_development\ROSE\rose\batch_results\velocity_no_damping"
+    # res_dir = r"D:\software_development\ROSE\rose\batch_results\velocity_no_damping"
     sos_dir = "SOS"
     sos_fn = "SOS.json"
 
     wolf_dir = r"wolf/dyn_stiffness"
 
-    node_nr = 200
+    node_nr = 100
     start_time_idx = 1000
 
     data_type = "dynamic_stiffness_soil"
 
-    res_dict = get_results(res_dir, sos_dir, sos_fn, wolf_dir,cum_dir,node_nr)
-    # calculate_weighted_disp(res_dict)
-    # write_gis_csv(res_dict)
+    # res_dict = get_results(res_dir, sos_dir, sos_fn, wolf_dir,cum_dir,node_nr)
 
-    plot_max_disp_vs_velocity(res_dir, start_time_idx)
+    # for k,v in res_dict.items():
+    #     for k2,v2 in v['scenarios'].items():
+    #         v['w_disp'] += v2['min_disp'] * v2['probability']
+    #         v['w_stiffness'] += v2['stiffness'] * v2['probability']
 
-    # res_dict = get_batch_cumulative_settlement(res_dir, os.path.join(sos_dir,sos_fn), node_nr)
+    # calculate_weighted_values(res_dict,'min_disp', 'w_disp')
+    # calculate_weighted_values(res_dict,'stiffness', 'w_stiffness')
+    # # write_gis_csv(res_dict)
+    #
+    # plot_max_disp_vs_velocity(res_dir, start_time_idx)
+
+    res_dict = get_batch_cumulative_settlement(cum_dir, os.path.join(sos_dir,sos_fn), node_nr)
+    # write_gis_csv_cum_settlement(res_dict)
+    write_gis_csv_2(res_dict, "cum_settlement")
     #
     # # res_dict = get_batch_dynamic_stiffnesses(res_dir, os.path.join(sos_dir,sos_fn), node_nr, "intercity")
     #
