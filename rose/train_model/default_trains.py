@@ -1,5 +1,34 @@
-
+from enum import Enum
 from rose.train_model.train_model import TrainModel, Cart, Bogie, Wheel
+
+import numpy as np
+
+
+class TrainType(Enum):
+    INTERCITY = 0
+    SPRINTER = 1
+    CARGO = 2
+
+def set_train(time: np.ndarray, velocities: np.ndarray, start_coord: float, train_type: TrainType):
+    """
+    Sets a default train accordint to the TrainType
+
+    :param time: all time steps
+    :param velocities: velocities of the train per time step
+    :param start_coord: initial coordinate of the middle of the cart
+    :param train_type: type of train
+    :return:
+    """
+    if train_type == TrainType.INTERCITY:
+        return set_intercity_train(time, velocities, start_coord)
+    elif train_type == TrainType.SPRINTER:
+        return set_sprinter_train(time, velocities, start_coord)
+    elif train_type == TrainType.CARGO:
+        return set_cargo_train(time, velocities, start_coord)
+    else:
+        return None
+
+
 
 def set_intercity_train(time, velocities, start_coord):
     """
@@ -22,7 +51,6 @@ def set_intercity_train(time, velocities, start_coord):
     cart.damping = 64e3
     cart.length = 28
     cart.calculate_total_n_dof()
-
 
     # setup bogies per cart
     cart.bogies = [Bogie() for idx in range(len(cart.bogie_distances))]

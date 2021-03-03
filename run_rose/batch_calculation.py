@@ -1,92 +1,74 @@
 
-
 import gc
 import os
 from os.path import isfile, join
 import pickle
 
-from rose.read_wolf import read_wolf
+from run_rose.read_wolf import read_wolf
 from rose.base.model_part import Material, Section, TimoshenkoBeamElementModelPart, RodElementModelPart
 from rose.train_model.train_model import *
-from rose.train_model.default_trains import set_intercity_train, set_sprinter_train
+from rose.train_model.default_trains import TrainType, set_train
 from rose.base.train_track_interaction import *
-import rose.solver.solver as solver_c
+import rose.solver.solver as solver_imp
+
+# Set geometry parameters
+n_segments = 1
+
+fact = 1
+n_sleepers = [int(200/fact)]    # number of sleepers per segment
+sleeper_distance = 0.6 * fact # distance between sleepers, equal for each segment
+depth_soil = [1]      # depth of the soil [m] per segment
+
+# Set soil parameters of each segment
+stiffness_soils = [180e6 * sleeper_distance] # will be overwritten
+# damping_soils = [1500e3 * sleeper_distance, 1500e3 * sleeper_distance]
+damping_soils = [0 * sleeper_distance] # will be overwritten
+# set parameters of the rail
+youngs_mod_beam = 210e9     # youngs modulus rail
+poison_beam = 0.0           # poison ratio rail
+intertia_beam = 2.24E-05    # inertia of the rail
+rho = 7860                  # density of the rail
+rail_area = 69.6e-2
+shear_factor_rail = 0
+damping_ratio_rail = 0.02
+omega_one_rail = 6.283          # first radial_frequency rail
+omega_two_rail = 125.66        # second radial_frequency rail
+
+# set parameters rail pad
+mass_rail_pad = 5           # mass of the rail pad [kg]
+stiffness_rail_pad = 750e6  # stiffness of the rail pad [N/m2]
+damping_rail_pad = 750e3
+
+# set parameters sleeper
+mass_sleeper = 140        # [kg]
+
+# set up train
+starting_distance_mid_cart = 40.55
+train_type = TrainType.INTERCITY
+
+# set up velocity
+velocity = 38.9/1              # constant velocity of the train [m/s]
+
+# set up contact parameters
+herzian_contact_coef = 9.1e-7   # herzian contact coefficient
+herzian_power = 3 / 2          # herzian power
+
+# set time parameters in two stages
+tot_ini_time = 0.5      # total initalisation time  [s]
+n_t_ini = 5000          # number of time steps initialisation time  [-]
+
+tot_calc_time = 1.2       # total time during calculation phase   [s]
+n_t_calc = 8000        # number of time steps during calculation phase [-]
+
+# choose solver
+solver = solver_imp.NewmarkSolver()
+
 
 def set_base_model():
-    # Set geometry parameters
-    n_segments = 1
-
-    fact = 1
-    n_sleepers = [int(200/fact)]    # number of sleepers per segment
-    sleeper_distance = 0.6 * fact # distance between sleepers, equal for each segment
-    depth_soil = [1]      # depth of the soil [m] per segment
-
-    # Set soil parameters of each segment
-    stiffness_soils = [180e6 * sleeper_distance] # will be overwritten
-    # damping_soils = [1500e3 * sleeper_distance, 1500e3 * sleeper_distance]
-    damping_soils = [0 * sleeper_distance] # will be overwritten
-    # set parameters of the rail
-    youngs_mod_beam = 210e9     # youngs modulus rail
-    poison_beam = 0.0           # poison ration rail
-    intertia_beam = 2.24E-05    # inertia of the rail
-    rho = 7860                  # density of the rail
-    rail_area = 69.6e-2
-    shear_factor_rail = 0
-    damping_ratio_rail = 0.02
-    omega_one_rail = 6.283          # first radial_frequency rail
-    omega_two_rail = 125.66        # second radial_frequency rail
-
-    # set parameters rail pad
-    mass_rail_pad = 5           # mass of the rail pad [kg]
-    stiffness_rail_pad = 750e6  # stiffness of the rail pad [N/m2]
-    damping_rail_pad = 750e3
-
-    # set parameters sleeper
-    mass_sleeper = 140        # [kg]
-
-    # set up train
-    # set up bogie configuration
-    wheel_distances = [-1.25, 1.25]  # wheel distances from the centre of the bogie [m]
-    bogie_length = 2                 # length of the bogie [m]
-
-    # set up cart configuration
-    bogie_distances = [-10, 10]        # bogie distances from the centre of the cart [m]
-    cart_length = 28                 # length of the cart [m]
-
-    # set up train configuration
-    cart_distances = [26.55 + 14]    # cart distances from the start of the track [m]
-
-    # set train parameters
-    mass_wheel = 3.5e3         # mass of one wheel [kg]
-    mass_bogie = 6e3         # mass of one bogie [kg]
-    mass_cart = 75.5e3           # mass of one cart  [kg]
-
-    inertia_bogie = 0.31e3           # mass interia of one bogie   [?]
-    inertia_cart = 128.8e3            # mass interia of one cart   [?]
-
-    prim_stiffness = 4800e3        # stiffness between wheels and bogie
-    sec_stiffness = 2708e3         # stiffness between bogies and cart
-
-    prim_damping = 0.25e3         # damping between wheels and bogie
-    sec_damping = 64e3          # damping between bogies and cart
-
-    # set up velocity
-    velocity = 38.9/1              # constant velocity of the train [m/s]
-
-    # set up contact parameters
-    herzian_contact_coef = 9.1e-7   # herzian contact coefficient
-    herzian_power = 3 / 2          # herzian power
-
-    # set time parameters in two stages
-    tot_ini_time = 0.5      # total initalisation time  [s]
-    n_t_ini = 5000          # number of time steps initialisation time  [-]
-
-    tot_calc_time = 1.2       # total time during calculation phase   [s]
-    n_t_calc = 8000        # number of time steps during calculation phase [-]
-    # n_t_calc = 4000        # number of time steps during calculation phase [-]
-    # choose solver
-    solver = solver_c.NewmarkSolver()
-    # solver = solver_c.ZhaiSolver()
+    """
+    Sets the base coupled model with the predefined parameters
+    :return:
+    """
 
     all_element_model_parts = []
     all_meshes = []
@@ -116,27 +98,32 @@ def set_base_model():
     time = np.concatenate((initialisation_time, calculation_time[1:]))
 
     # set elements
+    # set material rail
     material = Material()
     material.youngs_modulus = youngs_mod_beam  # Pa
     material.poisson_ratio = poison_beam
     material.density = rho
 
+    # set section rail
     section = Section()
     section.area = rail_area
     section.sec_moment_of_inertia = intertia_beam
     section.shear_factor = shear_factor_rail
 
+    # set rail
     rail_model_part.section = section
     rail_model_part.material = material
     rail_model_part.damping_ratio = damping_ratio_rail
     rail_model_part.radial_frequency_one = omega_one_rail
     rail_model_part.radial_frequency_two = omega_two_rail
 
-    rail_pad_model_part.mass = mass_rail_pad  # 5
+    # set rail pad
+    rail_pad_model_part.mass = mass_rail_pad
     rail_pad_model_part.stiffness = stiffness_rail_pad
-    rail_pad_model_part.damping = damping_rail_pad #12e3  # 12e3
+    rail_pad_model_part.damping = damping_rail_pad
 
-    sleeper_model_part.mass = mass_sleeper   # 162.5
+    # set sleeper
+    sleeper_model_part.mass = mass_sleeper
     sleeper_model_part.distance_between_sleepers = sleeper_distance
 
     for idx, soil_model_part in enumerate(soil_model_parts):
@@ -163,42 +150,8 @@ def set_base_model():
                   + soil_model_parts + bottom_boundaries
     track.model_parts = model_parts
 
-
-
     # set up train
-    train = set_intercity_train(time,velocities, 26.55 + 14)
-
-    # train = TrainModel()
-    # train.time = time
-    # train.velocities = velocities
-    #
-    # # set up carts
-    # train.cart_distances = cart_distances
-    # train.carts = [Cart() for idx in range(len(cart_distances))]
-    # for cart in train.carts:
-    #     cart.bogie_distances = bogie_distances
-    #     cart.inertia = inertia_cart
-    #     cart.mass = mass_cart
-    #     cart.stiffness = sec_stiffness
-    #     cart.damping = sec_damping
-    #     cart.length = cart_length
-    #     cart.calculate_total_n_dof()
-    #
-    #     # setup bogies per cart
-    #     cart.bogies = [Bogie() for idx in range(len(bogie_distances))]
-    #     for bogie in cart.bogies:
-    #         bogie.wheel_distances = wheel_distances
-    #         bogie.mass = mass_bogie
-    #         bogie.inertia = inertia_bogie
-    #         bogie.stiffness = prim_stiffness
-    #         bogie.damping = prim_damping
-    #         bogie.length = bogie_length
-    #         bogie.calculate_total_n_dof()
-    #
-    #         # setup wheels per bogie
-    #         bogie.wheels = [Wheel() for idx in range(len(wheel_distances))]
-    #         for wheel in bogie.wheels:
-    #             wheel.mass = mass_wheel
+    train = set_train(time, velocities, starting_distance_mid_cart, train_type)
 
     # setup coupled train track system
     coupled_model = CoupledTrainTrack()
@@ -221,11 +174,19 @@ def set_base_model():
 
     return coupled_model
 
-def calculate(soil_stiffness, soil_damping, coupled_model, velocity):
+def calculate(soil_stiffness: float, soil_damping: float, coupled_model: CoupledTrainTrack, velocity: velocity):
+    """
+    Calculates the coupled model
+
+    :param soil_stiffness: different soil stiffness
+    :param soil_damping:  different soil damping
+    :param coupled_model:  current coupled model
+    :param velocity: velocity at each time step
+    :return:
+    """
     soil = coupled_model.track.model_parts[4]
     soil.stiffness = soil_stiffness
-    # soil.damping = soil_damping
-    soil.damping = 0
+    soil.damping = soil_damping
 
     train_vel = coupled_model.train.velocities
     train_vel[train_vel>1e-10] = velocity
@@ -233,7 +194,18 @@ def calculate(soil_stiffness, soil_damping, coupled_model, velocity):
     # calculate
     coupled_model.main()
 
-def write_results(coupled_model, segment_id, omega, output_dir, output_interval=10):
+def write_results(coupled_model: CoupledTrainTrack, segment_id: str, omega: float, output_dir: str,
+                  output_interval: int =10):
+    """
+    Writes dynamic results of a couple model
+
+    :param coupled_model: current coupled model
+    :param segment_id: id of the current segment
+    :param omega:
+    :param output_dir: output directory
+    :param output_interval: interval of how many timesteps should be written in output
+    :return:
+    """
 
     # collect results
     vertical_displacements_rail = np.array(
@@ -284,8 +256,8 @@ def write_results(coupled_model, segment_id, omega, output_dir, output_interval=
                     }
 
 
-    # file_name = f'res_{segment_id}.pickle'
-    file_name = f'res_{int(coupled_model.train.velocities[-1])}_no_damping.pickle'
+    file_name = f'res_{segment_id}.pickle'
+    # file_name = f'res_{int(coupled_model.train.velocities[-1])}.pickle'
 
     with open(os.path.join(output_dir, file_name), "wb") as f:
         pickle.dump(result_track, f)
@@ -293,42 +265,37 @@ def write_results(coupled_model, segment_id, omega, output_dir, output_interval=
 
 def main():
 
+    # set base coupled model
     coupled_model = set_base_model()
 
+    # set output directory
     cd = os.getcwd()
+    output_dir = os.path.join(cd, "../rose/batch_results")
 
-    output_dir = os.path.join(cd, "batch_results")
-
-
-    wolf_res_path = r'wolf/dyn_stiffness'
+    # set wolf results directory
+    wolf_res_path = r'../rose/wolf/dyn_stiffness'
     wolf_files = [os.path.join(wolf_res_path, f) for f in os.listdir(wolf_res_path) if isfile(join(wolf_res_path, f))]
+
+    # read wolf files
     results = read_wolf(wolf_files)
 
+    # get all segment ids
     segment_ids = [res['name'] for res in results]
+
+    # get all omgeas
     omegas = [res['omega'] for res in results]
-    stiffnesses = [res['stiffness'] * 0.6 for res in results]
-    dampings = [res['damping'] * 0.6 for res in results]
 
-    max_stiffness, min_stiffness = max(stiffnesses), min(stiffnesses)
-    max_damping, min_damping = max(dampings), min(dampings)
+    # get all stiffnesses
+    stiffnesses = [res['stiffness'] * sleeper_distance for res in results]
+    dampings = [res['damping'] * sleeper_distance for res in results]
 
-    # check limits
-    # stiffnesses =[max_stiffness, min_stiffness]
-    # dampings =[max_damping, min_damping]
-
-    # new_coupled_model = copy.deepcopy(coupled_model)
-    # calculate(stiffness, damping, new_coupled_model)
-
-    calc_idx = -1
-
-    velocities = np.arange(0,150,10)/3.6
-    # velocities = [280/3.6]
-    for velocity in velocities:
-        # for stiffness, damping, segment_id, omega in zip(stiffnesses, dampings, segment_ids, omegas):
+    # loop over all segments and calculate
+    for stiffness, damping, segment_id, omega in zip(stiffnesses, dampings, segment_ids, omegas):
         new_coupled_model = copy.deepcopy(coupled_model)
-        calculate(stiffnesses[calc_idx], dampings[calc_idx], new_coupled_model, velocity)
-        write_results(new_coupled_model, segment_ids[calc_idx], omegas[calc_idx], output_dir, output_interval=10)
+        calculate(stiffness, damping, new_coupled_model, velocity)
+        write_results(new_coupled_model, segment_id, omega, output_dir, output_interval=10)
 
+        # delete garbage
         del new_coupled_model
         gc.collect()
 
