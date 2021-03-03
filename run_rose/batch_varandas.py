@@ -11,7 +11,7 @@ from time import time
 def main():
 
     cd = os.getcwd()
-    inp_dir = os.path.join(cd, "batch_results")
+    inp_dir = os.path.join(cd, "batch_results","tmp")
     out_dir = os.path.join(cd, "batch_results","varandas")
 
 
@@ -65,14 +65,15 @@ def main():
             sett.settlement(idx=[100])
             sett.dump(Path(out_dir,out_name + "_incl_cargo_100d.json"))
 
-            fig, ax = plt.subplots(1, 1, figsize=(6, 5))
+            # fig, ax = plt.subplots(1, 1, figsize=(6, 5))
             print(time()-t)
-            ax.plot(sett.cumulative_time, sett.displacement[0, :])
-            ax.grid()
-            ax.set_xlabel("Time [d]")
-            ax.set_ylabel("Vertical displacement [m]")
-            plt.save(Path(out_dir,out_name + "_incl_cargo_100d.png"))
-            plt.close()
+            a=1+1
+            # ax.plot(sett.cumulative_time, sett.displacement[0, :])
+            # ax.grid()
+            # ax.set_xlabel("Time [d]")
+            # ax.set_ylabel("Vertical displacement [m]")
+            # plt.save(Path(out_dir,out_name + "_incl_cargo_100d.png"))
+            # plt.close()
         except:
             pass
 

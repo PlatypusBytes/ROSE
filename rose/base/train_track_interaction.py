@@ -127,7 +127,7 @@ class CoupledTrainTrack(GlobalSystem):
                 for model_part in element.model_parts:
                     if isinstance(model_part, TimoshenkoBeamElementModelPart):
                         model_part.set_y_shape_functions(self.wheel_node_dist[w_idx, idx])
-                        self.y_shape_factors[w_idx,idx, :] = copy.deepcopy(model_part.y_shape_functions)
+                        self.y_shape_factors[w_idx,idx, :] = np.copy(model_part.y_shape_functions)
 
     def get_track_element_at_wheels(self, t: int) -> np.ndarray:
         """

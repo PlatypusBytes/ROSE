@@ -64,5 +64,5 @@ if __name__ == "__main__":
     layers = read_file(r"./SOS/SOS.json", emb)
     import time
     t_ini = time.time()
-    run_wolf(layers, np.linspace(0, 2 * np.pi * 10, 51), output=r"./wolf/dyn_stiffness", plots=False)
+    run_wolf(layers, np.array([8.729139587]), output=r"./wolf/dyn_stiffness", plots=False)
     print(f"Time: {time.time() - t_ini}")

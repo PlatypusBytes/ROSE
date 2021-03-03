@@ -1,15 +1,15 @@
 
 
-import gc
+
 import os
-from os.path import isfile, join
 import pickle
 
-from rose.read_wolf import read_wolf
-from rose.base.model_part import Material, Section, TimoshenkoBeamElementModelPart, RodElementModelPart
+from run_rose.read_wolf import read_wolf
+from rose.base.model_part import Material, Section
 from rose.train_model.train_model import *
 from rose.base.train_track_interaction import *
 import rose.solver.solver as solver_c
+from rose.optimisation.optimisation import Optimisation, OptimisationModelPart,ModelResults
 
 def set_base_model():
     # Set geometry parameters
@@ -80,7 +80,7 @@ def set_base_model():
     tot_ini_time = 0.5      # total initalisation time  [s]
     n_t_ini = 5000          # number of time steps initialisation time  [-]
 
-    tot_calc_time = 1.2       # total time during calculation phase   [s]
+    tot_calc_time = 1.2 * 1      # total time during calculation phase   [s]
     n_t_calc = 8000        # number of time steps during calculation phase [-]
 
     # choose solver
@@ -223,6 +223,7 @@ def calculate(soil_stiffness, soil_damping, coupled_model):
     soil.stiffness = soil_stiffness
     soil.damping = soil_damping
 
+    # soil.damping = 0
     # calculate
     coupled_model.main()
 
@@ -277,7 +278,7 @@ def write_results(coupled_model, segment_id, omega, output_dir, output_interval=
                     }
 
 
-    file_name = f'res_{segment_id}.pickle'
+    file_name = f'res_{segment_id}_no_damping_140.pickle'
 
     with open(os.path.join(output_dir, file_name), "wb") as f:
         pickle.dump(result_track, f)
@@ -289,11 +290,20 @@ def main():
 
     cd = os.getcwd()
 
-    output_dir = os.path.join(cd, "batch_results")
+    output_dir = os.path.join(cd, "../rose/batch_results")
 
 
-    wolf_res_path = r'wolf/dyn_stiffness'
-    wolf_files = [os.path.join(wolf_res_path, f) for f in os.listdir(wolf_res_path) if isfile(join(wolf_res_path, f))]
+    wolf_res_path = r'../rose/wolf/dyn_stiffness'
+    # wolf_files = [os.path.join(wolf_res_path, f) for f in os.listdir(wolf_res_path) if isfile(join(wolf_res_path, f))]
+
+    # wolf_files = [os.path.join(wolf_res_path, f) for f in os.listdir(wolf_res_path) if isfile(join(wolf_res_path, f))]
+
+    # wolf_files = [os.path.join(wolf_res_path,"KDyn_Segment 1090_scenario 1.json"),
+    #               os.path.join(wolf_res_path,"KDyn_Segment 1001_scenario 1.json")]
+    wolf_files = [os.path.join(wolf_res_path,"KDyn_Segment 1090_scenario 1.json")]
+    # wolf_files = [os.path.join(wolf_res_path,"KDyn_Segment 1090_scenario 1.json"),
+    #               os.path.join(wolf_res_path,"KDyn_Segment 1001_scenario 1.json")]
+
     results = read_wolf(wolf_files)
 
     segment_ids = [res['name'] for res in results]
@@ -311,16 +321,36 @@ def main():
     # new_coupled_model = copy.deepcopy(coupled_model)
     # calculate(stiffness, damping, new_coupled_model)
 
+    # stiffnesses[1] = stiffnesses[1]*10
+
     for stiffness, damping, segment_id, omega in zip(stiffnesses, dampings, segment_ids, omegas):
         new_coupled_model = copy.deepcopy(coupled_model)
-        calculate(stiffness, damping, new_coupled_model)
-        write_results(new_coupled_model, segment_id, omega, output_dir, output_interval=10)
-        
-        del new_coupled_model
-        gc.collect()
+        # calculate(stiffness, damping, new_coupled_model)
+        optimisation = Optimisation()
+        optimisation.model=new_coupled_model
+        optimisation.observations =[0.0008, 0.0008]
+
+        optimisation_model_part = OptimisationModelPart()
+        optimisation_model_part.model_part = new_coupled_model.track.model_parts[4]
+        optimisation_model_part.optimisation_parameter_names =["stiffness", "damping"]
+
+        model_results = ModelResults()
+        model_results.result_names = ["displacements_out"]
+        model_results.result_indices = [807,807]
+        model_results.time_step_indices = np.arange(800,int(len(new_coupled_model.time)/10))
+
+        optimisation.model_results = [model_results]
+        optimisation.optimisation_model_parts = [optimisation_model_part]
+
+        optimisation.initialise()
+
+        optimisation.least_square(np.array([stiffness,damping]),ftol=1e-1)
+
+        a=1+1
 
 if __name__ == "__main__":
     main()
+
 
 
 

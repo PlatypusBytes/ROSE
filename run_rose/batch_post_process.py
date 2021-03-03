@@ -51,6 +51,28 @@ def plot_cumulative_results(file_name):
 def calculate_dynamic_stiffness(dynamic_displacement, dynamic_force):
     return np.array(dynamic_force)/np.array(dynamic_displacement)
 
+def get_and_write_n_scenarios_per_segment(sos_fn):
+    with open(sos_fn, 'r') as f:
+        sos_data = json.load(f)
+    res_dict = {"segments": {},
+                }
+    for k, v in sos_data.items():
+        coordinates = list(v.values())[0]["coordinates"]
+        n_scenarios = len(v)
+        res_dict["segments"][k] = {"coordinates": coordinates,
+                                   "n_scenarios": n_scenarios}
+
+
+    header = f"x-coordinate; y-coordinate; segment; n_scenarios\n"
+    lines = [header]
+    for k,v in res_dict["segments"].items():
+        for coordinate in v["coordinates"]:
+            line = f"{coordinate[0]}; {coordinate[1]}; {k}; {v['n_scenarios']}\n "
+            lines.append(line)
+
+    with open('sos_n_scenarios_res.csv', 'w') as f:
+        f.writelines(lines)
+
 def get_batch_dynamic_stiffnesses(res_dir, sos_fn, node_nr, train_type):
     """
     Gets dynamic stiffnesses per SOS scenario and collects them in a dictionary
@@ -268,10 +290,12 @@ if __name__ == "__main__":
     #
     # plot_max_disp_vs_velocity(res_dir, start_time_idx)
 
-    # res_dict = get_batch_cumulative_settlement(cum_dir, os.path.join(sos_dir,sos_fn), node_nr)
-    res_dict = get_batch_dynamic_stiffnesses(res_dir, os.path.join(sos_dir,sos_fn), node_nr, "intercity")
-    # write_gis_csv_cum_settlement(res_dict)
-    write_gis_csv_2(res_dict, "dyn_stiffness")
+    get_and_write_n_scenarios_per_segment(os.path.join(sos_dir,sos_fn))
+
+    # # res_dict = get_batch_cumulative_settlement(cum_dir, os.path.join(sos_dir,sos_fn), node_nr)
+    # res_dict = get_batch_dynamic_stiffnesses(res_dir, os.path.join(sos_dir,sos_fn), node_nr, "intercity")
+    # # write_gis_csv_cum_settlement(res_dict)
+    # write_gis_csv_2(res_dict, "dyn_stiffness")
     #
     # # res_dict = get_batch_dynamic_stiffnesses(res_dir, os.path.join(sos_dir,sos_fn), node_nr, "intercity")
     #
