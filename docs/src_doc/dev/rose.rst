@@ -15,7 +15,6 @@ Subpackages
    rose.post_processing
    rose.soil
    rose.solver
-   rose.tests
    rose.track
    rose.train_model
    rose.utils

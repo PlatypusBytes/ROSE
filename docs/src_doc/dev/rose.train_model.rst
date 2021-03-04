@@ -12,13 +12,6 @@ rose.train\_model.default\_trains module
    :undoc-members:
    :show-inheritance:
 
-rose.train\_model.temp module
------------------------------
-
-.. automodule:: rose.train_model.temp
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 rose.train\_model.train\_model module
 -------------------------------------

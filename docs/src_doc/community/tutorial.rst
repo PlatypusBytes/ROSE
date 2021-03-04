@@ -9,8 +9,8 @@ These tutorials give you the best introduction of working with GEOLib.
    :maxdepth: 3
 
    tutorial_soil.rst
-   tutorial_dfoundations.rst
-   tutorial_dsettlement.rst
-   tutorial_dsheetpiling.rst
-   tutorial_dstability.rst
-   tutorial_multi.rst
+   tutorial_set_train.rst
+
+.. code-block:: python
+
+    test = 1 + 1

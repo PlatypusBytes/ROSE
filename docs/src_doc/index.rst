@@ -19,8 +19,6 @@ instructions for getting the most out of ROSE.
 
    user/intro
    user/install
-   user/setup
-   user/server
 
 The Tutorials
 -------------
@@ -43,7 +41,7 @@ this part of the documentation is for you.
 .. toctree::
    :maxdepth: 3
 
-   tmp/modules
+   dev/modules
 
 The Contributor Guide
 ---------------------
