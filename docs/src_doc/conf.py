@@ -15,6 +15,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath("..//.."))  # isort:skip
 import rose  # isort:skip
+import sphinx_rtd_theme
 
 # -- Project information -----------------------------------------------------
 
@@ -36,6 +37,7 @@ extensions = [
     "sphinx_autodoc_typehints",
     "rst2pdf.pdfbuilder",
     "releases",
+    "sphinx_rtd_theme"
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -59,8 +61,8 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 
-html_theme = "alabaster"
-html_style = "custom.css"
+html_theme = "sphinx_rtd_theme"
+# html_style = "custom.css"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
@@ -79,17 +81,18 @@ add_module_names = True
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
+# html_theme = "sphinx_rtd_theme"
 html_theme_options = {
     "logo_name": False,
-    "logo": "geolib.png",
+    "logo": "",
     "show_powered_by": False,
     "show_related": False,
     "note_bg": "#FFF59C",
     "extra_nav_links": {
-        "@Source code": "https://bitbucket.org/DeltaresGEO/geolib/src",
-        "@Issue Tracker": "https://issuetracker.deltares.nl/secure/RapidBoard.jspa?projectKey=GEOLIB",
-        "@Project documentation": "https://publicwiki.deltares.nl/display/GEOLIB/GEOLIB+Home",
-        "@Releases": "https://publicwiki.deltares.nl/display/GEOLIB/GEOLib+releases",
+        "@Source code": "",
+        "@Issue Tracker": "",
+        "@Project documentation": "",
+        "@Releases": "",
     },
     "show_related": False,
     "show_relbars": True,

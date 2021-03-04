@@ -3,18 +3,21 @@
 Developer Interface
 ===================
 
-This part of the documentation covers all the interfaces of GEOLib.
+This part of the documentation covers the code description.
 
 .. toctree::
    :maxdepth: 3
 
-   model
-   geometry
-   soils
-   models/dfoundations
-   models/dsettlement
-   models/dsheetpiling
-   models/dstability
+   base
+   track
+   train_model
+   solver
+   SOS
+   wolf
+   utils
+   cumulative_models
+   optimisation
+   data
 
 
 
