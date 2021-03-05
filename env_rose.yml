@@ -15,7 +15,8 @@ dependencies:
   - sphinx=3.2.1
   - sphinxcontrib-bibtex=1.0.0
   - sphinx-autodoc-typehints=1.11.1
-  - sphinx-rtd-theme=0.5.1
   - pyshp=2.1.2
   - pyproj=2.6.1
+  - pip:
+    - sphinx-rtd-theme==0.5.1 
 
