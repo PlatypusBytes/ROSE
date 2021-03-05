@@ -44,7 +44,7 @@ pipelines:
                 - conda activate rose
                 - pwd | ls
                 - cd docs/src_doc
-                - make html
+                - sphinx-build . build -b html -c .
                 - apt-get update && apt-get --yes install zip
                 - zip -r src_doc.zip build/html
                 - pipe: atlassian/bitbucket-upload-file:0.3.1
