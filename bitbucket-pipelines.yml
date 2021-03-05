@@ -42,11 +42,11 @@ pipelines:
             script:
                 - conda env update -n rose --file env_rose.yml
                 - conda activate rose
-                - pwd | ls
                 - cd docs/src_doc
                 - sphinx-build . build -b html -c .
                 - apt-get update && apt-get --yes install zip
-                - zip -r src_doc.zip build/html
+                - cd build/html
+                - zip -r src_doc.zip *
                 - pipe: atlassian/bitbucket-upload-file:0.3.1
                   variables:
                       BITBUCKET_USERNAME: $BITBUCKET_USERNAME
