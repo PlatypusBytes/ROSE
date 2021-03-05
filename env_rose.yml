@@ -18,5 +18,7 @@ dependencies:
   - pyshp=2.1.2
   - pyproj=2.6.1
   - pip:
-    - sphinx-rtd-theme==0.5.1 
+    - sphinx-rtd-theme==0.5.1
+    - rst2pdf==0.98
+    - releases==1.6.3
 
