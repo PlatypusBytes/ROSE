@@ -5,10 +5,17 @@ from typing import List
 
 # todo move this class
 class Material:
+    """
+    :Attributes:
+
+        - :self.youngs_modulus:  youngs modulus of the material [N/m2]
+        - :self.poisson_ratio:   poisson ratio of the material [-]
+        - :self.density:         density of the material [kg/m3]
+    """
     def __init__(self):
-        self.youngs_modulus = None
-        self.poisson_ratio = None
-        self.density = None
+        self.youngs_modulus: float = None
+        self.poisson_ratio: float = None
+        self.density: float = None
 
     def validate_input(self):
         if self.youngs_modulus is None:
@@ -20,15 +27,27 @@ class Material:
 
     @property
     def shear_modulus(self):
+        """
+        Shear modulus of the material [N/m2]
+        :return:
+        """
         return self.youngs_modulus / (2 * (1 + self.poisson_ratio))
 
 
 # todo move this class
 class Section:
+    """
+    :Attributes:
+
+        - :self.area:                    section area [m^2]
+        - :self.sec_moment_of_inertia:   second moment of inertia [m^4]
+        - :self.shear_factor:            shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
+    """
     def __init__(self):
-        self.area = None  # [m^2]
-        self.sec_moment_of_inertia = None  # [m^4]
-        self.shear_factor = (
+
+        self.area: float = None  # [m^2]
+        self.sec_moment_of_inertia: float = None  # [m^4]
+        self.shear_factor: float = (
             0  # shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
         )
 
@@ -455,11 +474,11 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
 
     def set_y_shape_functions(self, x):
         """
-        Sets y shape functions of the timoshenko beam element
+        |Sets y shape functions of the timoshenko beam element
 
-        B.S.Gan, An Isogeometric Approach to Beam Structures, Chapter 3
+        |B.S.Gan, An Isogeometric Approach to Beam Structures, Chapter 3
         DOI10.1007/978-3-319-56493-7_3
-        :param x:
+        :param x: local coordinate of the element [m]
         :return:
         """
         l = self.length_element

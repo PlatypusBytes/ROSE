@@ -2,7 +2,7 @@
 Tutorial set train
 ======================
 An import part of ROSE is the train model. It is possible to set up your own custom train
-otherwise, it is also possible to choose from a selection of default trains
+otherwise, it is also possible to choose from a selection of default trains.
 
 Set up default train model
 __________________________
