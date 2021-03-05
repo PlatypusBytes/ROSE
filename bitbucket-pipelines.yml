@@ -43,9 +43,10 @@ pipelines:
                 - conda env update -n rose --file env_rose.yml
                 - conda activate rose
                 - pwd | ls
-                - docs/src_doc/make html
+                - cd docs/src_doc
+                - make html
                 - apt-get update && apt-get --yes install zip
-                - zip -r src_doc.zip docs/src_doc/build/html
+                - zip -r src_doc.zip build/html
                 - pipe: atlassian/bitbucket-upload-file:0.3.1
                   variables:
                       BITBUCKET_USERNAME: $BITBUCKET_USERNAME
