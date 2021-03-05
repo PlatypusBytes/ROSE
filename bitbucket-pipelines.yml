@@ -34,6 +34,22 @@ pipelines:
                       BITBUCKET_USERNAME: $BITBUCKET_USERNAME
                       BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
                       FILENAME: "test-reports/coverage.zip"
+        - step: # Create documentation
+            name: Create documentation.
+            caches:
+                - conda
+                - pip
+            script:
+                - conda env update -n rose --file env_rose.yml
+                - conda activate rose
+                - cd docs/src_doc && make html
+                - apt-get update && apt-get --yes install zip
+                - cd _build/html && zip -r src_doc.zip *
+                - pipe: atlassian/bitbucket-upload-file:0.3.1
+                  variables:
+                      BITBUCKET_USERNAME: $BITBUCKET_USERNAME
+                      BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
+                      FILENAME: "src_doc.zip"
         
 definitions:
    caches:
