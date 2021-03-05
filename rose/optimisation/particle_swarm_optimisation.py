@@ -111,7 +111,7 @@ class PSO():
 
 
 #--- RUN ----------------------------------------------------------------------+
-
-initial=[5,5]               # initial starting location [x1,x2...]
-bounds=[(-10,10),(-10,10)]  # input bounds [(x1_min,x1_max),(x2_min,x2_max)...]
-PSO(func1,initial,bounds,num_particles=15,maxiter=30)
+if __name__ == "__main__":
+    initial=[5,5]               # initial starting location [x1,x2...]
+    bounds=[(-10,10),(-10,10)]  # input bounds [(x1_min,x1_max),(x2_min,x2_max)...]
+    PSO(func1,initial,bounds,num_particles=15,maxiter=30)
