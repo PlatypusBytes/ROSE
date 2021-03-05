@@ -43,9 +43,9 @@ pipelines:
                 - conda env update -n rose --file env_rose.yml
                 - conda activate rose
                 - cd docs/src_doc
-                - sphinx-build . build -b html -c .
+                - sphinx-build . build -b html
                 - apt-get update && apt-get --yes install zip
-                - cd build/html
+                - cd build
                 - zip -r src_doc.zip *
                 - pipe: atlassian/bitbucket-upload-file:0.3.1
                   variables:
