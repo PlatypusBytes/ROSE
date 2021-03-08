@@ -46,7 +46,7 @@ class TestBoundaryConditions:
         time = np.array([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6])
 
         # set moving load
-        force = MovingPointLoad(normal_dof=True, y_disp_dof=True, z_rot_dof=True)
+        force = MovingPointLoad(x_disp_dof=True, y_disp_dof=True, z_rot_dof=True)
         force.nodes = nodes_track
         force.elements = elements_track
         force.time = time

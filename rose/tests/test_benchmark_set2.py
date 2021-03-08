@@ -322,7 +322,7 @@ class TestBenchmarkSet2:
         foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)
         foundation2.nodes = [beam_nodes[-1]]
 
-        load = LoadCondition(x_disp_dof==False, y_disp_dof=True, z_rot_dof=False)
+        load = LoadCondition(x_disp_dof=False, y_disp_dof=True, z_rot_dof=False)
         load.y_force_matrix = np.ones((1, len(time))) * F
 
         # load.y_force[0,:len(initialisation_time)] = np.linspace(0,F,len(initialisation_time))
