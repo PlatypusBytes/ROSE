@@ -226,10 +226,12 @@ def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes:
         soil_model_parts.append(track["soil"])
         if idx>0:
             # combine rail elements in one model part
-            track["rail"].elements = tracks[idx-1]["rail"].elements + [Element([tracks[idx-1]["rail"].nodes[-1],
-                                                                                track["rail"].nodes[0]])]  \
-                                                                      + track["rail"].elements
+            connecting_element = Element([tracks[idx-1]["rail"].nodes[-1],
+                                          track["rail"].nodes[0]])
+
+            track["rail"].elements = tracks[idx-1]["rail"].elements + [connecting_element] + track["rail"].elements
             track["rail"].nodes = tracks[idx-1]["rail"].nodes + track["rail"].nodes
+            global_mesh.add_unique_elements_to_mesh([connecting_element])
 
             # combine sleeper elements in one model part
             track["sleeper"].nodes = tracks[idx-1]["sleeper"].nodes + track["sleeper"].nodes
