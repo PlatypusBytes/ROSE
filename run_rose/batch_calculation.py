@@ -54,9 +54,12 @@ herzian_contact_coef = 9.1e-7   # herzian contact coefficient
 herzian_power = 3 / 2          # herzian power
 
 # set time parameters in two stages
+
+# set initialisation time, during this time, the train does not move
 tot_ini_time = 0.5      # total initalisation time  [s]
 n_t_ini = 5000          # number of time steps initialisation time  [-]
 
+# set calculation time, during this time, the train does move
 tot_calc_time = 1.2       # total time during calculation phase   [s]
 n_t_calc = 8000        # number of time steps during calculation phase [-]
 

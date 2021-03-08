@@ -32,7 +32,7 @@ class TestTrack:
 
         rail.calculate_length_rail()
 
-        assert 5 == pytest.approx(rail.length_rail)
+        assert 5 == pytest.approx(rail.length_element)
 
     def test_calculate_length_rail_expected_raise(self):
         rail = Rail()

@@ -186,6 +186,7 @@ class CoupledTrainTrack(GlobalSystem):
         Get displacement of the track at the location of the wheels
         :param t: time index
         :param u: displacements at time t
+
         :return:
         """
 

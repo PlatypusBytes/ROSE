@@ -1,6 +1,4 @@
 
-
-
 import os
 import pickle
 
@@ -164,7 +162,6 @@ def set_base_model():
     rail_pad_model_part.damping = damping_rail_pad #12e3  # 12e3
 
     sleeper_model_part.mass = mass_sleeper   # 162.5
-    sleeper_model_part.distance_between_sleepers = sleeper_distance
 
     for idx, soil_model_part in enumerate(soil_model_parts):
         soil_model_part.stiffness = stiffness_soils[idx]

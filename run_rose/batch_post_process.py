@@ -13,7 +13,7 @@ def write_gis_csv(res_dict):
             line = f"{coordinate[0]}; {coordinate[1]}; {k}; {v['w_disp']}; {v['w_stiffness']}; {v['dyn_stiffness']}; {v['cum_settlement']}\n "
             lines.append(line)
 
-    with open('sos_disp_res.csv', 'w') as f:
+    with open('../rose/sos_disp_res.csv', 'w') as f:
         f.writelines(lines)
 
 def calculate_weighted_values(res_dict, key, res_key):
@@ -264,13 +264,13 @@ def get_results(res_dir, sos_dir, sos_fn, wolf_dir, cum_dir, node_nr):
 
 if __name__ == "__main__":
 
-    res_dir = "batch_results/intercity"
-    cum_dir = "batch_results/varandas"
+    res_dir = "../rose/batch_results/intercity"
+    cum_dir = "../rose/batch_results/varandas"
     # res_dir = r"D:\software_development\ROSE\rose\batch_results\velocity_no_damping"
-    sos_dir = "SOS"
+    sos_dir = "../rose/SOS"
     sos_fn = "SOS.json"
 
-    wolf_dir = r"wolf/dyn_stiffness"
+    wolf_dir = r"../rose/wolf/dyn_stiffness"
 
     node_nr = 100
     start_time_idx = 1000

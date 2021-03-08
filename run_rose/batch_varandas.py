@@ -11,8 +11,8 @@ from time import time
 def main():
 
     cd = os.getcwd()
-    inp_dir = os.path.join(cd, "batch_results","tmp")
-    out_dir = os.path.join(cd, "batch_results","varandas")
+    inp_dir = os.path.join(cd, "../rose/batch_results", "tmp")
+    out_dir = os.path.join(cd, "../rose/batch_results", "varandas")
 
 
     intercity_files = [os.path.join(inp_dir, f) for f in os.listdir(inp_dir) if isfile(join(inp_dir, f))

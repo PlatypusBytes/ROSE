@@ -251,7 +251,7 @@ def main():
     # with open('genieten_met_damping.json',"w") as f:
     #     json.dump(result_track, f, indent=2)
 
-    with open('genieten_zonder_damping.json',"w") as f:
+    with open('../rose/genieten_zonder_damping.json', "w") as f:
         json.dump(result_track, f, indent=2)
 
 
@@ -312,4 +312,4 @@ def main():
     # coupled_model.wheel_loads = None
 
 
-cProfile.run('main()',"profiler",'tottime')
+cProfile.run('main()', "../rose/profiler", 'tottime')

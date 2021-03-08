@@ -145,7 +145,7 @@ def main2():
     y_displacements_rail = np.array([node.displacements[:, 1] for node in global_system.model_parts[0].nodes])
 
 
-    create_animation('test2.html',coordinates_rail, y_displacements_rail)
+    create_animation('../rose/test2.html', coordinates_rail, y_displacements_rail)
 
 
 def main():

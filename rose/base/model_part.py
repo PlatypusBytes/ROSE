@@ -18,6 +18,10 @@ class Material:
         self.density: float = None
 
     def validate_input(self):
+        """
+        Validates material input. Checks if youngs modulus, poisson ratio and density are defined.
+        :return:
+        """
         if self.youngs_modulus is None:
             logging.error("Youngs modulus not defined")
         if self.poisson_ratio is None:
@@ -61,9 +65,17 @@ class Section:
 
 class ModelPart:
     """
-    The model part has to consist of the same element types
-    """
+    Base model part class. This class is the base for boundary conditions and element model parts.
+    The model part has to consist of the same element types.
 
+
+    :Attributes:
+
+        - :self.name:            name of the model part [-]
+        - :self.nodes:           all nodes within the model part [-]
+        - :self.elements:        all elements within the model part [-]
+        - :self.total_n_dof:     total number of degree of freedoms within the model part [-]
+"""
     def __init__(self):
         self.name = ""
         self.nodes = np.array([])
@@ -72,42 +84,70 @@ class ModelPart:
 
     @property
     def normal_dof(self):
+        """
+
+        :return: is normal degree of freedom activated
+        """
         return False
 
     @property
     def y_disp_dof(self):
+        """
+
+        :return: is y degree of freedom activated
+        """
         return False
 
     @property
     def z_disp_dof(self):
+        """
+
+        :return: is z degree of freedom activated
+        """
         return False
 
     @property
     def x_rot_dof(self):
+        """
+
+        :return: is rotation around local x axis activated
+        """
         return False
 
     @property
     def y_rot_dof(self):
+        """
+
+        :return: is rotation around local y axis activated
+        """
         return False
 
     @property
     def z_rot_dof(self):
+        """
+
+        :return: is rotation around local z axis activated
+        """
         return False
 
     def validate_input(self):
+        """
+        Validates model part input. Checks if nodes and elements are defined in a list or np array
+        :return:
+        """
         if not isinstance(self.nodes, (List, np.ndarray)):
             logging.error("Nodes in model part are not defined in a list or ndarray")
 
         if not isinstance(self.elements, (List, np.ndarray)):
             logging.error("Nodes in model part are not defined in a list or ndarray")
 
-        pass
-
     def initialize(self):
+        """
+        Inititalises model parts. Calculates total number of degree of freedom and maps model part on each element
+        :return:
+        """
         self.calculate_total_n_dof()
         [element.add_model_part(self) for element in self.elements]
-        pass
-
 
     def update(self):
         pass
@@ -119,6 +159,10 @@ class ModelPart:
         pass
 
     def calculate_total_n_dof(self):
+        """
+        Calculates total number of degree of freedom. Number of nodes times number of degree of freedom per node.
+        :return:
+        """
         self.total_n_dof = len(self.nodes) * (
             self.normal_dof + self.y_disp_dof + self.z_disp_dof + self.x_rot_dof + self.y_rot_dof + self.z_rot_dof
         )
@@ -143,7 +187,7 @@ class ElementModelPart(ModelPart):
         self.set_aux_stiffness_matrix()
         self.set_aux_mass_matrix()
 
-        # import that damping matrix is set last, as rayleigh damping needs mass and stiffness
+        # important that damping matrix is set last, as rayleigh damping needs mass and stiffness
         self.set_aux_damping_matrix()
 
     @property
@@ -310,9 +354,6 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
 
         if len(self.nodes) == 0:
             logging.error("Timoshenko beam model part does not contain nodes")
-
-
-
 
     def calculate_mass(self):
         self.mass = self.section.area * self.material.density

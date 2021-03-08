@@ -86,12 +86,13 @@ def add_no_displacement_boundary_to_bottom(bottom_model_part):
 
 def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     """
-    Creates mesh of an horizontal track. Where the top of the track lies at z=0; the sleeper thickness is 0.1m.
+    Creates mesh of an horizontal track. Where the top of the track lies at z=0; the sleeper thickness is 1.0m.
 
-    :param n_sleepers:
-    :param sleeper_distance:
-    :param soil_depth:
-    :return:
+    :param n_sleepers: number of sleepers [-]
+    :param sleeper_distance: distance between sleepers [m]
+    :param soil_depth: depth of the soil [m]
+    :return: Dictionary with: rail model part, rail pad model part, sleeper model part, soil model part. Mesh
+
     """
     # define constants
     track_level = 0.0

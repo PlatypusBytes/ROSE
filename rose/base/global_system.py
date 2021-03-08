@@ -223,15 +223,21 @@ class GlobalSystem:
 
             # check if normal displacement dof is obsolete
             if not self.mesh.nodes[idx].normal_dof:
-                constrained_indices.append(self.mesh.nodes[idx].index_dof[0])
+                dof_idx = self.mesh.nodes[idx].index_dof[0]
+                if dof_idx is not None:
+                    constrained_indices.append(dof_idx)
 
             # check if y displacement dof is obsolete
             if not self.mesh.nodes[idx].y_disp_dof:
-                constrained_indices.append(self.mesh.nodes[idx].index_dof[1])
+                dof_idx = self.mesh.nodes[idx].index_dof[1]
+                if dof_idx is not None:
+                    constrained_indices.append(dof_idx)
 
             # check if z rotation dof is obsolete
             if not self.mesh.nodes[idx].z_rot_dof:
-                constrained_indices.append(self.mesh.nodes[idx].index_dof[2])
+                dof_idx = self.mesh.nodes[idx].index_dof[2]
+                if dof_idx is not None:
+                    constrained_indices.append(dof_idx)
 
         return constrained_indices
 
