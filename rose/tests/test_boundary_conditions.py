@@ -82,7 +82,7 @@ class TestBoundaryConditions:
         #     int(element_idxs[time_idx]),
         #     time_idx,
         #     self.moving_coords[time_idx],
-        #     self.moving_normal_force,
+        #     self.moving_x_force,
         #     self.moving_z_moment,
         #     self.moving_y_force,
         # # sets moving load on timoshenko beam

@@ -104,8 +104,8 @@ class TestBenchmarkSet1:
         # set load
         velocities = np.ones(len(time)) * 10
 
-        load = MovingPointLoad(normal_dof=rail_model_part.normal_dof, y_disp_dof=rail_model_part.normal_dof,
-                        z_rot_dof=rail_model_part.normal_dof, start_coord=np.array([5, 0, 0]))
+        load = MovingPointLoad(x_disp_dof=rail_model_part.normal_dof, y_disp_dof=rail_model_part.y_disp_dof,
+                               z_rot_dof=rail_model_part.z_rot_dof, start_coord=np.array([5, 0, 0]))
         load.time = time
         load.contact_model_part = rail_model_part
         load.y_force = y_load
@@ -202,8 +202,8 @@ class TestBenchmarkSet1:
         foundation2.nodes = [beam_nodes[-1]]
 
         # set load on middle node
-        load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
-        load.y_force_matrix = np.ones((1,len(time))) * F
+        load = LoadCondition(x_disp_dof=False, y_disp_dof=True, z_rot_dof=False)
+        load.y_force_matrix = np.ones((1, len(time))) * F
         load.time = time
         load.nodes = [beam_nodes[int((n_beams-1)/2)]]
 
@@ -295,7 +295,7 @@ class TestBenchmarkSet1:
         foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)
         foundation2.nodes = [beam_nodes[-1]]
 
-        load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
+        load = LoadCondition(x_disp_dof=False, y_disp_dof=True, z_rot_dof=False)
         load.y_force_matrix = np.ones((1, len(time))) * F
 
         load.time = time
@@ -352,7 +352,7 @@ class TestBenchmarkSet1:
         time = np.array([0,2.1333333333,	4.2666666667,	6.4,	8.5333333333,	10.666666667])
 
         # set moving load
-        force = MovingPointLoad(normal_dof=True, y_disp_dof=True, z_rot_dof=True)
+        force = MovingPointLoad(x_disp_dof=True, y_disp_dof=True, z_rot_dof=True)
         force.nodes = nodes_beam
         force.elements = elements_beam
         force.time = time
@@ -461,7 +461,7 @@ class TestBenchmarkSet1:
         foundation1.nodes = [rod_nodes[0]]
 
         # set load at beam end
-        load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
+        load = LoadCondition(x_disp_dof=False, y_disp_dof=True, z_rot_dof=False)
         load.y_force_matrix = np.ones((1, len(time))) * F
         load.time = time
         load.nodes = [rod_nodes[-1]]

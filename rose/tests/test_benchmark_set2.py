@@ -84,8 +84,8 @@ class TestBenchmarkSet2:
         foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=False)
         foundation2.nodes = [rod_nodes[-1]]
 
-        load = LoadCondition(normal_dof=True, y_disp_dof=False, z_rot_dof=False)
-        load.normal_force_matrix = np.ones((1, len(time))) * F
+        load = LoadCondition(x_disp_dof=True, y_disp_dof=False, z_rot_dof=False)
+        load.x_force_matrix = np.ones((1, len(time))) * F
 
         load.time = time
         load.nodes = [rod_nodes[-1]]
@@ -197,8 +197,8 @@ class TestBenchmarkSet2:
         foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=False)
         foundation2.nodes = [rod_nodes[-1]]
 
-        load = LoadCondition(normal_dof=True, y_disp_dof=False, z_rot_dof=False)
-        load.normal_force_matrix = np.ones((1, len(time))) * F
+        load = LoadCondition(x_disp_dof=True, y_disp_dof=False, z_rot_dof=False)
+        load.x_force_matrix = np.ones((1, len(time))) * F
 
         load.time = time
         load.nodes = [rod_nodes[-1]]
@@ -322,7 +322,7 @@ class TestBenchmarkSet2:
         foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)
         foundation2.nodes = [beam_nodes[-1]]
 
-        load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
+        load = LoadCondition(x_disp_dof==False, y_disp_dof=True, z_rot_dof=False)
         load.y_force_matrix = np.ones((1, len(time))) * F
 
         # load.y_force[0,:len(initialisation_time)] = np.linspace(0,F,len(initialisation_time))
@@ -445,7 +445,7 @@ class TestBenchmarkSet2:
         foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)
         foundation2.nodes = [beam_nodes[-1]]
 
-        load = LoadCondition(normal_dof=False, y_disp_dof=True, z_rot_dof=False)
+        load = LoadCondition(x_disp_dof=False, y_disp_dof=True, z_rot_dof=False)
         load.y_force_matrix = np.ones((1, len(time))) * F
 
         load.time = time
@@ -625,8 +625,8 @@ class TestBenchmarkSet2:
         velocities[0:len(initialisation_time)] = 0
         #
 
-        load = MovingPointLoad(normal_dof=rail_model_part.normal_dof, y_disp_dof=rail_model_part.normal_dof,
-                        z_rot_dof=rail_model_part.normal_dof)
+        load = MovingPointLoad(x_disp_dof=rail_model_part.normal_dof, y_disp_dof=rail_model_part.y_disp_dof,
+                               z_rot_dof=rail_model_part.z_rot_dof)
         load.time = time
         load.contact_model_part = rail_model_part
         load.y_force = y_load
@@ -783,7 +783,6 @@ class TestBenchmarkSet2:
 
         soil_1.stiffness = stiffness_spring / depth_soil  # 300e6
         soil_1.damping = 0
-
 
         # set load
         position = np.array([node.coordinates[0] for node in rail_model_part.nodes])

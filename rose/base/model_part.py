@@ -593,6 +593,6 @@ class ConstraintModelPart(ConditionModelPart):
 
     def set_constraint_condition(self):
         for node in self.nodes:
-            node.normal_dof = self.__normal_dof
+            node.x_disp_dof = self.__normal_dof
             node.z_rot_dof = self.__z_rot_dof
             node.y_disp_dof = self.__y_disp_dof

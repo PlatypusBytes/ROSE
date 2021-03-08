@@ -7,7 +7,7 @@ class Node:
         self.index = None
         self.index_dof = np.array([None, None, None])
         self.coordinates = np.array([x, y, z])
-        self.normal_dof = True
+        self.x_disp_dof = True
         self.z_rot_dof = True
         self.y_disp_dof = True
 
@@ -20,7 +20,7 @@ class Node:
 
     def set_dof(self, dof_idx, is_active):
         if dof_idx == 0:
-            self.normal_dof = is_active
+            self.x_disp_dof = is_active
         elif dof_idx == 1:
             self.y_disp_dof = is_active
         elif dof_idx == 2:
@@ -34,7 +34,7 @@ class Node:
         self.velocities = np.zeros((velocities.shape[0], ndof), dtype=float)
         self.accelerations = np.zeros((accelerations.shape[0], ndof), dtype=float)
 
-        mask = [bool(self.normal_dof), bool(self.y_disp_dof), bool(self.z_rot_dof)]
+        mask = [bool(self.x_disp_dof), bool(self.y_disp_dof), bool(self.z_rot_dof)]
 
         self.displacements[:, mask] = displacements[:, :]
         self.velocities[:, mask] = velocities[:, :]
@@ -55,7 +55,7 @@ class Node:
         mask = other.index_dof != None
         self.index_dof[mask] = other.index_dof[mask]
 
-        self.normal_dof = self.normal_dof + other.normal_dof
+        self.x_disp_dof = self.x_disp_dof + other.x_disp_dof
         self.z_rot_dof = self.z_rot_dof + other.z_rot_dof
         self.y_disp_dof = self.y_disp_dof + other.y_disp_dof
         self.model_parts = self.model_parts + other.model_parts
@@ -63,7 +63,7 @@ class Node:
 
     @property
     def ndof(self):
-        return self.normal_dof + self.z_rot_dof + self.y_disp_dof
+        return self.x_disp_dof + self.z_rot_dof + self.y_disp_dof
 
 
 class Element:

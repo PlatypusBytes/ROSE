@@ -151,10 +151,10 @@ class GlobalSystem:
 
         for i, node in enumerate(condition.nodes):
             # add load condition on normal displacement dof
-            if condition.normal_dof:
+            if condition.x_disp_dof:
                 self.global_force_vector[
                     node.index_dof[0], :
-                ] += condition.normal_force_matrix[i, :]
+                ] += condition.x_force_matrix[i, :]
 
             # add load condition on y displacement dof
             if condition.y_disp_dof:
@@ -222,7 +222,7 @@ class GlobalSystem:
         for idx in range(len(self.mesh.nodes) - 1, -1, -1):
 
             # check if normal displacement dof is obsolete
-            if not self.mesh.nodes[idx].normal_dof:
+            if not self.mesh.nodes[idx].x_disp_dof:
                 dof_idx = self.mesh.nodes[idx].index_dof[0]
                 if dof_idx is not None:
                     constrained_indices.append(dof_idx)

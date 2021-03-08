@@ -18,28 +18,29 @@ class NoDispRotCondition(ConditionModelPart):
         super().__init__()
 
 class LoadCondition(ConditionModelPart):
-    def __init__(self, normal_dof=False, y_disp_dof=False, z_rot_dof=False):
+    def __init__(self, x_disp_dof=False, y_disp_dof=False, z_rot_dof=False):
         super().__init__()
 
-        self.__normal_dof = normal_dof
+        self.__x_disp_dof = x_disp_dof
         self.__y_disp_dof = y_disp_dof
         self.__z_rot_dof = z_rot_dof
 
-        self.normal_force = None
+        # self.x_force = None
+
+        self.x_force = None
         self.z_moment = None
         self.y_force = None
 
-        self.normal_force_matrix = None
+        self.x_force_matrix = None
         self.z_moment_matrix = None
         self.y_force_matrix = None
-
 
         self.time = []
         self.initialisation_time = []
 
     @property
-    def normal_dof(self):
-        return self.__normal_dof
+    def x_disp_dof(self):
+        return self.__x_disp_dof
 
     @property
     def y_disp_dof(self):
@@ -52,8 +53,8 @@ class LoadCondition(ConditionModelPart):
     def initialize_matrices(self):
         super().initialize()
 
-        if self.normal_dof:
-            self.normal_force_matrix = sparse.lil_matrix((len(self.nodes), len(self.time)))
+        if self.x_disp_dof:
+            self.x_force_matrix = sparse.lil_matrix((len(self.nodes), len(self.time)))
         if self.z_rot_dof:
             self.z_moment_matrix = sparse.lil_matrix((len(self.nodes), len(self.time)))
         if self.y_disp_dof:
@@ -86,8 +87,8 @@ class LineLoadCondition(LoadCondition):
 
 
 class MovingPointLoad(LineLoadCondition):
-    def __init__(self, normal_dof=False, y_disp_dof=False, z_rot_dof=False, start_coord=None):
-        super().__init__(normal_dof, y_disp_dof, z_rot_dof)
+    def __init__(self, x_disp_dof=False, y_disp_dof=False, z_rot_dof=False, start_coord=None):
+        super().__init__(x_disp_dof, y_disp_dof, z_rot_dof)
 
         # input
         self.velocities = None
@@ -102,7 +103,7 @@ class MovingPointLoad(LineLoadCondition):
         self.cum_distances_nodes = None
 
         self.moving_coords = None
-        self.moving_normal_force = None
+        self.moving_x_force = None
         self.moving_y_force = None
         self.moving_z_moment = None
 
@@ -123,9 +124,9 @@ class MovingPointLoad(LineLoadCondition):
 
     def set_load_vectors_as_function_of_time(self):
         # set normal force vector as a function of time
-        if self.normal_force is not None:
-            self.moving_normal_force = self.set_load_vector_as_function_of_time(
-                self.normal_force, len(self.initialisation_time))
+        if self.x_force is not None:
+            self.moving_x_force = self.set_load_vector_as_function_of_time(
+                self.x_force, len(self.initialisation_time))
 
         # set y force vector as a function of time
         if self.y_force is not None:
@@ -155,9 +156,9 @@ class MovingPointLoad(LineLoadCondition):
         Filter normal load, vertical load an z rotation moment outside range
         :return:
         """
-        if self.moving_normal_force is not None:
-            self.moving_normal_force = utils.filter_data_outside_range(
-                self.moving_normal_force,
+        if self.moving_x_force is not None:
+            self.moving_x_force = utils.filter_data_outside_range(
+                self.moving_x_force,
                 self.cum_distances_force,
                 self.cum_distances_nodes[0],
                 self.cum_distances_nodes[-1]
@@ -172,7 +173,7 @@ class MovingPointLoad(LineLoadCondition):
             )
         if self.moving_z_moment is not None:
             self.moving_z_moment = utils.filter_data_outside_range(
-                self.moving_normal_force,
+                self.moving_x_force,
                 self.cum_distances_force,
                 self.cum_distances_nodes[0],
                 self.cum_distances_nodes[-1]
@@ -220,7 +221,7 @@ class MovingPointLoad(LineLoadCondition):
         node_indices: np.ndarray,
         time_idx: int,
         distance: float,
-        normal_force: np.ndarray,
+        x_force: np.ndarray,
         z_moment: np.ndarray,
         y_force: np.ndarray,
     ):
@@ -229,7 +230,7 @@ class MovingPointLoad(LineLoadCondition):
         :param node_indices: indices of surrounding nodes at time t
         :param time_idx: idx of time step
         :param distance: distance point load to first node of element at time t
-        :param normal_force: normal force
+        :param x_force: horizontal force
         :param z_moment: z rotation moment
         :param y_force: vertical force
         :return:
@@ -237,7 +238,7 @@ class MovingPointLoad(LineLoadCondition):
 
         # todo make calling of shapefunctions more general, for now it only works on a beam with normal, y and z-rot dof
         # add normal_load_to_nodes
-        if normal_force is not None:
+        if x_force is not None:
             self.contact_model_part.set_normal_shape_functions(distance)
             normal_interp_factors = [
                 self.contact_model_part.normal_shape_functions[0],
@@ -245,8 +246,8 @@ class MovingPointLoad(LineLoadCondition):
             ]
 
             for idx, node_idx in enumerate(node_indices):
-                self.normal_force_matrix[node_idx, time_idx] += (
-                    normal_force[time_idx] * normal_interp_factors[idx]
+                self.x_force_matrix[node_idx, time_idx] += (
+                        x_force[time_idx] * normal_interp_factors[idx]
                 )
 
         # add y_load_to_nodes
@@ -327,7 +328,7 @@ class MovingPointLoad(LineLoadCondition):
                 node_indices[time_idx, :],
                 time_idx,
                 distances[time_idx],
-                self.moving_normal_force,
+                self.moving_x_force,
                 self.moving_z_moment,
                 self.moving_y_force,
             )
