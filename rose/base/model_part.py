@@ -570,15 +570,15 @@ class ConditionModelPart(ModelPart):
 
 
 class ConstraintModelPart(ConditionModelPart):
-    def __init__(self, normal_dof=False, y_disp_dof=False, z_rot_dof=False):
+    def __init__(self, x_disp_dof=False, y_disp_dof=False, z_rot_dof=False):
         super(ConstraintModelPart, self).__init__()
-        self.__normal_dof = normal_dof
+        self.__x_disp_dof = x_disp_dof
         self.__y_disp_dof = y_disp_dof
         self.__z_rot_dof = z_rot_dof
 
     @property
-    def normal_dof(self):
-        return self.__normal_dof
+    def x_disp_dof(self):
+        return self.__x_disp_dof
 
     @property
     def y_disp_dof(self):
@@ -593,6 +593,6 @@ class ConstraintModelPart(ConditionModelPart):
 
     def set_constraint_condition(self):
         for node in self.nodes:
-            node.x_disp_dof = self.__normal_dof
+            node.x_disp_dof = self.__x_disp_dof
             node.z_rot_dof = self.__z_rot_dof
             node.y_disp_dof = self.__y_disp_dof

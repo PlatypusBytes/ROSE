@@ -25,8 +25,8 @@ import matplotlib.pyplot as plt
 # if RENEW_BENCHMARKS is true, the analytical solutions will be recalculated, results will be plotted together with the
 # numerical solution.
 RENEW_BENCHMARKS = False
-TEST_PATH = os.path.join('rose', 'tests')
-# TEST_PATH = '.'
+# TEST_PATH = os.path.join('rose', 'tests')
+TEST_PATH = '.'
 
 
 class TestBenchmarkSet2:
@@ -78,10 +78,10 @@ class TestBenchmarkSet2:
         rod.stiffness = E * A / length_rod
         rod.mass = rho * A * length_rod
 
-        foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=False)
+        foundation1 = ConstraintModelPart(x_disp_dof=False, y_disp_dof=False, z_rot_dof=False)
         foundation1.nodes = [rod_nodes[0]]
 
-        foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=False)
+        foundation2 = ConstraintModelPart(x_disp_dof=True, y_disp_dof=False, z_rot_dof=False)
         foundation2.nodes = [rod_nodes[-1]]
 
         load = LoadCondition(x_disp_dof=True, y_disp_dof=False, z_rot_dof=False)
@@ -191,10 +191,10 @@ class TestBenchmarkSet2:
 
         beam.initialize()
 
-        foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=False)
+        foundation1 = ConstraintModelPart(x_disp_dof=False, y_disp_dof=False, z_rot_dof=False)
         foundation1.nodes = [rod_nodes[0]]
 
-        foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=False)
+        foundation2 = ConstraintModelPart(x_disp_dof=True, y_disp_dof=False, z_rot_dof=False)
         foundation2.nodes = [rod_nodes[-1]]
 
         load = LoadCondition(x_disp_dof=True, y_disp_dof=False, z_rot_dof=False)
@@ -316,10 +316,10 @@ class TestBenchmarkSet2:
         beam.section = section
         beam.length_element = length_beam
 
-        foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
+        foundation1 = ConstraintModelPart(x_disp_dof=False, y_disp_dof=False, z_rot_dof=True)
         foundation1.nodes = [beam_nodes[0]]
 
-        foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)
+        foundation2 = ConstraintModelPart(x_disp_dof=True, y_disp_dof=False, z_rot_dof=True)
         foundation2.nodes = [beam_nodes[-1]]
 
         load = LoadCondition(x_disp_dof=False, y_disp_dof=True, z_rot_dof=False)
@@ -439,10 +439,10 @@ class TestBenchmarkSet2:
         beam.radial_frequency_two = 5000
         beam.initialize()
 
-        foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
+        foundation1 = ConstraintModelPart(x_disp_dof=False, y_disp_dof=False, z_rot_dof=True)
         foundation1.nodes = [beam_nodes[0]]
 
-        foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)
+        foundation2 = ConstraintModelPart(x_disp_dof=True, y_disp_dof=False, z_rot_dof=True)
         foundation2.nodes = [beam_nodes[-1]]
 
         load = LoadCondition(x_disp_dof=False, y_disp_dof=True, z_rot_dof=False)
@@ -636,7 +636,7 @@ class TestBenchmarkSet2:
         load.nodes = rail_model_part.nodes
 
         # constraint rotation at the side boundaries
-        side_boundaries = ConstraintModelPart(normal_dof=True, y_disp_dof=True, z_rot_dof=False)
+        side_boundaries = ConstraintModelPart(x_disp_dof=True, y_disp_dof=True, z_rot_dof=False)
         side_boundaries.nodes = [rail_model_part.nodes[0], rail_model_part.nodes[-1]]
 
         # set solver
@@ -793,7 +793,7 @@ class TestBenchmarkSet2:
         velocities[0:len(initialisation_time)] = 0
 
         # constraint rotation at the side boundaries
-        side_boundaries = ConstraintModelPart(normal_dof=False, y_disp_dof=True, z_rot_dof=True)
+        side_boundaries = ConstraintModelPart(x_disp_dof=False, y_disp_dof=True, z_rot_dof=True)
         side_boundaries.nodes = [rail_model_part.nodes[0], rail_model_part.nodes[-1]]
 
         # set solver
@@ -959,9 +959,9 @@ class TestBenchmarkSet2:
         beam.radial_frequency_one = omega1
         beam.radial_frequency_two = omega2
 
-        foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
+        foundation1 = ConstraintModelPart(x_disp_dof=False, y_disp_dof=False, z_rot_dof=True)
         foundation1.nodes = [beam_nodes[0]]
-        foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)
+        foundation2 = ConstraintModelPart(x_disp_dof=True, y_disp_dof=False, z_rot_dof=True)
         foundation2.nodes = [beam_nodes[-1]]
 
         # set up track

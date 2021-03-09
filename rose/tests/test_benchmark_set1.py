@@ -195,10 +195,10 @@ class TestBenchmarkSet1:
         beam.radial_frequency_two = 500
 
         # set up hinge foundation
-        foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
+        foundation1 = ConstraintModelPart(x_disp_dof=False, y_disp_dof=False, z_rot_dof=True)
         foundation1.nodes = [beam_nodes[0]]
 
-        foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)
+        foundation2 = ConstraintModelPart(x_disp_dof=True, y_disp_dof=False, z_rot_dof=True)
         foundation2.nodes = [beam_nodes[-1]]
 
         # set load on middle node
@@ -289,10 +289,10 @@ class TestBenchmarkSet1:
         beam.radial_frequency_one = 2
         beam.radial_frequency_two = 500
 
-        foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=True)
+        foundation1 = ConstraintModelPart(x_disp_dof=False, y_disp_dof=False, z_rot_dof=True)
         foundation1.nodes = [beam_nodes[0]]
 
-        foundation2 = ConstraintModelPart(normal_dof=True, y_disp_dof=False, z_rot_dof=True)
+        foundation2 = ConstraintModelPart(x_disp_dof=True, y_disp_dof=False, z_rot_dof=True)
         foundation2.nodes = [beam_nodes[-1]]
 
         load = LoadCondition(x_disp_dof=False, y_disp_dof=True, z_rot_dof=False)
@@ -457,7 +457,7 @@ class TestBenchmarkSet1:
 
 
         # setup cantilever foundation
-        foundation1 = ConstraintModelPart(normal_dof=False, y_disp_dof=False, z_rot_dof=False)
+        foundation1 = ConstraintModelPart(x_disp_dof=False, y_disp_dof=False, z_rot_dof=False)
         foundation1.nodes = [rod_nodes[0]]
 
         # set load at beam end
