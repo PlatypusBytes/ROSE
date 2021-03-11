@@ -62,6 +62,14 @@ class LoadCondition(ConditionModelPart):
 
 
     def set_load_vector_as_function_of_time(self, load: float, build_up_idxs: int) -> np.ndarray:
+        """
+        Creates a load as a function of time. During the first time steps with a length of the build_up_idxs
+        the load is linearly increased from 0.
+
+        :param load: load value
+        :param build_up_idxs: number of indices where load is gradually increased from zero
+        :return:
+        """
 
         time_load = np.ones(len(self.time)) * load
         #
