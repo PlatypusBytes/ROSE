@@ -1,4 +1,4 @@
-from cumulative_models import Varandas
+from rose.cumulative_models import Varandas
 import numpy as np
 import matplotlib.pylab as plt
 import pickle
