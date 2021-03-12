@@ -6,6 +6,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def write_gis_csv(res_dict):
+    """
+    Writes a csv for gis including the weighted maximum dynamic displacement, weighted dynamic stiffness and weighted
+    cumulative settlement
+
+    :param res_dict: dictionary with cumulative results results
+    :return:
+    """
     header = f"x-coordinate; y-coordinate; segment; max_disp; stiffness; dyn_stiffness; cum_settlement\n"
     lines = [header]
     for k,v in res_dict.items():
@@ -49,9 +56,21 @@ def plot_cumulative_results(file_name):
     plt.show()
 
 def calculate_dynamic_stiffness(dynamic_displacement, dynamic_force):
+    """
+    Calculates dynamic stiffness
+    :param dynamic_displacement: dynamic displacement
+    :param dynamic_force: dynamic force
+    :return:
+    """
     return np.array(dynamic_force)/np.array(dynamic_displacement)
 
 def get_and_write_n_scenarios_per_segment(sos_fn):
+    """
+    Gets the amount of scenarios in a segments and writes it to a csv
+
+    :param sos_fn: json file name of sos data
+    :return:
+    """
     with open(sos_fn, 'r') as f:
         sos_data = json.load(f)
     res_dict = {"segments": {},
@@ -200,6 +219,12 @@ def get_batch_cumulative_settlement(res_dir, sos_fn, node_nr, time_step=-1):
     return res_dict
 
 def plot_max_disp_vs_velocity(res_dir, start_time_idx):
+    """
+    Creates a plot of velocity vs displacement
+    :param res_dir: results directory
+    :param start_time_idx: initial time index
+    :return:
+    """
 
     max_disps = []
     velocities = []

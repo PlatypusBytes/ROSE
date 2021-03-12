@@ -149,7 +149,7 @@ def set_base_model():
     velocities[0:len(initialisation_time)] = 0
 
     # constraint rotation at the side boundaries
-    side_boundaries = ConstraintModelPart(normal_dof=False, y_disp_dof=True, z_rot_dof=True)
+    side_boundaries = ConstraintModelPart(x_disp_dof=False, y_disp_dof=True, z_rot_dof=True)
     side_boundaries.nodes = [rail_model_part.nodes[0], rail_model_part.nodes[-1]]
 
     # populate global system

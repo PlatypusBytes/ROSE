@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import os
 from rose.utils.plot_utils_tmp import create_animation
 
-# Note that this script works together with the output as generated from the batch_calculation.py script
+# Note that this is an example script which works together with the output as generated from the batch_calculation.py
+# script.
 # ______________________________________________________________________________________________________
 
 # open result file from batch calculation

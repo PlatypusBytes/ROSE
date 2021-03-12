@@ -16,18 +16,21 @@ import gc
 
 def set_base_model():
     # Set geometry parameters
-    n_segments = 2
+    n_segments = 1
 
     fact = 1
     n_sleepers = [int(100/fact), int(100/fact)]    # number of sleepers per segment
+    n_sleepers = [int(200/fact)]    # number of sleepers per segment
     sleeper_distance = 0.6 * fact # distance between sleepers, equal for each segment
     # sleeper_distance = 0.5 * fact
     depth_soil = [1,1]      # depth of the soil [m] per segment
+    depth_soil = [1]      # depth of the soil [m] per segment
 
     # Set soil parameters of each segment
     stiffness_soils = [180e6 * sleeper_distance] # will be overwritten
-    stiffness_soils = [180e7 * sleeper_distance, 18e6 * sleeper_distance] # will be overwritten
-    damping_soils = [1500e3 * sleeper_distance, 150e3 * sleeper_distance]
+    # stiffness_soils = [180e7 * sleeper_distance, 18e6 * sleeper_distance] # will be overwritten
+    # damping_soils = [1500e3 * sleeper_distance, 150e3 * sleeper_distance]
+    damping_soils = [150e3 * sleeper_distance]
     # damping_soils = [0 * sleeper_distance] # will be overwritten
     # set parameters of the rail
     youngs_mod_beam = 210e9     # youngs modulus rail
@@ -85,15 +88,6 @@ def set_base_model():
 
     prim_damping = 0.25e3         # damping between wheels and bogie
     sec_damping = 64e3          # damping between bogies and cart
-
-    # prim_damping = 0      # damping between wheels and bogie
-    # sec_damping = 0         # damping between bogies and cart
-
-    # prim_stiffness = 4800e3        # stiffness between wheels and bogie
-    # sec_stiffness = 2708e3         # stiffness between bogies and cart
-    #
-    # prim_damping = 0.25e3         # damping between wheels and bogie
-    # sec_damping = 64e3          # damping between bogies and cart
 
     # set up velocity
     velocity = 38.9             # constant velocity of the train [m/s]
@@ -154,8 +148,6 @@ def set_base_model():
     rail_model_part.section = section
     rail_model_part.material = material
     rail_model_part.damping_ratio = damping_ratio_rail
-    rail_model_part.radial_frequency_one = omega_one_rail
-    rail_model_part.radial_frequency_two = omega_two_rail
 
     rail_pad_model_part.mass = mass_rail_pad  # 5
     rail_pad_model_part.stiffness = stiffness_rail_pad
@@ -174,7 +166,7 @@ def set_base_model():
     velocities[0:len(initialisation_time)] = 0
 
     # constraint rotation at the side boundaries
-    side_boundaries = ConstraintModelPart(normal_dof=False, y_disp_dof=True, z_rot_dof=True)
+    side_boundaries = ConstraintModelPart(x_disp_dof=False, y_disp_dof=True, z_rot_dof=True)
     side_boundaries.nodes = [rail_model_part.nodes[0], rail_model_part.nodes[-1]]
 
     # populate global system
@@ -186,8 +178,6 @@ def set_base_model():
     model_parts = [rail_model_part, rail_pad_model_part, sleeper_model_part, side_boundaries] \
                   + soil_model_parts + bottom_boundaries
     track.model_parts = model_parts
-
-
 
     # set up train
     train = TrainModel()
@@ -204,7 +194,7 @@ def set_base_model():
         cart.stiffness = sec_stiffness
         cart.damping = sec_damping
         cart.length = cart_length
-        cart.calculate_total_n_dof()
+        # cart.calculate_total_n_dof()
 
         # setup bogies per cart
         cart.bogies = [Bogie() for idx in range(len(bogie_distances))]
@@ -215,7 +205,7 @@ def set_base_model():
             bogie.stiffness = prim_stiffness
             bogie.damping = prim_damping
             bogie.length = bogie_length
-            bogie.calculate_total_n_dof()
+            # bogie.calculate_total_n_dof()
 
             # setup wheels per bogie
             bogie.wheels = [Wheel() for idx in range(len(wheel_distances))]
@@ -255,37 +245,46 @@ def calculate(soil_stiffness, soil_damping, coupled_model):
     # calculate
     coupled_model.main()
 
-def write_results(coupled_model, segment_id, omega, output_dir, output_interval=10):
+def write_results(coupled_model: CoupledTrainTrack, segment_id: str, omega: float, output_dir: str,
+                  output_interval: int =10):
+    """
+    Writes dynamic results of a couple model
+
+    :param coupled_model: current coupled model
+    :param segment_id: id of the current segment
+    :param omega:
+    :param output_dir: output directory
+    :param output_interval: interval of how many timesteps should be written in output
+    :return:
+    """
 
     # collect results
     vertical_displacements_rail = np.array(
         [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[0].nodes])
     vertical_force_rail = np.array(
-        [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[0].nodes])
+        [element.force[0::output_interval, 1] for element in coupled_model.track.model_parts[0].elements])
     coords_rail = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[0].nodes])
 
     vertical_displacements_rail_pad = np.array(
         [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[1].nodes])
     vertical_force_rail_pad = np.array(
-        [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[1].nodes])
+        [element.force[0::output_interval, 1] for element in coupled_model.track.model_parts[1].elements])
     coords_rail_pad = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[1].nodes])
 
     vertical_displacements_sleeper = np.array(
         [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
-    vertical_force_sleeper = np.array(
-        [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
-    coords_sleeper = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[2].nodes])
+    # vertical_force_sleeper = np.array(
+    #     [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
+    # coords_sleeper = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[2].nodes])
 
     vertical_displacements_soil = np.array(
         [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[4].nodes])
     vertical_force_soil = np.array(
-        [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[4].nodes])
+        [element.force[0::output_interval, 0] for element in coupled_model.track.model_parts[4].elements])
     coords_soil = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[4].nodes])
 
     vertical_displacements_train = np.array([node.displacements[0::output_interval, 1] for node in coupled_model.train.nodes])
     vertical_force_train = np.array([node.force[0::output_interval, 1] for node in coupled_model.train.nodes])
-
-    rot_train = np.array([node.displacements[0::output_interval, 2] for node in coupled_model.train.nodes])
 
     result_track = {"name": segment_id,
                     "omega": omega,
@@ -298,15 +297,15 @@ def write_results(coupled_model, segment_id, omega, output_dir, output_interval=
                     "vertical_force_rail_pad": vertical_force_rail_pad.tolist(),
                     "coords_rail_pad": coords_rail_pad.tolist(),
                     "vertical_displacements_sleeper": vertical_displacements_sleeper.tolist(),
-                    "vertical_force_sleeper": vertical_force_sleeper.tolist(),
-                    "coords_sleeper": coords_sleeper.tolist(),
+                    # "vertical_force_sleeper": vertical_force_sleeper.tolist(),
+                    # "coords_sleeper": coords_sleeper.tolist(),
                     "vertical_displacements_soil": vertical_displacements_soil.tolist(),
                     "vertical_force_soil": vertical_force_soil.tolist(),
                     "coords_soil": coords_soil.tolist(),
                     "vertical_displacements_train": vertical_displacements_train.tolist(),
                     "vertical_force_train": vertical_force_train.tolist(),
-                    "rot_train": rot_train.tolist()
                     }
+
 
 
     file_name = f'res_{segment_id}_tmp3.pickle'
