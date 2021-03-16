@@ -61,10 +61,11 @@ def calculate_cum_distances_coordinate_array(coordinates):
     )
     return cum_distances_coordinates
 
-def add_no_displacement_boundary_to_bottom(bottom_model_part):
+
+def add_no_displacement_boundary_to_bottom(bottom_model_part: ElementModelPart):
     """
     Adds constraint boundary condition to the bottom nodes of a model part
-    :param bottom_model_part:
+    :param bottom_model_part: element model part where the constrain boundary condition is applied to.
     :return:
     """
     # index of vertical dimension; 1 for 2D; 2 for 3D

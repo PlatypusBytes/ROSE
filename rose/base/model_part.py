@@ -236,8 +236,6 @@ class RodElementModelPart(ElementModelPart):
         self.damping = None
         self.length_element = None
 
-        self.__rotation_matrix = None
-
     @property
     def normal_dof(self):
          return True
@@ -338,6 +336,10 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
     def timoshenko_factor(self):
         return self.__timoshenko_factor
 
+    @property
+    def rotation_matrix(self):
+        return self.__rotation_matrix
+
     def validate_input(self):
         if not isinstance(self.material, Material):
             logging.error("Material not defined")
@@ -371,6 +373,19 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
                     * self.section.shear_factor
                 )
             )
+
+    def set_rotation_matrix(self, rotation, dim):
+        """
+        Sets 2D rotation matrix
+        :param rotation:
+        :return:
+        """
+        if dim ==2:
+            self.__rotation_matrix = np.zeros((6, 6))
+            self.__rotation_matrix[[0, 1, 3, 4], [0, 1, 3, 4]] = np.cos(rotation)
+            self.__rotation_matrix[[0, 3], [1, 4]] = np.sin(rotation)
+            self.__rotation_matrix[[1, 4], [0, 3]] = -np.sin(rotation)
+            self.__rotation_matrix[[2, 5], [2, 5]] = 1
 
     def __set_translational_aux_mass_matrix(self):
         """

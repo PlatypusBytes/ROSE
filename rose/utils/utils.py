@@ -190,6 +190,42 @@ def calculate_rotation(node1: Node, node2: Node):
     return rot
 
 
+def rotate_point_around_z_axis(rotation: float, point_vector: np.ndarray):
+    """
+    Rotates a point around the z-axis
+    :param rotation: rotation in radians
+    :param point_vector: vector of global values [x-direction, y-direction, z-rotation]
+    :return:
+    """
+
+    rot_matrix = np.zeros((3, 3))
+    rot_matrix[[0, 1], [0, 1]] = np.cos(rotation)
+    rot_matrix[0, 1] = np.sin(rotation)
+    rot_matrix[1, 0] = -np.sin(rotation)
+    rot_matrix[2, 2] = 1
+
+    return rot_matrix.dot(point_vector)
+
+
+def rotate_force_vector(element: Element, contact_model_part, force_vector: np.array):
+    """
+    Rotates force vector based on rotation of element
+    :param element:
+    :param contact_model_part:
+    :param force_vector:
+    :return:
+    """
+    # todo make general, now it works for 2 nodes in a 2d space
+    if len(element.nodes) == 2:
+        rot = calculate_rotation(element.nodes[0], element.nodes[1])
+        contact_model_part.set_rotation_matrix(rot, 2)
+        rot_matrix = contact_model_part.rotation_matrix[:3,:3]
+
+        if rot_matrix is not None:
+            return rot_matrix.dot(force_vector)
+
+    return force_vector
+
 def rotate_aux_matrix(element: Element, model_part, aux_matrix: np.array):
     """
     Rotates aux matrix based on rotation of element

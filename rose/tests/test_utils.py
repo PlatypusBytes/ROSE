@@ -1,7 +1,7 @@
 import pytest
 
 from rose.utils.utils import *
-from rose.base.model_part import RodElementModelPart, ElementModelPart
+from rose.base.model_part import RodElementModelPart,TimoshenkoBeamElementModelPart, ElementModelPart
 from rose.base.geometry import Element
 
 import numpy as np
@@ -134,7 +134,7 @@ class TestUtils:
             for j in range(len(expected_aux_matrix[i])):
                 assert expected_aux_matrix[i, j] == pytest.approx(rotated_matrix[i, j])
 
-    def test_rotate_aux_matrix_without_excisting_rot_matrix(self):
+    def test_rotate_aux_matrix_without_existing_rot_matrix(self):
 
         # Create non existing element model part
         test_element = ElementModelPart()
@@ -157,5 +157,30 @@ class TestUtils:
         for i in range(len(expected_matrix)):
             for j in range(len(expected_matrix[i])):
                 assert expected_matrix[i, j] == pytest.approx(rotated_matrix[i,j])
+
+    def test_rotate_force_vector_30_rotation(self):
+        beam = TimoshenkoBeamElementModelPart()
+        beam.length_element = 1
+        beam.mass = 1
+
+        element = Element([Node(0,0,0), Node(np.sqrt(3)/2, 0.5,0)])
+        # test_element.elements = [Element([Node(0,0,0), Node(np.sqrt(3)/2, 0.5,0)])]
+
+        # global force vector
+        force_vector = np.array([-1000,0000,0])
+
+
+        # calculate element rotation
+        rot = calculate_rotation(element.nodes[0], element.nodes[1])
+
+        # calculate rotated force vector
+        rotated_vector = rotate_point_around_z_axis(rot,force_vector)
+
+        # define expected rotated force vector
+        expected_force_vector = np.array([-np.sqrt(3)*1000/2,500,0])
+
+        # assert
+        np.testing.assert_array_almost_equal(rotated_vector,expected_force_vector)
+
 
 
