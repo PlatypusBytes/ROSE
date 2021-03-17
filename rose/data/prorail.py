@@ -6,6 +6,44 @@ from tqdm import tqdm
 from datetime import datetime
 import copy
 
+import numpy as np
+
+def sort_track(data, key):
+
+    track = []
+    for k,v in data.items():
+        if v['track'] == key:
+            track.append(v)
+    return sorted(track, key=lambda x: x['km'], reverse=False)
+
+def calculate_settlement(data: dict):
+    sorted_gh = sort_track(data, 'Track GH')
+    sorted_gt = sort_track(data, 'Track GT')
+
+
+    date_time = datetime.strptime(sorted_gh[0]['settlement']['time'][0],'%Y-%m-%d %H:%M:%S')
+
+
+    dx_gh = np.diff([x['km'] for x in sorted_gh])
+    slope_gh = np.array([x['settlement']['value'] for x in sorted_gh]).astype(float)
+    # gh_date_time = np.array([datetime.strptime(sorted_gh[0]['settlement']['time'][0],'%Y-%m-%d %H:%M:%S'])
+
+    heights_gh_tmp = np.cumsum(slope_gh[1:,:].T* dx_gh,axis=1)
+
+    heights_gh = heights_gh_tmp - heights_gh_tmp[0,:]
+
+    import matplotlib.pyplot as plt
+
+    plt.plot(heights_gh[:,2])
+    plt.plot(heights_gh[:,10])
+
+    plt.plot(heights_gh[:,15])
+
+    plt.legend(['2','10','15'])
+    plt.show()
+    settlement_gh = 0
+
+
 
 def read_csv(file_name: str, key: list, header: int = 0) -> dict:
     """
@@ -325,15 +363,20 @@ def unzip_file(file_name: str, output_location: str) -> None:
 
 
 if __name__ == "__main__":
-    # unzip_file("../../data/ProRail/Culemborg.zip", "../../data/ProRail/Culemborg")
-    sens = sensor_location(r"../../data/ProRail/Culemborg_sensor_locaties.csv")
+    # # unzip_file("../../data/ProRail/Culemborg.zip", "../../data/ProRail/Culemborg")
+    # sens = sensor_location(r"../../data/ProRail/Culemborg_sensor_locaties.csv")
+    #
+    # res = collect_files_moisture(sens, r"../../data/ProRail/Culemborg/measurements", ["name", "time", "value"], "name")
+    # save_data(res, "../../data/ProRail/processed/processed_moisture.json")
+    #
+    # res = collect_files_traces(sens, r"../../data/ProRail/Culemborg/traces",
+    #                            ["temperature", "cant", "settlement"],
+    #                            ["Track GT", "Track GH"],
+    #                            ["time", "position", "value"],
+    #                            "position")
+    # save_data(res, "../../data/ProRail/processed/processed_geometry.json")
 
-    res = collect_files_moisture(sens, r"../../data/ProRail/Culemborg/measurements", ["name", "time", "value"], "name")
-    save_data(res, "../../data/ProRail/processed/processed_moisture.json")
+    with open("../../data/ProRail/processed/processed_geometry.json") as f:
+        data = json.load(f)
 
-    res = collect_files_traces(sens, r"../../data/ProRail/Culemborg/traces",
-                               ["temperature", "cant", "settlement"],
-                               ["Track GT", "Track GH"],
-                               ["time", "position", "value"],
-                               "position")
-    save_data(res, "../../data/ProRail/processed/processed_geometry.json")
+    calculate_settlement(data)
