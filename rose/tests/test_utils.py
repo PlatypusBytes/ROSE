@@ -169,12 +169,11 @@ class TestUtils:
         # global force vector
         force_vector = np.array([-1000,0000,0])
 
-
         # calculate element rotation
-        rot = calculate_rotation(element.nodes[0], element.nodes[1])
+        rot = calculate_rotation(element.nodes[0].coordinates[None,:], element.nodes[1].coordinates[None,:])
 
         # calculate rotated force vector
-        rotated_vector = rotate_point_around_z_axis(rot,force_vector)
+        rotated_vector = rotate_point_around_z_axis([rot],force_vector[None,:])[0]
 
         # define expected rotated force vector
         expected_force_vector = np.array([-np.sqrt(3)*1000/2,500,0])
