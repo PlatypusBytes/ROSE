@@ -126,6 +126,8 @@ class MovingPointLoad(LineLoadCondition):
         self.calculate_cumulative_distance_contact_nodes()
         self.calculate_cumulative_distance_moving_load()
 
+        self.get_first_element_idx()
+
         self.set_active_elements()
         self.set_load_vectors_as_function_of_time()
         self.filter_load_outside_range()
@@ -219,6 +221,23 @@ class MovingPointLoad(LineLoadCondition):
             self.cum_distances_nodes, nodal_coordinates, self.cum_distances_force
         )
 
+    def get_first_element_idx(self):
+        """
+        Gets first contact element index. This function assumes a sorted list of elements
+        :return:
+        """
+
+        # calculate distance between cumulative distance nodes and the initial force position
+        ini_diff_node_force = self.cum_distances_nodes - self.cum_distances_force[0]
+
+        # check if all elements have 2 nodes
+        if np.all([len(element.nodes) == 2 for element in self.elements]):
+            # get starting element index, it is the index of the first positive value -1 of the ini_diff_node_force
+            self.start_element_idx = np.where(ini_diff_node_force > 0, ini_diff_node_force, np.inf).argmin() - 1
+        else:
+            self.start_element_idx = None
+
+
     def calculate_cumulative_distance_contact_nodes(self):
         # get numpy array of nodal coordinates
         nodal_coordinates = np.array([node.coordinates for node in self.nodes])
@@ -230,21 +249,11 @@ class MovingPointLoad(LineLoadCondition):
 
         # if start coords are not given, set the first node as start coordinates
         if self.start_coord is None:
-            self.start_coord = np.array(self.nodes[0].coordinates)
-
-        # find element in which the start coordinates are located
-        self.start_element_idx = utils.find_intersecting_point_element(self.elements, self.start_coord)
+            self.start_coord = 0
 
         # calculate distance from force
         self.cum_distances_force = utils.calculate_cum_distance_from_velocity(self.time, self.velocities)
-
-        # add distance force to first node in first active element
-        self.cum_distances_force += utils.distance_np(
-            self.start_coord, np.array(self.elements[self.start_element_idx].nodes[0].coordinates)
-        )
-        # ???
-        self.cum_distances_force += self.cum_distances_nodes[self.nodes.index(
-            self.elements[self.start_element_idx].nodes[0])]
+        self.cum_distances_force += self.start_coord
 
 
     def __distribute_normal_force(self, distance, force):
@@ -320,34 +329,22 @@ class MovingPointLoad(LineLoadCondition):
         node_indices: np.ndarray,
         time_idx: int,
         distance: float,
-        x_force: np.ndarray,
-        z_moment: np.ndarray,
-        y_force: np.ndarray,
+        rotated_force: np.ndarray,
+        element_rot: float,
     ):
         """
         Distribute point load on surrounding nodes at timestep t
+
         :param node_indices: indices of surrounding nodes at time t
         :param time_idx: idx of time step
         :param distance: distance point load to first node of element at time t
-        :param x_force: horizontal force
-        :param z_moment: z rotation moment
-        :param y_force: vertical force
+        :param rotated_force: rotated force vector at time t
+        :param element_rot: rotation of contact element at time t
         :return:
         """
 
 
-        # get local forces
-
-        #calculate element rotation
-        #todo calculate rotation for elements with more than 2 nodes
-        if len(node_indices) ==2:
-            element_rot = utils.calculate_rotation(self.nodes[node_indices[0]], self.nodes[node_indices[1]])
-        else:
-            element_rot = 0
-
-        rotated_force = utils.rotate_point_around_z_axis(element_rot, self.moving_force_vector[:,time_idx])
         # todo make calling of shapefunctions more general, for now it only works on a beam with normal, y and z-rot dof
-
         # get nodal normal force vector
         normal_force_vector = self.__distribute_normal_force(distance, rotated_force)
 
@@ -361,8 +358,8 @@ class MovingPointLoad(LineLoadCondition):
         # combine all local forces in array
         local_force_matrix = np.array([normal_force_vector,shear_force_vector,z_mom_vector])
 
-        # calculate global forces
-        global_force_matrix = utils.rotate_point_around_z_axis(-element_rot, local_force_matrix)
+        # calculate global forces at a single timestep
+        global_force_matrix = utils.rotate_point_around_z_axis([-element_rot], local_force_matrix[None,:,:])[0]
         for idx, node_idx in enumerate(node_indices):
             self.x_force_matrix[node_idx, time_idx] += global_force_matrix[0, idx]
             self.y_force_matrix[node_idx, time_idx] += global_force_matrix[1, idx]
@@ -399,15 +396,28 @@ class MovingPointLoad(LineLoadCondition):
                                                for node in element.nodes]) for element in contact_elements])
 
         # distribute point load on each time step, vectorizing this method might result in an overflow error if too many
-        # time steps or nodes are present
+
+
+
+        # get all nodal coordinates
+        np_nodes = np.array(self.nodes)
+        nodal_coordinates = np.array([[np_nodes[node_indices[time_idx,0]].coordinates,
+                                       np_nodes[node_indices[time_idx,1]].coordinates] for time_idx in range(len(self.time))])
+
+        # calculate rotation for each element
+        element_rots = utils.calculate_rotation(nodal_coordinates[:,0,:], nodal_coordinates[:,1,:])
+
+        # calculate rotated force vector at each time step
+        rotated_force = utils.rotate_point_around_z_axis(element_rots, self.moving_force_vector[:,:].T)
+
+        # distribute rotated forces on nodes
         for time_idx in range(len(self.time)):
             self.distribute_point_load_on_nodes(
                 node_indices[time_idx, :],
                 time_idx,
                 distances[time_idx],
-                self.moving_x_force,
-                self.moving_z_moment,
-                self.moving_y_force,
+                rotated_force[time_idx,:],
+                element_rots[time_idx]
             )
 
 

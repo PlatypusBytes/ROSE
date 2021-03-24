@@ -171,7 +171,25 @@ def delete_from_lil(mat: sparse.lil_matrix, row_indices=[], col_indices=[]):
     else:
         return mat
 
-def calculate_rotation(node1: Node, node2: Node):
+# def calculate_rotation(node1: Node, node2: Node):
+#     """
+#     Calculates rotation between 2 nodes in a 2d space
+#     :param node1: first node
+#     :param node2: second node
+#     :return:
+#     """
+#     #todo make general, now it works for 2 nodes in a 2d space
+#     if np.isclose(node2.coordinates[0] - node1.coordinates[0], 0):
+#         return np.pi/2 * np.sign((node2.coordinates[1] - node1.coordinates[1]))
+#
+#     rot = 0
+#     if node2.coordinates[0] < node1.coordinates[0]:
+#         rot += np.pi
+#
+#     rot += np.arctan((node2.coordinates[1] - node1.coordinates[1])/ (node2.coordinates[0] - node1.coordinates[0]))
+#     return rot
+
+def calculate_rotation(coord1: np.ndarray, coord2: np.ndarray):
     """
     Calculates rotation between 2 nodes in a 2d space
     :param node1: first node
@@ -179,18 +197,17 @@ def calculate_rotation(node1: Node, node2: Node):
     :return:
     """
     #todo make general, now it works for 2 nodes in a 2d space
-    if np.isclose(node2.coordinates[0] - node1.coordinates[0], 0):
-        return np.pi/2 * np.sign((node2.coordinates[1] - node1.coordinates[1]))
+    rot = np.zeros(coord1.shape[0])
+    is_x_equal = np.isclose(coord2[:,0] - coord1[:,0], 0)
+    rot[is_x_equal] = np.pi/2 * np.sign((coord2[is_x_equal, 1] - coord1[is_x_equal, 1]))
+        # return np.pi/2 * np.sign((coord2[1] - coord1[1]))
+    rot[coord2[:,0] < coord1[:,0]] += np.pi
 
-    rot = 0
-    if node2.coordinates[0] < node1.coordinates[0]:
-        rot += np.pi
-
-    rot += np.arctan((node2.coordinates[1] - node1.coordinates[1])/ (node2.coordinates[0] - node1.coordinates[0]))
+    rot[~is_x_equal] += np.arctan((coord2[:,1] - coord1[:,1])/ (coord2[:,0] - coord1[:,0]))
     return rot
 
 
-def rotate_point_around_z_axis(rotation: float, point_vector: np.ndarray):
+def rotate_point_around_z_axis(rotation: np.ndarray, point_vector: np.ndarray):
     """
     Rotates a point around the z-axis
     :param rotation: rotation in radians
@@ -198,13 +215,20 @@ def rotate_point_around_z_axis(rotation: float, point_vector: np.ndarray):
     :return:
     """
 
-    rot_matrix = np.zeros((3, 3))
-    rot_matrix[[0, 1], [0, 1]] = np.cos(rotation)
-    rot_matrix[0, 1] = np.sin(rotation)
-    rot_matrix[1, 0] = -np.sin(rotation)
-    rot_matrix[2, 2] = 1
+    rot_matrix = np.zeros((len(rotation),3, 3))
+    rot_matrix[:, 0, 0] = np.cos(rotation)
+    rot_matrix[:, 1, 1] = np.cos(rotation)
+    rot_matrix[:, 0, 1] = np.sin(rotation)
+    rot_matrix[:,1, 0] = -rot_matrix[:,0, 1]
+    rot_matrix[:,2, 2] = 1
 
-    return rot_matrix.dot(point_vector)
+    rotated_point = np.zeros(point_vector.shape)
+
+    # rotate each time step
+    for idx,(mat, point) in enumerate(zip(rot_matrix,point_vector)):
+        rotated_point[idx] = mat.dot(point)
+    return rotated_point
+
 
 
 def rotate_force_vector(element: Element, contact_model_part, force_vector: np.array):
@@ -236,7 +260,7 @@ def rotate_aux_matrix(element: Element, model_part, aux_matrix: np.array):
     """
     # todo make general, now it works for 2 nodes in a 2d space
     if len(element.nodes) == 2:
-        rot = calculate_rotation(element.nodes[0], element.nodes[1])
+        rot = calculate_rotation(element.nodes[0].coordinates[None,:], element.nodes[1].coordinates[None,:])
         model_part.set_rotation_matrix(rot, 2)
         rot_matrix = model_part.rotation_matrix
 
