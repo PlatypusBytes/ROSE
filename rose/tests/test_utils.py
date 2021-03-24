@@ -28,7 +28,7 @@ class TestUtils:
         :param expected_rotation:
         :return:
         """
-        assert expected_rotation == pytest.approx(calculate_rotation(node1, node2))
+        assert expected_rotation == pytest.approx(calculate_rotation(node1.coordinates[None,:], node2.coordinates[None,:]))
 
     def test_reshape_aux_matrix(self):
         rod = RodElementModelPart()

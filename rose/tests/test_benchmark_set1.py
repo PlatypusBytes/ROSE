@@ -105,7 +105,7 @@ class TestBenchmarkSet1:
         velocities = np.ones(len(time)) * 10
 
         load = MovingPointLoad(x_disp_dof=rail_model_part.normal_dof, y_disp_dof=rail_model_part.y_disp_dof,
-                               z_rot_dof=rail_model_part.z_rot_dof, start_coord=np.array([5, 0, 0]))
+                               z_rot_dof=rail_model_part.z_rot_dof, start_coord=5)
         load.time = time
         load.contact_model_part = rail_model_part
         load.y_force = y_load
