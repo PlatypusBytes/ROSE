@@ -115,55 +115,103 @@ def rolling_window(a, window):
     return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
 
 
+def map_settlement_at_starting_date(all_dates: List, all_settlements: List):
+    """
+    Maps the first measured settlement of all time series on the expected settlement based on data of time series with a
+    longer history
+
+    :param List[np.ndarray[float]]  all_dates: all date timestamps to be checked
+    :param List[np.ndarray[float]] all_settlements: all settlements
+    :return:
+    """
+
+    # find starting dates of each time series
+    first_dates = np.array([dates[0] for dates in all_dates])
+
+    # initialize mask
+    mask = np.ones(len(first_dates), bool)
+
+    # find all indices for each time serie which starts with the minimal value
+    prev_indices = np.where(np.isclose(first_dates, min(first_dates[mask])))[0]
+
+    # mask time series with longest history
+    mask[prev_indices] = False
+
+    # get all settlements and dates of all time series with the longest history
+    prev_settlements = [all_settlements[idx] for idx in prev_indices]
+    prev_dates = [all_dates[idx] for idx in prev_indices]
+
+
+    # continue looping until all time series are checked
+    while any(mask):
+
+        # find all indices for each time serie which starts with the next minmal value
+        next_indices = np.where(np.isclose(first_dates, min(first_dates[mask])))[0]
+        mask[next_indices] = False
+
+        # get all settlements and dates of all time series with the next longest history
+        next_settlements = [all_settlements[idx] for idx in next_indices]
+        next_dates = [all_dates[idx] for idx in next_indices]
+
+        # starting date of the time serie with the next longest history
+        next_date = next_dates[0][0]
+
+        # concatenate all previous dates and settlements
+        concatenated_dates = np.array([date for dates in prev_dates for date in dates])
+        concatenated_settlements = np.array([settlement for settlements in prev_settlements for settlement in settlements])
+
+        # create a trend line of all previous dates and settlements
+        trend = np.polyfit(concatenated_dates,concatenated_settlements,3)
+
+        # get expected settlement at starting date of next longest time history
+        p = np.poly1d(trend)
+        current_settlement = p(concatenated_dates[np.argmin(np.abs(concatenated_dates-next_date))])
+
+        # map settlement at next longest time history
+        next_settlements = [settlements + current_settlement for settlements in next_settlements]
+        for idx, settlement in zip(next_indices,next_settlements):
+            all_settlements[idx] = settlement
+
+        # get all indices of already mapped settlements
+        prev_indices = np.where(~mask)[0]
+
+        #update previous settlements and dates
+        prev_settlements = [all_settlements[idx] for idx in prev_indices]
+        prev_dates = [all_dates[idx] for idx in prev_indices]
+
+    return all_dates, all_settlements
+
+
 if __name__ == '__main__':
 
     # data = read_geopackage(r"../../data/Sensar/20190047_01_20210308/data/data.gpkg")
     # save_sensar_data(data, "../../data/Sensar/processed/processed_settlements.pickle")
 
     data = load_sensar_data("../../data/Sensar/processed/processed_settlements.pickle")
-    #
 
     items_within_bounds = get_all_items_within_bounds(data, [144276, 144465], [439011,439301])
-    # items_within_bounds = get_all_items_within_bounds(data, [139361.8, 144281.8], [439303.0,450982.1])
 
-    # item1 = get_item_at_coord(data, [144281.8, 439303.0])
-    #
-    # #
-    # item2 = get_item_at_coord(data, [144287.5, 439293.8])
-    # item3 = get_item_at_coord(data, [144313.9, 439249])
-    # item4 = get_item_at_coord(data, [139361.8, 450982.1])
-    # #
-    # # # plot_date_vs_settlement(item3)
-    # plot_date_vs_settlement(item1)
-    # plot_date_vs_settlement(item2)
-    # plot_date_vs_settlement(item3)
-    # plot_date_vs_settlement(item4)
-    #
-    # plot_date_vs_settlement(item3)
-
-    all_dates = np.array([])
-    all_settlements = np.array([])
+    all_dates = []
+    all_settlements = []
     for item in items_within_bounds:
         dates = np.array([d.timestamp() for d in item['dates']])
-        all_dates = np.append(all_dates,dates)
         settlements = np.array(item['settlements'])
-        all_settlements = np.append(all_settlements,settlements)
+        all_settlements.append(settlements)
+        all_dates.append(dates)
 
-        # np.polyfit(dates,items_within_bounds[0]['settlements'])
+    all_dates, all_settlements = map_settlement_at_starting_date(all_dates, all_settlements)
 
-        # trend, V = np.polyfit(dates,items_within_bounds[0]['settlements'],3, cov='unscaled')
-        # # std =
-        # trendpoly = np.poly1d(trend)
-        # std_poly = np.poly1d(np.sqrt(np.diagonal(V)))
-        # plt.plot(dates,trendpoly(dates))
-        # plt.plot(dates,std_poly(dates))
-        # plt.plot(dates, item['settlements'], 'o')
-        # plt.show()
+    all_dates2 = np.array([date for dates in all_dates for date in dates])
+    all_settlements2 = np.array([settlement for settlements in all_settlements for settlement in settlements])
+
+    all_dates = all_dates2
+    all_settlements = all_settlements2
 
     sorted_indices = np.argsort(all_dates)
 
     sorted_dates = all_dates[sorted_indices]
     sorted_settlements = all_settlements[sorted_indices]
+    # sorted_velocities = all_velocities[sorted_indices]
 
     diff = np.diff(sorted_dates)
 
@@ -177,34 +225,17 @@ if __name__ == '__main__':
         all_means = np.append(all_means, np.mean(sorted_settlements[step_idxs[i-1]:step_idxs[i]]))
         all_stds = np.append(all_stds, np.std(sorted_settlements[step_idxs[i-1]:step_idxs[i]]))
 
-    trend, V = np.polyfit(sorted_dates,sorted_settlements,3, cov=True)
-    trendpoly = np.poly1d(trend)
-
-    trend_new, V2 = np.polyfit(new_dates,all_means,3, cov=True)
-    trendpoly_new = np.poly1d(trend_new)
-
-    trend_3, V3 = np.polyfit(new_dates,all_means + all_stds,3, cov=True)
-    trendpoly_3 = np.poly1d(trend_3)
-
-    trend_4, V3 = np.polyfit(new_dates,all_means - all_stds,3, cov=True)
-    trendpoly_3 = np.poly1d(trend_3)
-    # np.std(rolling_window(sorted_settlements, 1e8))
-
-    std = np.sqrt(np.diagonal(V))
+    trend = np.polyfit(sorted_dates,sorted_settlements,1)
+    trend_new = np.polyfit(new_dates,all_means,1)
+    trend_3 = np.polyfit(new_dates,all_means + 2*all_stds,1)
+    trend_4 = np.polyfit(new_dates,all_means - 2*all_stds,1)
 
 
     plt.plot(sorted_dates, sorted_settlements, 'o')
     plt.plot(new_dates,all_means,'o')
-    # plt.plot(new_dates,all_means+all_stds,'o')
-    # plt.plot(new_dates,all_means-all_stds,'o')
     plt.plot(sorted_dates,np.polyval(trend,sorted_dates))
     plt.plot(new_dates,np.polyval(trend_new,new_dates))
     plt.plot(new_dates,np.polyval(trend_3,new_dates))
     plt.plot(new_dates,np.polyval(trend_4,new_dates))
-    # plt.plot(sorted_dates,trendpoly(sorted_dates))
 
     plt.show()
-    #
-    # test = np.polyfit(items_within_bounds[0]['dates'],items_within_bounds[0]['settlements'])
-
-    pass
