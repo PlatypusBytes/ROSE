@@ -2,7 +2,7 @@ import pytest
 
 from rose.model.geometry import Element, Node
 
-from rose.track.track import *
+from rose.model.track import *
 from rose.model.global_system import *
 
 

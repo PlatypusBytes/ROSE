@@ -7,7 +7,7 @@ from rose.model.geometry import Node
 from rose.model.model_part import ElementModelPart
 from rose.model.global_system import GlobalSystem
 
-from rose.solver.solver import NewmarkSolver, StaticSolver, ZhaiSolver
+from rose.model.solver import NewmarkSolver, StaticSolver, ZhaiSolver
 
 g = 9.81
 

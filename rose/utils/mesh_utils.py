@@ -1,7 +1,7 @@
 from rose.model.geometry import Node, Element, Mesh
 
-from rose.track.track import Rail, RailPad, Sleeper
-from rose.soil.soil import Soil
+from rose.model.track import Rail, RailPad, Sleeper
+from rose.model.soil import Soil
 from rose.model.model_part import ConstraintModelPart, ElementModelPart
 # from rose.base.boundary_conditions import LineLoadCondition, MovingPointLoad
 import rose.utils.utils as utils

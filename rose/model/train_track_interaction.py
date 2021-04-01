@@ -1,4 +1,4 @@
-from rose.train_model.train_model import TrainModel
+from rose.model.train_model import TrainModel
 from rose.model.global_system import GlobalSystem
 from rose.model.model_part import TimoshenkoBeamElementModelPart
 from rose.model.boundary_conditions import MovingPointLoad

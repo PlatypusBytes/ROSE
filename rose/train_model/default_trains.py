@@ -1,5 +1,5 @@
 from enum import Enum
-from rose.train_model.train_model import TrainModel, Cart, Bogie, Wheel
+from rose.model.train_model import TrainModel, Cart, Bogie, Wheel
 
 import numpy as np
 

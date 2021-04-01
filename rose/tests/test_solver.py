@@ -1,9 +1,8 @@
 # unit test for solver
 # tests based on Bathe
 # for newmark pg 782
-import pytest
 import unittest
-import rose.solver.solver as solver
+import rose.model.solver as solver
 import numpy as np
 from scipy import sparse
 

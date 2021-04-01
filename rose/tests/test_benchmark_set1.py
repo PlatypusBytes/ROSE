@@ -1,7 +1,7 @@
 import pytest
 
 from rose.model.global_system import *
-from rose.train_model.train_model import TrainModel
+from rose.model.train_model import TrainModel
 from rose.model.model_part import Material, Section, TimoshenkoBeamElementModelPart
 from rose.model.boundary_conditions import MovingPointLoad
 from rose.utils.mesh_utils import *

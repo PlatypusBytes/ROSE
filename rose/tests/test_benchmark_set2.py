@@ -5,7 +5,7 @@ import pytest
 from rose.model.global_system import *
 from rose.model.model_part import Material, Section, RodElementModelPart
 from rose.utils.plot_utils import *
-from rose.train_model.train_model import *
+from rose.model.train_model import *
 from rose.model.train_track_interaction import *
 
 from analytical_solutions.analytical_wave_prop import OneDimWavePropagation

@@ -1,6 +1,6 @@
 # unit test for cumulative
 import unittest
-from rose.cumulative_models import Varandas
+from rose.model import Varandas
 import numpy as np
 import os
 import json
