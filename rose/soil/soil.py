@@ -1,4 +1,4 @@
-from rose.base.model_part import RodElementModelPart
+from rose.model.model_part import RodElementModelPart
 
 
 class Soil(RodElementModelPart):

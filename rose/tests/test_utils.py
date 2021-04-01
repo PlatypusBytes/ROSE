@@ -1,8 +1,8 @@
 import pytest
 
 from rose.utils.utils import *
-from rose.base.model_part import RodElementModelPart,TimoshenkoBeamElementModelPart, ElementModelPart
-from rose.base.geometry import Element
+from rose.model.model_part import RodElementModelPart,TimoshenkoBeamElementModelPart, ElementModelPart
+from rose.model.geometry import Element
 
 import numpy as np
 

@@ -1,11 +1,10 @@
 from rose.base.geometry import Node, Element
-from rose.base.boundary_conditions import LineLoadCondition, MovingPointLoad
+from rose.model.boundary_conditions import MovingPointLoad
 
-from scipy import sparse
 import numpy as np
 import pytest
 
-from rose.base.model_part import Section, Material, TimoshenkoBeamElementModelPart
+from rose.model.model_part import Section, Material, TimoshenkoBeamElementModelPart
 
 
 class TestBoundaryConditions:

@@ -1,11 +1,8 @@
-from rose.base.model_part import ConditionModelPart, ElementModelPart
+from rose.model.model_part import ConditionModelPart, ElementModelPart
 import rose.utils.utils as utils
 import rose.utils.mesh_utils as mu
 
 import numpy as np
-from shapely.geometry import Point
-from scipy.spatial.distance import cdist
-from scipy.spatial import KDTree
 from scipy import sparse
 
 INTERSECTION_TOLERANCE = 1e-6
@@ -145,8 +142,6 @@ class MovingPointLoad(LineLoadCondition):
             self.moving_z_moment = np.zeros(len(self.time))
         # if self.moving_force_vector is None:
         #     self.moving_force_vector = np.array([self.moving_x_force, self.moving_y_force, self.moving_z_moment])
-
-
 
 
     def set_load_vectors_as_function_of_time(self):

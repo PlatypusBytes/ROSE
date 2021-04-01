@@ -1,8 +1,8 @@
 import pytest
 
-from rose.base.global_system import *
+from rose.model.global_system import *
 
-from rose.base.model_part import *
+from rose.model.model_part import *
 
 class TestGlobalSystem:
     def test_calculate_rayleigh_damping(self,euler_beam_stiffness_matrix,euler_beam_mass_matrix,

@@ -3,9 +3,9 @@ import os
 import pickle
 
 from run_rose.read_wolf import read_wolf
-from rose.base.model_part import Material, Section
+from rose.model.model_part import Material, Section
 from rose.train_model.train_model import *
-from rose.base.train_track_interaction import *
+from rose.model.train_track_interaction import *
 import rose.solver.solver as solver_c
 
 # from pympler import tracker
@@ -330,7 +330,7 @@ def main():
     # wolf_files = [os.path.join(wolf_res_path,"KDyn_Segment 1090_scenario 1.json"),
     #               os.path.join(wolf_res_path,"KDyn_Segment 1001_scenario 1.json")]
 
-    results = read_wolf(wolf_files)
+    results = [read_wolf(wolf_files)[0]]
 
     segment_ids = [res['name'] for res in results]
     omegas = [res['omega'] for res in results]
@@ -359,9 +359,11 @@ def main():
         del new_coupled_model
         gc.collect()
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
 
 
+import cProfile
 
+cProfile.run('main()','profiler')
 

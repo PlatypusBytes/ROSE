@@ -5,10 +5,9 @@ from os.path import isfile, join
 import pickle
 
 from run_rose.read_wolf import read_wolf
-from rose.base.model_part import Material, Section, TimoshenkoBeamElementModelPart, RodElementModelPart
-from rose.train_model.train_model import *
+from rose.model.model_part import Material, Section
 from rose.train_model.default_trains import TrainType, set_train
-from rose.base.train_track_interaction import *
+from rose.model.train_track_interaction import *
 import rose.solver.solver as solver_imp
 
 # Set geometry parameters

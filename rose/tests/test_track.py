@@ -1,11 +1,9 @@
 import pytest
 
-from rose.base.geometry import Element, Node
+from rose.model.geometry import Element, Node
 
 from rose.track.track import *
-from rose.base.global_system import *
-import rose.base.model_part as model_part
-from rose.base.exceptions import *
+from rose.model.global_system import *
 
 
 class TestTrack:

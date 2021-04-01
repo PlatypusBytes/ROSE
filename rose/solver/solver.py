@@ -5,7 +5,7 @@ import os
 import pickle
 from tqdm import tqdm
 
-from rose.base.exceptions import *
+from rose.model.exceptions import *
 import logging
 
 def init(m_global, c_global, k_global, force_ini, u, v):

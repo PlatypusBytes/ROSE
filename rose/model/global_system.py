@@ -1,7 +1,7 @@
-from rose.base.model_part import ElementModelPart, ConstraintModelPart, ModelPart, RodElementModelPart
-from rose.base.boundary_conditions import LoadCondition
-from rose.base.geometry import Mesh
-from rose.base.exceptions import *
+from rose.model.model_part import ElementModelPart, ConstraintModelPart, ModelPart
+from rose.model.boundary_conditions import LoadCondition
+from rose.model.geometry import Mesh
+from rose.model.exceptions import *
 
 from rose.solver.solver import NewmarkSolver, StaticSolver, ZhaiSolver, Solver
 from rose.utils import utils
@@ -10,7 +10,7 @@ from scipy import sparse
 import numpy as np
 import logging
 from typing import List
-from copy import deepcopy
+
 
 class GlobalSystem:
     def __init__(self):

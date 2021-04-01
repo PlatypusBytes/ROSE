@@ -1,12 +1,11 @@
 import numpy as np
 from scipy import sparse
-from copy import deepcopy
 from typing import List
 
 from rose.utils import utils
-from rose.base.geometry import Node, Element, Mesh
-from rose.base.model_part import ElementModelPart
-from rose.base.global_system import GlobalSystem
+from rose.model.geometry import Node
+from rose.model.model_part import ElementModelPart
+from rose.model.global_system import GlobalSystem
 
 from rose.solver.solver import NewmarkSolver, StaticSolver, ZhaiSolver
 

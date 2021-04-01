@@ -1,5 +1,5 @@
 import numpy as np
-from rose.base.model_part import ElementModelPart, RodElementModelPart, TimoshenkoBeamElementModelPart
+from rose.model.model_part import ElementModelPart, RodElementModelPart, TimoshenkoBeamElementModelPart
 import logging
 
 class InvalidRailException(Exception):

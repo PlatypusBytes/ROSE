@@ -1,24 +1,15 @@
-from rose.base.geometry import Node, Element, Mesh
+from rose.model.geometry import Node, Element, Mesh
 
 from rose.track.track import Rail, RailPad, Sleeper
 from rose.soil.soil import Soil
-from rose.base.model_part import ConstraintModelPart, ElementModelPart
+from rose.model.model_part import ConstraintModelPart, ElementModelPart
 # from rose.base.boundary_conditions import LineLoadCondition, MovingPointLoad
 import rose.utils.utils as utils
 
 import itertools
 import numpy as np
 
-from scipy import sparse
-from scipy.spatial.distance import cdist
-
-
-from shapely.geometry import Point
-from scipy.spatial.distance import cdist
-from scipy.spatial import KDTree
-from scipy import sparse
-from typing import Union, Dict, List
-import operator
+from typing import Dict, List
 
 INTERSECTION_TOLERANCE = 1e-6
 

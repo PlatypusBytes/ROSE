@@ -3,7 +3,7 @@ from __future__ import print_function, absolute_import, division #makes KratosMu
 import sys
 import os
 import numpy as np
-sys.path.append(r"D:\software_development\ROSE\KratosGeoMechanics")
+sys.path.append(r"/KratosGeoMechanics")
 
 import KratosMultiphysics as Kratos
 from KratosMultiphysics.GeoMechanicsApplication.geomechanics_analysis import GeoMechanicsAnalysis

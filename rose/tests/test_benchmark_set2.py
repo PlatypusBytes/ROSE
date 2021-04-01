@@ -2,22 +2,16 @@ import json
 import os.path
 import pytest
 
-from rose.base.global_system import *
-from rose.base.model_part import Material, Section, TimoshenkoBeamElementModelPart, RodElementModelPart
-from rose.utils.mesh_utils import *
+from rose.model.global_system import *
+from rose.model.model_part import Material, Section, RodElementModelPart
 from rose.utils.plot_utils import *
 from rose.train_model.train_model import *
-from rose.base.train_track_interaction import *
-
-import rose.tests.utils.signal_proc as sp
+from rose.model.train_track_interaction import *
 
 from analytical_solutions.analytical_wave_prop import OneDimWavePropagation
 from analytical_solutions.simple_supported import \
-    SimpleSupportEulerNoDamping, \
-    SimpleSupportEulerStatic, \
     SimpleSupportEulerWithDamping, \
     SimpleSupportTimoshenkoNoDamping
-from analytical_solutions.cantilever_beam import PulseLoadNoDamping
 from analytical_solutions.winkler import MovingLoad
 from analytical_solutions.moving_vehicle import TwoDofVehicle
 import matplotlib.pyplot as plt
@@ -25,8 +19,8 @@ import matplotlib.pyplot as plt
 # if RENEW_BENCHMARKS is true, the analytical solutions will be recalculated, results will be plotted together with the
 # numerical solution.
 RENEW_BENCHMARKS = False
-TEST_PATH = os.path.join('rose', 'tests')
-# TEST_PATH = '.'
+# TEST_PATH = os.path.join('rose', 'tests')
+TEST_PATH = '.'
 
 
 class TestBenchmarkSet2:

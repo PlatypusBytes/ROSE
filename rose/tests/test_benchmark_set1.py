@@ -1,10 +1,9 @@
-import json
 import pytest
 
-from rose.base.global_system import *
+from rose.model.global_system import *
 from rose.train_model.train_model import TrainModel
-from rose.base.model_part import Material, Section, TimoshenkoBeamElementModelPart, RodElementModelPart
-from rose.base.boundary_conditions import MovingPointLoad
+from rose.model.model_part import Material, Section, TimoshenkoBeamElementModelPart
+from rose.model.boundary_conditions import MovingPointLoad
 from rose.utils.mesh_utils import *
 from rose.utils.plot_utils import *
 
@@ -12,13 +11,8 @@ import rose.tests.utils.signal_proc as sp
 
 from analytical_solutions.simple_supported import \
     SimpleSupportEulerNoDamping, \
-    SimpleSupportEulerStatic, \
-    SimpleSupportEulerWithDamping, \
-    SimpleSupportTimoshenkoNoDamping
+    SimpleSupportEulerStatic
 from analytical_solutions.cantilever_beam import PulseLoadNoDamping
-
-
-import matplotlib.pyplot as plt
 
 
 class TestBenchmarkSet1:
