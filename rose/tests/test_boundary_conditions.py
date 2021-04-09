@@ -1,4 +1,4 @@
-from rose.base.geometry import Node, Element
+from rose.model.geometry import Node, Element
 from rose.model.boundary_conditions import MovingPointLoad
 
 import numpy as np
