@@ -21,7 +21,7 @@ def read_wolf(file_names):
 
 if __name__ == "__main__":
     from os.path import isfile, join
-    wolf_res_path = r'../rose/wolf/dyn_stiffness'
+    wolf_res_path = r'../rose/utils/dyn_stiffness'
     wolf_files = [os.path.join(wolf_res_path, f) for f in os.listdir(wolf_res_path) if isfile(join(wolf_res_path, f))]
     results = read_wolf(wolf_files)
 

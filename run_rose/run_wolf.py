@@ -1,7 +1,7 @@
 import numpy as np
 import json
 # import rose packages
-from rose.wolf import LayeredHalfSpace
+from rose.utils import LayeredHalfSpace
 
 
 def run_wolf(layers_file, omega, output="./", freq=False, plots=True):

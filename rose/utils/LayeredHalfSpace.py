@@ -3,7 +3,6 @@ import os
 import json
 import numpy as np
 # import wolf packages
-from rose.wolf import utils
 
 np.seterr(all="ignore")
 

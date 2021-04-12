@@ -6,7 +6,7 @@ import pickle
 
 from run_rose.read_wolf import read_wolf
 from rose.model.model_part import Material, Section
-from rose.train_model.default_trains import TrainType, set_train
+from rose.pre_process.default_trains import TrainType, set_train
 from rose.model.train_track_interaction import *
 import rose.model.solver as solver_imp
 
@@ -275,7 +275,7 @@ def main():
     output_dir = os.path.join(cd, "../rose/batch_results")
 
     # set wolf results directory
-    wolf_res_path = r'../rose/wolf/dyn_stiffness'
+    wolf_res_path = r'../rose/utils/dyn_stiffness'
     wolf_files = [os.path.join(wolf_res_path, f) for f in os.listdir(wolf_res_path) if isfile(join(wolf_res_path, f))]
 
     # read wolf files

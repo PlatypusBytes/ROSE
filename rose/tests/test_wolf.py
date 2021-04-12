@@ -4,7 +4,7 @@ import json
 import shutil
 import numpy as np
 # import package
-from rose.wolf import LayeredHalfSpace
+from rose.utils import LayeredHalfSpace
 
 TEST_PATH = "./rose/tests"
 tol = 1e-12

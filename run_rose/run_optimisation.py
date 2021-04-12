@@ -293,7 +293,7 @@ def main():
     output_dir = os.path.join(cd, "../rose/batch_results")
 
 
-    wolf_res_path = r'../rose/wolf/dyn_stiffness'
+    wolf_res_path = r'../rose/utils/dyn_stiffness'
     # wolf_files = [os.path.join(wolf_res_path, f) for f in os.listdir(wolf_res_path) if isfile(join(wolf_res_path, f))]
 
     # wolf_files = [os.path.join(wolf_res_path, f) for f in os.listdir(wolf_res_path) if isfile(join(wolf_res_path, f))]

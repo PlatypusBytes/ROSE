@@ -295,7 +295,7 @@ if __name__ == "__main__":
     sos_dir = "../rose/SOS"
     sos_fn = "SOS.json"
 
-    wolf_dir = r"../rose/wolf/dyn_stiffness"
+    wolf_dir = r"../rose/utils/dyn_stiffness"
 
     node_nr = 100
     start_time_idx = 1000
