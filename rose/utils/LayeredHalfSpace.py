@@ -3,6 +3,7 @@ import os
 import json
 import numpy as np
 # import wolf packages
+import rose.utils.wolf_utils as wolf_utils
 
 np.seterr(all="ignore")
 
@@ -239,15 +240,15 @@ def write_output(path_results, name, data, omega, freq, plots=True):
 
     # dump json
     with open(os.path.join(path_results, f"Kdyn_{name}.json"), "w") as f:
-        json.dump(res, f, indent=2, cls=utils.ComplexEncoder)
+        json.dump(res, f, indent=2, cls=wolf_utils.ComplexEncoder)
 
     # make plots
     if plots:
         if freq:
             # if frequency
-            utils.create_plot(omega / 2. / np.pi, res["stiffness"], res["damping"], "Frequency [Hz]", path_results, name)
+            wolf_utils.create_plot(omega / 2. / np.pi, res["stiffness"], res["damping"], "Frequency [Hz]", path_results, name)
         else:
             # if angular frequency
-            utils.create_plot(omega, res["stiffness"], res["damping"], r"$\omega$ [rad/s]", path_results, name)
+            wolf_utils.create_plot(omega, res["stiffness"], res["damping"], r"$\omega$ [rad/s]", path_results, name)
 
     return
