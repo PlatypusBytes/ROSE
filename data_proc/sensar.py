@@ -86,10 +86,6 @@ def get_all_items_within_bounds(data: Dict, xlim, ylim):
                 items_within_bounds.append(v)
 
     return items_within_bounds
-            # if coord[1] > min(v["coordinates"][:,1]) and coord[1] < max(v["coordinates"][:,1]):
-            #     return v
-
-
 
 def get_item_at_coord(data: Dict, coord: List):
 
@@ -141,7 +137,6 @@ def map_settlement_at_starting_date(all_dates: List, all_settlements: List):
     prev_settlements = [all_settlements[idx] for idx in prev_indices]
     prev_dates = [all_dates[idx] for idx in prev_indices]
 
-
     # continue looping until all time series are checked
     while any(mask):
 
@@ -187,9 +182,11 @@ if __name__ == '__main__':
     # data = read_geopackage(r"../../data/Sensar/20190047_01_20210308/data/data.gpkg")
     # save_sensar_data(data, "../../data/Sensar/processed/processed_settlements.pickle")
 
-    data = load_sensar_data("../../data/Sensar/processed/processed_settlements.pickle")
+    data = load_sensar_data("../data/Sensar/processed/processed_settlements.pickle")
 
-    items_within_bounds = get_all_items_within_bounds(data, [144276, 144465], [439011,439301])
+    # items_within_bounds = get_all_items_within_bounds(data, [144276, 144465], [439011,439301])
+
+    items_within_bounds = get_all_items_within_bounds(data, [128162,128868], [467049, 470502])
 
     all_dates = []
     all_settlements = []

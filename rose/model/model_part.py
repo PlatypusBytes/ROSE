@@ -1,5 +1,5 @@
 import numpy as np
-import rose.utils.utils as utils
+import rose.model.utils as utils
 import logging
 from typing import List
 

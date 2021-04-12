@@ -168,7 +168,7 @@ class ReadSosScenarios:
         return
 
     def plot_sos(self, output_folder: str = "./results",
-                 colour_file: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "./SOS_colour_code.json")) -> None:
+                 colour_file: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "SOS_colour_code.json")) -> None:
         """
         Creates the plot for each SOS
 

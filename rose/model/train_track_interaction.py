@@ -2,8 +2,8 @@ from rose.model.train_model import TrainModel
 from rose.model.global_system import GlobalSystem
 from rose.model.model_part import TimoshenkoBeamElementModelPart
 from rose.model.boundary_conditions import MovingPointLoad
-from rose.utils.utils import *
-from rose.utils.mesh_utils import *
+from rose.model.utils import *
+from rose.pre_process.mesh_utils import *
 
 import numpy as np
 

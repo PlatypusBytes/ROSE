@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pylab as plt
 from scipy import sparse
-from rose.solver.solver import NewmarkSolver
+from rose.model.solver import NewmarkSolver
 import json
 import os
 

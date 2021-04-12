@@ -4,7 +4,7 @@ from rose.model.geometry import Mesh
 from rose.model.exceptions import *
 
 from rose.model.solver import NewmarkSolver, StaticSolver, ZhaiSolver, Solver
-from rose.utils import utils
+from rose.model import utils
 
 from scipy import sparse
 import numpy as np

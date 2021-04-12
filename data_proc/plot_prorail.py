@@ -51,6 +51,6 @@ def plot_time_series(data: dict) -> None:
 
 
 if __name__ == "__main__":
-    with open("../../data/ProRail/processed/processed_geometry.json") as f:
+    with open("../data/ProRail/processed/processed_geometry.json") as f:
         data = json.load(f)
     plot_time_series(data)

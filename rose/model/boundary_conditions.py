@@ -1,6 +1,6 @@
 from rose.model.model_part import ConditionModelPart, ElementModelPart
-import rose.utils.utils as utils
-import rose.utils.mesh_utils as mu
+import rose.model.utils as utils
+import rose.pre_process.mesh_utils as mu
 
 import numpy as np
 from scipy import sparse

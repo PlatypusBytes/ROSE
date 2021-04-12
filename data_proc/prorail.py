@@ -23,6 +23,9 @@ def calculate_settlement(data: dict):
 
     date_time = datetime.strptime(sorted_gh[0]['settlement']['time'][0],'%Y-%m-%d %H:%M:%S')
 
+    date_times_2 = [datetime.strptime(time,'%Y-%m-%d %H:%M:%S')  for time in sorted_gh[2]['settlement']['time']]
+
+    date_times_15 = [datetime.strptime(time,'%Y-%m-%d %H:%M:%S')  for time in sorted_gh[15]['settlement']['time']]
 
     dx_gh = np.diff([x['km'] for x in sorted_gh])
     slope_gh = np.array([x['settlement']['value'] for x in sorted_gh]).astype(float)
@@ -34,12 +37,12 @@ def calculate_settlement(data: dict):
 
     import matplotlib.pyplot as plt
 
-    plt.plot(heights_gh[:,2])
-    plt.plot(heights_gh[:,10])
+    plt.plot(date_times_15,heights_gh[:,2])
+    # plt.plot(heights_gh[:,10])
 
-    plt.plot(heights_gh[:,15])
+    plt.plot(date_times_15, heights_gh[:,15])
 
-    plt.legend(['2','10','15'])
+    plt.legend(['2','15'])
     plt.show()
     settlement_gh = 0
 
@@ -376,7 +379,7 @@ if __name__ == "__main__":
     #                            "position")
     # save_data(res, "../../data/ProRail/processed/processed_geometry.json")
 
-    with open("../../data/ProRail/processed/processed_geometry.json") as f:
+    with open("../data/ProRail/processed/processed_geometry.json") as f:
         data = json.load(f)
 
     calculate_settlement(data)

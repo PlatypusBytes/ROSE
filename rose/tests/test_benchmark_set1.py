@@ -4,8 +4,8 @@ from rose.model.global_system import *
 from rose.model.train_model import TrainModel
 from rose.model.model_part import Material, Section, TimoshenkoBeamElementModelPart
 from rose.model.boundary_conditions import MovingPointLoad
-from rose.utils.mesh_utils import *
-from rose.utils.plot_utils import *
+from rose.pre_process.mesh_utils import *
+from rose.post_processing.plot_utils import *
 
 import rose.tests.utils.signal_proc as sp
 

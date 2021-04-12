@@ -2,7 +2,7 @@ import numpy as np
 from scipy import sparse
 from typing import List
 
-from rose.utils import utils
+from rose.model import utils
 from rose.model.geometry import Node
 from rose.model.model_part import ElementModelPart
 from rose.model.global_system import GlobalSystem

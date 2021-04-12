@@ -1,6 +1,4 @@
-from rose.cumulative_models import Varandas
-import numpy as np
-import matplotlib.pylab as plt
+from rose.model import Varandas
 import pickle
 from pathlib import Path
 

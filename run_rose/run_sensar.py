@@ -1,4 +1,4 @@
-from rose.data.sensar import *
+from data_proc.sensar import *
 
 import json
 

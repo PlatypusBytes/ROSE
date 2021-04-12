@@ -61,7 +61,7 @@ if __name__ == "__main__":
     E = 100e6
     v = 0.2
     emb = ["embankment", E / (2 * (1 + v)), v, 2000, 0.05, 1]
-    layers = read_file(r"../rose/SOS/SOS.json", emb)
+    layers = read_file(r"../data_proc/SOS.json", emb)
     import time
     t_ini = time.time()
     run_wolf(layers, np.array([8.729139587]), output=r"./wolf/dyn_stiffness", plots=False)

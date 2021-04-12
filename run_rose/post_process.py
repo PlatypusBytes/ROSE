@@ -1,9 +1,7 @@
-import json
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
-import os
-from rose.utils.plot_utils_tmp import create_animation
+from rose.post_processing.plot_utils_tmp import create_animation
 
 # Note that this is an example script which works together with the output as generated from the batch_calculation.py
 # script.
@@ -11,8 +9,13 @@ from rose.utils.plot_utils_tmp import create_animation
 
 # open result file from batch calculation
 
-with open(os.path.join('../rose/batch_results', r"res_Kdyn_Segment 1001_scenario 1.pickle"), 'rb') as f:
+with open(r"D:\software_development\ROSE\rose\batch_results\res_KDyn_Segment 1090_scenario 1_tmp3.pickle", 'rb') as f:
     res_numerical = pickle.load(f)
+
+# D:\software_development\ROSE\rose\batch_results\res_KDyn_Segment 1090_scenario 1_tmp3.pickle
+#
+# with open(os.path.join('../rose/batch_results', r"res_Kdyn_Segment 1001_scenario 1.pickle"), 'rb') as f:
+#     res_numerical = pickle.load(f)
 
 
 # define first output time index of calculation phase (Note that this might not be the same as the time index which is

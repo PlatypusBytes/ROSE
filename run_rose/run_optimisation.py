@@ -6,9 +6,9 @@ import pickle
 
 from run_rose.read_wolf import read_wolf
 from rose.model.model_part import Material, Section
-from rose.train_model.train_model import *
+from rose.model.train_model import *
 from rose.model.train_track_interaction import *
-import rose.solver.solver as solver_c
+import rose.model.solver as solver_c
 from rose.optimisation.optimisation import Optimisation, OptimisationModelPart,ModelResults
 
 def set_base_model():
