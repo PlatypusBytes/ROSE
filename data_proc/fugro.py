@@ -24,11 +24,15 @@ def plot_average_height_in_range_vs_date(xlim, ylim, res):
         mean_height = np.mean(heights_in_range)
         heights.append(mean_height)
 
-    settlement = (np.array(heights) - heights[0]) * m_to_mm
+    dates = res["dates"][np.isfinite(heights)]
+    heights = np.array(heights)[np.isfinite(heights)]
 
-    ax.plot(res["dates"], settlements)
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Average settlement [mm]")
+    if heights.size >0:
+        settlement = (np.array(heights) - heights[0]) * m_to_mm
+
+        ax.plot(dates, settlement)
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Average settlement [mm]")
 
     return fig, ax
 
@@ -92,8 +96,35 @@ def filter_data_within_bounds(xlim, ylim, res):
     return coordinates_in_range, heights_in_range
 
 
-def get_data_at_location(file_dir, location="Amsterdam_Utrecht"):
-    files = list(Path(file_dir).glob(location + "*"))
+# def get_data_at_location(file_dir, location="Amsterdam_Utrecht"):
+#     files = list(Path(file_dir).glob(location + "*"))
+#
+#     res = {"location": location,
+#            "dates": [],
+#            "data": []}
+#
+#     for file in files:
+#         date = datetime.strptime(file.stem.split('_')[-1],"%Y%m")
+#         res["dates"].append(date)
+#         res["data"].append(read_krdz_file(file))
+#
+#     res["dates"] = np.array(res["dates"])
+#     res["data"] = np.array(res["data"])
+#
+#     sorted_indices = np.argsort(res["dates"])
+#
+#     res["dates"] = res["dates"][sorted_indices]
+#     res["data"] = res["data"][sorted_indices]
+#
+#     return res
+
+def get_data_at_location(file_dir, location="all"):
+
+    if location == "all":
+        files = list(Path(file_dir).glob("*.KRDZ"))
+    else:
+        files = list(Path(file_dir).glob(location + "*"))
+
 
     res = {"location": location,
            "dates": [],
@@ -152,7 +183,8 @@ def read_krdz_file(filename):
 if __name__ == '__main__':
 
     file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam_Eindhoven\Deltares_AmsterdamEindhovenKRDZ"
-    res = get_data_at_location(file_dir, location="Amsterdam_Utrecht")
+    # res = get_data_at_location(file_dir, location="Amsterdam_Utrecht")
+    res = get_data_at_location(file_dir, location="all")
 
     xlim = [138108.980, 138131.127]
     ylim = [453435.206, 453476.077]
