@@ -176,6 +176,84 @@ def map_settlement_at_starting_date(all_dates: List, all_settlements: List):
 
     return all_dates, all_settlements
 
+def get_all_dates_and_settlement_as_sorted_array(items):
+    """
+    Gets all the dates and settlements from the sensar dictionary and sets them into a numpy array
+
+    :param items: sensar data item list
+    :return:
+    """
+    if items:
+        all_dates = []
+        all_settlements = []
+        for item in items:
+            dates = np.array([d.timestamp() for d in item['dates']])
+            settlements = np.array(item['settlements'])
+            all_settlements.append(settlements)
+            all_dates.append(dates)
+
+        all_dates, all_settlements = map_settlement_at_starting_date(all_dates, all_settlements)
+
+        all_dates = np.array([date for dates in all_dates for date in dates])
+        all_settlements = np.array([settlement for settlements in all_settlements for settlement in settlements])
+
+        sorted_indices = np.argsort(all_dates)
+        sorted_dates = all_dates[sorted_indices]
+        sorted_settlements = all_settlements[sorted_indices]
+        return sorted_dates, sorted_settlements
+    return None, None
+
+def get_statistical_information(dates_array: np.ndarray, settlements_array: np.ndarray):
+    """
+    Gets mean and standard deviation at each timestep from sensar settlement data
+
+    :param dates_array: numpy array of the dates
+    :param settlements_array: numpy array of the sensar settlement data
+    :return:
+    """
+
+    # find uniwue time steps
+    diff = np.diff(dates_array)
+    step_idxs = np.insert(np.where(diff>0),0,0)
+
+    all_means = np.array([])
+    new_dates = np.array([])
+    all_stds = np.array([])
+    for i in range(1,len(step_idxs)):
+        new_dates = np.append(new_dates,dates_array[step_idxs[i-1]])
+        all_means = np.append(all_means, np.mean(settlements_array[step_idxs[i-1]:step_idxs[i]]))
+        all_stds = np.append(all_stds, np.std(settlements_array[step_idxs[i-1]:step_idxs[i]]))
+
+    return new_dates, all_means, all_stds
+
+def plot_settlement_over_time(dates: np.ndarray, settlements: np.ndarray):
+    """
+    Plots settlement over time
+
+    :param dates:
+    :param settlements:
+    :return:
+    """
+    # set timestamp dates into true dates
+    if dates.dtype == np.float:
+        dates = [datetime.fromtimestamp(int(date)) for date in dates]
+
+    plt.plot(dates, settlements, 'o')
+
+    plt.xlabel('Date [y]')
+    plt.ylabel('Settlement [mm]')
+    # plt.plot(new_dates2,all_means,'o')
+
+def plot_settlements_from_item_list_over_time(items_within_bounds):
+    fig, ax = plt.subplots()
+    sorted_dates, sorted_settlements = get_all_dates_and_settlement_as_sorted_array(items_within_bounds)
+    new_dates, all_means, all_stds = get_statistical_information(sorted_dates, sorted_settlements)
+    plot_settlement_over_time(sorted_dates, sorted_settlements)
+    plot_settlement_over_time(new_dates, all_means)
+
+    return fig, ax
+
+
 
 if __name__ == '__main__':
 
@@ -186,7 +264,11 @@ if __name__ == '__main__':
 
     # items_within_bounds = get_all_items_within_bounds(data, [144276, 144465], [439011,439301])
 
-    items_within_bounds = get_all_items_within_bounds(data, [128162,128868], [467049, 470502])
+    xlim = [128326, 128410]
+    ylim = [467723, 468058]
+
+    # items_within_bounds = get_all_items_within_bounds(data, [128162,128868], [467049, 470502])
+    items_within_bounds = get_all_items_within_bounds(data, xlim, ylim)
 
     all_dates = []
     all_settlements = []
@@ -228,11 +310,14 @@ if __name__ == '__main__':
     trend_4 = np.polyfit(new_dates,all_means - 2*all_stds,1)
 
 
+
+    new_dates = [datetime.fromtimestamp(int(date)) for date in new_dates]
+    sorted_dates = [datetime.fromtimestamp(int(date)) for date in sorted_dates]
     plt.plot(sorted_dates, sorted_settlements, 'o')
     plt.plot(new_dates,all_means,'o')
-    plt.plot(sorted_dates,np.polyval(trend,sorted_dates))
-    plt.plot(new_dates,np.polyval(trend_new,new_dates))
-    plt.plot(new_dates,np.polyval(trend_3,new_dates))
-    plt.plot(new_dates,np.polyval(trend_4,new_dates))
+    # plt.plot(sorted_dates,np.polyval(trend,sorted_dates))
+    # plt.plot(new_dates,np.polyval(trend_new,new_dates))
+    # plt.plot(new_dates,np.polyval(trend_3,new_dates))
+    # plt.plot(new_dates,np.polyval(trend_4,new_dates))
 
     plt.show()

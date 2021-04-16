@@ -26,8 +26,8 @@ def update_figure(ax,old_fig,new_fig,position):
 def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict):
 
     for name, segment in sos_dict.items():
-        # fig, axs = plt.subplots()
-        fig = plt.figure()
+        fig, axs = plt.subplots()
+        # fig = plt.figure(figsize=(10,4))
         coordinates = np.array(list(segment.values())[0]['coordinates'])
         xlim = [min(coordinates[:,0]), max(coordinates[:,0])]
         ylim = [min(coordinates[:,1]), max(coordinates[:,1])]
@@ -35,8 +35,14 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict):
         sensar_items_within_bounds = sensar.get_all_items_within_bounds(sensar_dict, xlim, ylim)
 
         fig2, ax = fugro.plot_average_height_in_range_vs_date(xlim, ylim, fugro_dict)
-        update_figure(ax,fig2,fig,111)
+        update_figure(ax,fig2,fig,121)
 
+        if sensar_items_within_bounds:
+            fig3, ax2 = sensar.plot_settlements_from_item_list_over_time(sensar_items_within_bounds)
+            update_figure(ax2,fig3,fig,122)
+
+        # fig.set_figwidth(10)
+        # fig.set_figheight(4)
 
         fig.savefig(Path("tmp", name))
         plt.close(fig)
@@ -79,8 +85,8 @@ if __name__ == '__main__':
     fugro_file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam_Eindhoven\Deltares_AmsterdamEindhovenKRDZ"
     fugro_data = fugro.get_data_at_location(fugro_file_dir, location="all")
 
-    fig, axs = plot_data_on_sos_segment(sos_data, sensar_data, fugro_data)
+    plot_data_on_sos_segment(sos_data, sensar_data, fugro_data)
 
-    fig.show()
+    # fig.show()
 
     pass
