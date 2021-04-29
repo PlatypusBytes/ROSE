@@ -244,8 +244,14 @@ def plot_settlement_over_time(dates: np.ndarray, settlements: np.ndarray):
     plt.ylabel('Settlement [mm]')
     # plt.plot(new_dates2,all_means,'o')
 
-def plot_settlements_from_item_list_over_time(items_within_bounds):
-    fig, ax = plt.subplots()
+def plot_settlements_from_item_list_over_time(items_within_bounds, fig=None, position=111):
+    # fig, ax = plt.subplots()
+
+    if fig is None:
+        fig = plt.figure()
+    ax = fig.add_subplot(position)
+    # fig = plt.figure()
+    # ax=fig.gca()
     sorted_dates, sorted_settlements = get_all_dates_and_settlement_as_sorted_array(items_within_bounds)
     new_dates, all_means, all_stds = get_statistical_information(sorted_dates, sorted_settlements)
     plot_settlement_over_time(sorted_dates, sorted_settlements)

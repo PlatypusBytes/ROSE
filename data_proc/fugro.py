@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime
 
 
-def plot_average_height_in_range_vs_date(xlim, ylim, res):
+def plot_average_height_in_range_vs_date(xlim, ylim, res, fig=None,position = 111):
     """
     Plots the average track settlement within a segment for each time step
     :param xlim:
@@ -17,7 +17,11 @@ def plot_average_height_in_range_vs_date(xlim, ylim, res):
     """
     m_to_mm = 1000
 
-    fig, ax = plt.subplots()
+    # fig, ax = plt.subplots()
+    if fig is None:
+        fig = plt.figure()
+    ax = fig.add_subplot(position)
+    # ax = fig.gca()
     heights = []
     for res_at_t in res["data"]:
         coordinates_in_range, heights_in_range = filter_data_within_bounds(xlim, ylim, res_at_t)
@@ -36,7 +40,7 @@ def plot_average_height_in_range_vs_date(xlim, ylim, res):
 
     return fig, ax
 
-def plot_height_vs_coords_in_range(xlim, ylim, res, projection="3d"):
+def plot_height_vs_coords_in_range(xlim, ylim, res, fig=None, projection="3d"):
     """
     Plots height versus coordinates
     :param xlim:
