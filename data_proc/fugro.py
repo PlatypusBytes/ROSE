@@ -1,10 +1,42 @@
 import numpy as np
+from scipy.interpolate import interp2d, griddata
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 import itertools
 
 from pathlib import Path
 from datetime import datetime
+
+def plot_settlement_in_range_vs_date(res, xlim, ylim, fig=None,position = 111):
+    """
+    Plots the track settlement within a segment for each time step
+    :param xlim:
+    :param ylim:
+    :param res:
+    :return:
+    """
+    m_to_mm = 1000
+
+    if fig is None:
+        fig = plt.figure()
+    ax = fig.add_subplot(position)
+
+    dates, coordinate_data, interpolated_heights = interpolate_coordinates(res, xlim, ylim)
+
+    if interpolated_heights.size > 0:
+        settlement = np.subtract(interpolated_heights, interpolated_heights[0,:]) * m_to_mm
+
+        heights = []
+        for res_at_t in res["data"]:
+            coordinates_in_range, heights_in_range = filter_data_within_bounds(xlim, ylim, res_at_t)
+            mean_height = np.mean(heights_in_range)
+            heights.append(mean_height)
+
+        ax.plot(dates, settlement, 'o', color='black')
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Settlement [mm]")
+
+    return fig, ax
 
 
 def plot_average_height_in_range_vs_date(xlim, ylim, res, fig=None,position = 111):
@@ -184,27 +216,68 @@ def read_krdz_file(filename):
     res["heights"] = heights
     return res
 
+
+def interpolate_coordinates(res, xlim, ylim):
+
+    dates = []
+    coordinate_data = []
+    height_data = []
+    interpolated_heights = []
+
+    for date, res_at_t in zip(res["dates"],res["data"]):
+        coordinates_in_range, heights_in_range = filter_data_within_bounds(xlim, ylim, res_at_t)
+        if coordinates_in_range.size > 0:
+            dates.append(date)
+            coordinate_data.append(coordinates_in_range)
+            height_data.append(heights_in_range)
+            interpolated_height = griddata(coordinates_in_range, heights_in_range, (coordinate_data[0][:,0], coordinate_data[0][:,1]), method='linear')
+            interpolated_heights.append(interpolated_height)
+
+    interpolated_heights = np.array(interpolated_heights)
+
+    return dates, coordinate_data, interpolated_heights
+
+
+
+
+
+
+    a=1+1
+    # interp2d()
+
+
 if __name__ == '__main__':
 
     file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam_Eindhoven\Deltares_AmsterdamEindhovenKRDZ"
     # res = get_data_at_location(file_dir, location="Amsterdam_Utrecht")
     res = get_data_at_location(file_dir, location="all")
 
-    xlim = [138108.980, 138131.127]
-    ylim = [453435.206, 453476.077]
-
     xlim = [128326, 128410]
     ylim = [467723, 468058]
 
+    dates, coordinate_data, interpolated_heights = interpolate_coordinates(res, xlim, ylim)
 
-    fig, ax = plot_height_vs_coords_in_range(xlim, ylim, res)
+    settlement = np.subtract(interpolated_heights, interpolated_heights[0,:])
 
-    fig.show()
-    fig, ax = plot_average_height_in_range_vs_date(xlim, ylim, res)
+    plt.plot(dates,settlement, 'o',color='black')
+    plt.show()
 
-    fig.show()
-
-    pass
+    #
+    # xlim = [138108.980, 138131.127]
+    # ylim = [453435.206, 453476.077]
+    #
+    # xlim = [128326, 128410]
+    # ylim = [467723, 468058]
+    #
+    #
+    # fig, ax = plot_height_vs_coords_in_range(xlim, ylim, res)
+    #
+    # fig.show()
+    # fig, ax = plot_average_height_in_range_vs_date(xlim, ylim, res)
+    #
+    # fig.show()
+    #
+    # pass
 
     # heights = []
     # for res_at_t in res["data"]:

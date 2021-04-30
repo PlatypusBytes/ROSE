@@ -38,11 +38,14 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict):
 
         sensar_items_within_bounds = sensar.get_all_items_within_bounds(sensar_dict, xlim, ylim)
 
-        fig2, ax = fugro.plot_average_height_in_range_vs_date(xlim, ylim, fugro_dict, fig=fig, position=121)
+        fig2, ax =  fugro.plot_settlement_in_range_vs_date(fugro_dict, xlim, ylim, fig=fig, position=121)
+        # fig2, ax = fugro.plot_average_height_in_range_vs_date(xlim, ylim, fugro_dict, fig=fig, position=121)
 
         if sensar_items_within_bounds:
             fig3, ax2 = sensar.plot_settlements_from_item_list_over_time(sensar_items_within_bounds, fig=fig, position=122)
 
+
+        fig.suptitle(name)
         fig.savefig(Path("tmp", name))
 
         plt.close(fig)
