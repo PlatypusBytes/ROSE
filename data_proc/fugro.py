@@ -238,29 +238,66 @@ def interpolate_coordinates(res, xlim, ylim):
     return dates, coordinate_data, interpolated_heights
 
 
+def read_trajectory_qc_data(filename):
+
+    import csv
+
+    with open(filename, mode='r') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        rows = []
+        for row in csv_reader:
+
+            rows.append(row)
+        return rows
+
+def get_lat_long_from_qc_data(qc_data):
+
+    lat = []
+    long = []
+
+    for i, row in enumerate(qc_data):
+
+        if i>0:
+            lat.append(row[3])
+            long.append(row[4])
+
+    return np.array(lat), np.array(long)
 
 
+def convert_lat_long_to_rd(lat, long):
+    import pyproj
+
+    crs_wgs = pyproj.Proj(init='epsg:4326')
+    crs_bng  = pyproj.Proj(init="epsg:28992")
 
 
-    a=1+1
-    # interp2d()
+    x, y = pyproj.transform(crs_wgs, crs_bng, long, lat)
 
+    return x,y
 
 if __name__ == '__main__':
 
-    file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam_Eindhoven\Deltares_AmsterdamEindhovenKRDZ"
-    # res = get_data_at_location(file_dir, location="Amsterdam_Utrecht")
-    res = get_data_at_location(file_dir, location="all")
+    filename = r"D:\software_development\ROSE\gis_map\qc results\trajectory_qc_data.csv"
 
-    xlim = [128326, 128410]
-    ylim = [467723, 468058]
+    qc_data = read_trajectory_qc_data(filename)
+    lat, long = get_lat_long_from_qc_data(qc_data)
 
-    dates, coordinate_data, interpolated_heights = interpolate_coordinates(res, xlim, ylim)
+    x_coord, ycoords = convert_lat_long_to_rd(lat, long)
 
-    settlement = np.subtract(interpolated_heights, interpolated_heights[0,:])
-
-    plt.plot(dates,settlement, 'o',color='black')
-    plt.show()
+    a=1+1
+    # file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam_Eindhoven\Deltares_AmsterdamEindhovenKRDZ"
+    # # res = get_data_at_location(file_dir, location="Amsterdam_Utrecht")
+    # res = get_data_at_location(file_dir, location="all")
+    #
+    # xlim = [128326, 128410]
+    # ylim = [467723, 468058]
+    #
+    # dates, coordinate_data, interpolated_heights = interpolate_coordinates(res, xlim, ylim)
+    #
+    # settlement = np.subtract(interpolated_heights, interpolated_heights[0,:])
+    #
+    # plt.plot(dates,settlement, 'o',color='black')
+    # plt.show()
 
     #
     # xlim = [138108.980, 138131.127]
