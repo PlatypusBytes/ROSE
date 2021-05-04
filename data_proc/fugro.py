@@ -2,10 +2,13 @@ import numpy as np
 from scipy.interpolate import interp2d, griddata
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
+import pyproj
+
 import itertools
 
 from pathlib import Path
 from datetime import datetime
+import csv
 
 def plot_settlement_in_range_vs_date(res, xlim, ylim, fig=None,position = 111):
     """
@@ -154,10 +157,16 @@ def filter_data_within_bounds(xlim, ylim, res):
 #
 #     return res
 
-def get_data_at_location(file_dir, location="all"):
+def get_data_at_location(file_dir, location="all", filetype='csv'):
+    """
+    :param file_dir:
+    :param location:
+    :param filetype: 'csv' or 'KRDZ'
+    :return:
+    """
 
     if location == "all":
-        files = list(Path(file_dir).glob("*.KRDZ"))
+        files = list(Path(file_dir).glob("*." + filetype))
     else:
         files = list(Path(file_dir).glob(location + "*"))
 
@@ -169,7 +178,10 @@ def get_data_at_location(file_dir, location="all"):
     for file in files:
         date = datetime.strptime(file.stem.split('_')[-1],"%Y%m")
         res["dates"].append(date)
-        res["data"].append(read_krdz_file(file))
+        if filetype == "KRDZ":
+            res["data"].append(read_krdz_file(file))
+        if filetype == "csv":
+            res["data"].append(read_krdz_data_from_csv(file))
 
     res["dates"] = np.array(res["dates"])
     res["data"] = np.array(res["data"])
@@ -239,9 +251,6 @@ def interpolate_coordinates(res, xlim, ylim):
 
 
 def read_trajectory_qc_data(filename):
-
-    import csv
-
     with open(filename, mode='r') as csv_file:
         csv_reader = csv.reader(csv_file)
         rows = []
@@ -265,7 +274,6 @@ def get_lat_long_from_qc_data(qc_data):
 
 
 def convert_lat_long_to_rd(lat, long):
-    import pyproj
 
     crs_wgs = pyproj.Proj(init='epsg:4326')
     crs_bng  = pyproj.Proj(init="epsg:28992")
@@ -275,14 +283,49 @@ def convert_lat_long_to_rd(lat, long):
 
     return x,y
 
+def read_krdz_data_from_csv(filename):
+
+
+    with open(filename, mode='r') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        lines = []
+        for line in csv_reader:
+
+            lines.append(line)
+
+
+    res = {"coordinates": None,
+           "height": None}
+
+    coords = []
+    heights = []
+
+    for i, line in enumerate(lines):
+        if i>0:
+            coords.append([float(line[0]), float(line[1])])
+            heights.append(float(line[2]))
+
+    coords = np.array(coords)
+    heights = np.array(heights)
+
+    res["coordinates"] = coords
+    res["heights"] = heights
+    return res
+
+
+
 if __name__ == '__main__':
 
-    filename = r"D:\software_development\ROSE\gis_map\qc results\trajectory_qc_data.csv"
+    # filename = r"D:\software_development\ROSE\gis_map\qc results\trajectory_qc_data.csv"
+    #
+    # qc_data = read_trajectory_qc_data(filename)
+    # lat, long = get_lat_long_from_qc_data(qc_data)
+    #
+    # x_coord, ycoords = convert_lat_long_to_rd(lat, long)
 
-    qc_data = read_trajectory_qc_data(filename)
-    lat, long = get_lat_long_from_qc_data(qc_data)
+    filename = r"D:\software_development\ROSE\data\Fugro\Amsterdam-Eindhoven TKI Project\01_Amsterdam_Utrecht\Amsterdam_Utrecht_201811.csv"
 
-    x_coord, ycoords = convert_lat_long_to_rd(lat, long)
+    read_krdz_data_from_csv(filename)
 
     a=1+1
     # file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam_Eindhoven\Deltares_AmsterdamEindhovenKRDZ"
