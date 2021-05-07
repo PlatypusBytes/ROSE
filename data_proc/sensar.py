@@ -160,7 +160,8 @@ def map_settlement_at_starting_date(all_dates: List, all_settlements: List):
 
         # get expected settlement at starting date of next longest time history
         p = np.poly1d(trend)
-        current_settlement = p(concatenated_dates[np.argmin(np.abs(concatenated_dates-next_date))])
+        # current_settlement = p(concatenated_dates[np.argmin(np.abs(concatenated_dates-next_date))])
+        current_settlement = p(next_date)
 
         # map settlement at next longest time history
         next_settlements = [settlements + current_settlement for settlements in next_settlements]

@@ -29,13 +29,20 @@ def plot_settlement_in_range_vs_date(res, xlim, ylim, fig=None,position = 111):
     if interpolated_heights.size > 0:
         settlement = np.subtract(interpolated_heights, interpolated_heights[0,:]) * m_to_mm
 
-        heights = []
+        mean_heights = []
         for res_at_t in res["data"]:
             coordinates_in_range, heights_in_range = filter_data_within_bounds(xlim, ylim, res_at_t)
             mean_height = np.mean(heights_in_range)
-            heights.append(mean_height)
+            mean_heights.append(mean_height)
 
-        ax.plot(dates, settlement, 'o', color='black')
+        mean_heights = np.array(mean_heights)[np.isfinite(mean_heights)]
+
+        # if mean_heights.size >0:
+        mean_settlement = (np.array(mean_heights) - mean_heights[0]) * m_to_mm
+
+
+        ax.plot(dates, settlement, 'o', color='blue')
+        ax.plot(dates, mean_settlement, 'o', color='orange')
         ax.set_xlabel("Date")
         ax.set_ylabel("Settlement [mm]")
 

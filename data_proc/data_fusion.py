@@ -46,7 +46,7 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict):
 
 
         fig.suptitle(name)
-        fig.savefig(Path("tmp2", name))
+        fig.savefig(Path("tmp", name))
 
         plt.close(fig)
 
@@ -85,10 +85,10 @@ if __name__ == '__main__':
 
     sensar_data = sensar.load_sensar_data("../data/Sensar/processed/processed_settlements.pickle")
 
-    fugro_file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam_Eindhoven\Deltares_AmsterdamEindhovenKRDZ"
+    # fugro_file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam_Eindhoven\Deltares_AmsterdamEindhovenKRDZ"
 
-    # fugro_file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam-Eindhoven TKI Project"
-    fugro_data = fugro.get_data_at_location(fugro_file_dir, location="all",filetype="KRDZ")
+    fugro_file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam-Eindhoven TKI Project"
+    fugro_data = fugro.get_data_at_location(fugro_file_dir, location="all",filetype="csv")
 
     plot_data_on_sos_segment(sos_data, sensar_data, fugro_data)
 
