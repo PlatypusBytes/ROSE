@@ -8,23 +8,36 @@ from typing import Dict, List
 
 from datetime import datetime
 
-def get_coordinates(feature):
+def get_coordinates(feature: Dict) -> np.ndarray:
+    """
+    Gets coordinates from Sensar geopackage feature
+    :param feature: Sensar geopackage feature
+    :return:
+    """
     return np.array([list(coord) for coord in feature["geometry"]["coordinates"]])
 
-def get_settlement(feature):
+def get_settlement(feature: Dict) -> (List, List):
+    """
+    Gets settlement at dates from sensar geopackage feature
+    :param feature: sensar geopackage feature
+    :return:
+    """
     dates = []
     settlements = []
     for k,v in feature["properties"].items():
         if k.startswith("v_"):
+            # get date from string
             date = datetime.strptime(k.strip("v_"),"%Y%m%d")
             settlement = v
+
+            # append date and settlement if found
             if date is not None and settlement is not None:
                 dates.append(date)
                 settlements.append(settlement)
 
     return dates, settlements
 
-def read_geopackage(filename: str):
+def read_geopackage(filename: str) -> Dict:
     """
     Reads id, coordinates, dates and settlements from Sensar geopackage
     :param filename: filename of the geopackage
@@ -33,13 +46,11 @@ def read_geopackage(filename: str):
     """
 
     data = {}
-
     with fiona.open(filename) as layer:
         for feature in layer:
             data[feature['id']] = {'coordinates': None,
                                    'dates': None,
                                    'settlements': None}
-            # data["id"] = feature['id']
             dates, settlements = get_settlement(feature)
             coordinates = get_coordinates(feature)
             data[feature['id']]["coverage_quality"] = feature["properties"]['coverage_quality']
@@ -61,11 +72,11 @@ def save_sensar_data(data: dict, filename: str) -> None:
     if not os.path.isdir(os.path.dirname(filename)):
         os.makedirs(os.path.dirname(filename))
 
-    # save as json
+    # save as pickle
     with open(filename, "wb") as f:
         pickle.dump(data, f)
 
-def load_sensar_data(filename: str):
+def load_sensar_data(filename: str) -> Dict:
     """
     Loads Sensar data from pickle
 
@@ -76,11 +87,20 @@ def load_sensar_data(filename: str):
         data = pickle.load(f)
     return data
 
-def get_all_items_within_bounds(data: Dict, xlim, ylim):
+def get_all_items_within_bounds(data: Dict, xlim: List, ylim: List) -> List:
+    """
+    Gets all items from sensar data dictionary within the x limit and y limit
+    :param data: sensar data dictionary
+    :param xlim: x limit
+    :param ylim: y limit
+    :return:
+    """
 
     items_within_bounds = []
+    # loop over items in dictionary
     for k, v in data.items():
-        a=1+1
+
+        # append item to list of coordinates are within bounds
         if xlim[0] < max(v["coordinates"][:,0]) and xlim[1] > min(v["coordinates"][:,0]):
             if ylim[0] < max(v["coordinates"][:,1]) and ylim[1] > min(v["coordinates"][:,1]):
                 items_within_bounds.append(v)
@@ -88,27 +108,28 @@ def get_all_items_within_bounds(data: Dict, xlim, ylim):
     return items_within_bounds
 
 def get_item_at_coord(data: Dict, coord: List):
+    """
+    Gets the item located on a coordinate
+    :param data: sensar data dictionary
+    :param coord: coordinate
+    :return:
+    """
 
     for k, v in data.items():
         if coord[0] > min(v["coordinates"][:,0]) and coord[0] < max(v["coordinates"][:,0]):
             if coord[1] > min(v["coordinates"][:,1]) and coord[1] < max(v["coordinates"][:,1]):
                 return v
 
-    return
+    return None
 
 def plot_date_vs_settlement(item):
+    """
+    Plots date vs settlement
+    :param item:
+    :return:
+    """
     plt.plot(item['dates'], item["settlements"], 'o')
     plt.show()
-
-
-def rolling_window(a, window):
-    pad = np.ones(len(a.shape), dtype=np.int32)
-    pad[-1] = window-1
-    pad = list(zip(pad, np.zeros(len(a.shape), dtype=np.int32)))
-    a = np.pad(a, pad,mode='reflect')
-    shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
-    strides = a.strides + (a.strides[-1],)
-    return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
 
 
 def map_settlement_at_starting_date(all_dates: List, all_settlements: List):
@@ -184,20 +205,27 @@ def get_all_dates_and_settlement_as_sorted_array(items):
     :param items: sensar data item list
     :return:
     """
+    # check if items are available
     if items:
         all_dates = []
         all_settlements = []
+
+        # gather all settlements and dates
         for item in items:
+            # convert dates to timestamps
             dates = np.array([d.timestamp() for d in item['dates']])
             settlements = np.array(item['settlements'])
             all_settlements.append(settlements)
             all_dates.append(dates)
 
+        # maps all settlements at starting date
         all_dates, all_settlements = map_settlement_at_starting_date(all_dates, all_settlements)
 
+        # convert dates and settlements to nd arrays
         all_dates = np.array([date for dates in all_dates for date in dates])
         all_settlements = np.array([settlement for settlements in all_settlements for settlement in settlements])
 
+        # sort dates and settlements based on dates
         sorted_indices = np.argsort(all_dates)
         sorted_dates = all_dates[sorted_indices]
         sorted_settlements = all_settlements[sorted_indices]
@@ -213,7 +241,7 @@ def get_statistical_information(dates_array: np.ndarray, settlements_array: np.n
     :return:
     """
 
-    # find uniwue time steps
+    # find unique time steps
     diff = np.diff(dates_array)
     step_idxs = np.insert(np.where(diff>0),0,0)
 
@@ -243,16 +271,20 @@ def plot_settlement_over_time(dates: np.ndarray, settlements: np.ndarray):
 
     plt.xlabel('Date [y]')
     plt.ylabel('Settlement [mm]')
-    # plt.plot(new_dates2,all_means,'o')
 
 def plot_settlements_from_item_list_over_time(items_within_bounds, fig=None, position=111):
-    # fig, ax = plt.subplots()
+    """
+
+    :param items_within_bounds:
+    :param fig:
+    :param position:
+    :return:
+    """
 
     if fig is None:
         fig = plt.figure()
     ax = fig.add_subplot(position)
-    # fig = plt.figure()
-    # ax=fig.gca()
+
     sorted_dates, sorted_settlements = get_all_dates_and_settlement_as_sorted_array(items_within_bounds)
     new_dates, all_means, all_stds = get_statistical_information(sorted_dates, sorted_settlements)
     plot_settlement_over_time(sorted_dates, sorted_settlements)
@@ -264,7 +296,7 @@ def plot_settlements_from_item_list_over_time(items_within_bounds, fig=None, pos
 
 if __name__ == '__main__':
 
-    # data = read_geopackage(r"../../data/Sensar/20190047_01_20210308/data/data.gpkg")
+    # data = read_geopackage(r"../data/Sensar/20190047_01_20210308/data/data.gpkg")
     # save_sensar_data(data, "../../data/Sensar/processed/processed_settlements.pickle")
 
     data = load_sensar_data("../data/Sensar/processed/processed_settlements.pickle")
