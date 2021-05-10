@@ -1,8 +1,13 @@
-import numpy as np
 import os
+import pickle
 import json
-import pyproj
 from pyproj import Transformer
+from rose.utils import signal_proc
+
+
+settings_filter = {"FS": 250,
+                   "cut-off": 30,
+                   "n": 10}
 
 
 def convert_lat_long_to_rd(lat, long):
@@ -43,8 +48,13 @@ def read_inframon(file_names, output_f):
             results[name]["acc_side_2"].append(data[i]['acc_side_2'])
             results[name]["segment"].append(data[i]['Segment'])
 
-    with open(os.path.join(output_f, "inframon.json"), "w") as f:
-        json.dump(results, f, indent=2)
+    results[name]["acc_side_1"] = signal_proc.filter_sig(results[name]["acc_side_1"],
+                                                         settings_filter["FS"], settings_filter["n"], settings_filter["cut-off"]).tolist()
+    results[name]["acc_side_2"] = signal_proc.filter_sig(results[name]["acc_side_2"],
+                                                         settings_filter["FS"], settings_filter["n"], settings_filter["cut-off"]).tolist()
+
+    with open(os.path.join(output_f, "inframon.pickle"), "wb") as f:
+        pickle.dump(results, f)
 
     return results
 

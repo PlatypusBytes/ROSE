@@ -7,7 +7,7 @@ from rose.model.boundary_conditions import MovingPointLoad
 from rose.pre_process.mesh_utils import *
 from rose.post_processing.plot_utils import *
 
-import rose.tests.utils.signal_proc as sp
+import rose.utils.signal_proc as sp
 
 from analytical_solutions.simple_supported import \
     SimpleSupportEulerNoDamping, \
