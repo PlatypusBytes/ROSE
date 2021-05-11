@@ -43,6 +43,35 @@ def load_inframon_data(filename: str) -> Dict:
     return data
 
 
+def plot_speed(data):
+    plt.plot(data["time"], data["speed"])
+    plt.show()
+
+def get_data_within_bounds(data: Dict, xlim: List, ylim: List) -> Dict:
+    """
+    Gets the data from a ricardo dataset within coordinate boundaries
+
+    :param data: dataset at date
+    :param xlim: x limit of the coordinates
+    :param ylim: y limit of the coordinates
+    :return:
+    """
+
+    # find data within coordinate limits
+    mask = (data["coordinates"][:, 0] >= xlim[0]) & (data["coordinates"][:, 0] < xlim[1]) & (
+                data["coordinates"][:, 1] >= ylim[0]) & (data["coordinates"][:, 1] < ylim[1])
+
+    # create new dict with bounded data
+    bounded_data = {"time": data["time"][mask],
+                    "coordinates": data["coordinates"][mask,:],
+                    "speed": data["speed"][mask],
+                    "acc_side_1": data["acc_side_1"][mask],
+                    "acc_side_2": data["acc_side_2"][mask],
+                    "segment": data["segment"][mask]}
+
+    return bounded_data
+
+
 def read_inframon(file_names: List, output_f: str):
 
     results = {}
@@ -75,7 +104,7 @@ def read_inframon(file_names: List, output_f: str):
 
         # covert data to nd arrays
         time = np.array([data[i]['t'] for i in range(len(data))]).astype(float)[mask]
-        coordinates = convert_lat_long_to_rd(lat[mask], lon[mask])
+        coordinates = np.array(convert_lat_long_to_rd(lat[mask], lon[mask])).T
         speed = np.array([data[i]['speed'] for i in range(len(data))]).astype(float)[mask]
         acc_side_1 = np.array([data[i]['acc_side_1'] for i in range(len(data))]).astype(float)[mask]
         acc_side_2 = np.array([data[i]['acc_side_2'] for i in range(len(data))]).astype(float)[mask]
@@ -127,4 +156,12 @@ if __name__ == '__main__':
     #              ]
     # read_inframon(filenames, "./")
 
-    load_inframon_data("./inframon.pickle")
+    ricardo_data = load_inframon_data("./inframon.pickle")
+    # plot_speed(ricardo_data["Jun"])
+
+    xlim = [128326, 128410]
+    ylim = [467723, 468058]
+
+    get_data_within_bounds(ricardo_data["Jan"], xlim, ylim)
+
+
