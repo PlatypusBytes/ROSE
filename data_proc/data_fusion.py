@@ -87,8 +87,9 @@ if __name__ == '__main__':
 
     # fugro_file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam_Eindhoven\Deltares_AmsterdamEindhovenKRDZ"
 
-    fugro_file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam-Eindhoven TKI Project"
-    fugro_data = fugro.get_data_at_location(fugro_file_dir, location="all",filetype="csv")
+    # fugro_file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam-Eindhoven TKI Project"
+    # fugro_data = fugro.get_data_at_location(fugro_file_dir, location="all",filetype="csv")
+    fugro_data = fugro.load_rila_data(r"../data/Fugro/rila_data.pickle")
 
     plot_data_on_sos_segment(sos_data, sensar_data, fugro_data)
 

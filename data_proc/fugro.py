@@ -6,9 +6,11 @@ import pyproj
 
 import itertools
 
+import os
 from pathlib import Path
 from datetime import datetime
 import csv
+import pickle
 from typing import List, Dict
 
 def plot_settlement_in_range_vs_date(res: Dict, xlim: List, ylim: List, fig=None,position = 111):
@@ -206,6 +208,35 @@ def get_data_at_location(file_dir, location: str ="all", filetype: str ='csv') -
 
     return res
 
+def save_fugro_data(data: dict, filename: str) -> None:
+    """
+    Save data dictionary as pickle file
+
+    :param data: data dictionary
+    :param filename: full filename and path to the output json file
+    """
+
+    # if path does not exits: creates
+    if not os.path.isdir(os.path.dirname(filename)):
+        os.makedirs(os.path.dirname(filename))
+
+    # save as pickle
+    with open(filename, "wb") as f:
+        pickle.dump(data, f)
+
+
+def load_rila_data(filename: str) -> Dict:
+    """
+    loads processes rila data
+
+
+    :param filename: input filename
+    :return:
+    """
+    with open(filename, "rb") as f:
+        data = pickle.load(f)
+
+    return data
 
 def write_krdz_coordinates_to_csv(filename: str, coordinates: np.ndarray):
     """
@@ -379,11 +410,16 @@ if __name__ == '__main__':
     #
     # x_coord, ycoords = convert_lat_long_to_rd(lat, long)
 
-    filename = r"D:\software_development\ROSE\data\Fugro\Amsterdam-Eindhoven TKI Project\01_Amsterdam_Utrecht\Amsterdam_Utrecht_201811.csv"
+    # filename = r"D:\software_development\ROSE\data\Fugro\Amsterdam-Eindhoven TKI Project\01_Amsterdam_Utrecht\Amsterdam_Utrecht_201811.csv"
 
-    read_rila_data_from_krdz(filename)
+    # read_rila_data_from_krdz(filename)
+    # res = read_rila_data_from_csv(filename)
+    # res = get_data_at_location(r"..\data\Fugro\Amsterdam-Eindhoven TKI Project", location="all")
+    # save_fugro_data(res, r"..\data\Fugro\rila_data.pickle")
+    res = load_rila_data(r"..\data\Fugro\rila_data.pickle")
 
     a=1+1
+
     # file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam_Eindhoven\Deltares_AmsterdamEindhovenKRDZ"
     # # res = get_data_at_location(file_dir, location="Amsterdam_Utrecht")
     # res = get_data_at_location(file_dir, location="all")
