@@ -8,7 +8,12 @@ from matplotlib import gridspec
 
 import sensar
 import fugro
+import ricardo
+from rose.utils import signal_proc
 
+settings_filter = {"FS": 250,
+                   "cut-off": 30,
+                   "n": 10}
 
 def update_figure(ax,old_fig,new_fig,position):
     ax.remove()
@@ -24,7 +29,7 @@ def update_figure(ax,old_fig,new_fig,position):
     plt.close(old_fig)
 
 
-def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict):
+def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict):
 
     for name, segment in sos_dict.items():
 
@@ -38,11 +43,24 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict):
 
         sensar_items_within_bounds = sensar.get_all_items_within_bounds(sensar_dict, xlim, ylim)
 
-        fig2, ax =  fugro.plot_settlement_in_range_vs_date(fugro_dict, xlim, ylim, fig=fig, position=121)
+        fig2, ax =  fugro.plot_settlement_in_range_vs_date(fugro_dict, xlim, ylim, fig=fig, position=221)
         # fig2, ax = fugro.plot_average_height_in_range_vs_date(xlim, ylim, fugro_dict, fig=fig, position=121)
 
         if sensar_items_within_bounds:
-            fig3, ax2 = sensar.plot_settlements_from_item_list_over_time(sensar_items_within_bounds, fig=fig, position=122)
+            fig3, ax2 = sensar.plot_settlements_from_item_list_over_time(sensar_items_within_bounds, fig=fig, position=222)
+
+
+        ricardo_data_within_bounds =  ricardo.get_data_within_bounds(ricardo_dict["Jan"], xlim, ylim)
+
+        if ricardo_data_within_bounds["acc_side_1"].size>0:
+            acc = signal_proc.filter_sig(ricardo_data_within_bounds["acc_side_1"],
+                                         settings_filter["FS"], settings_filter["n"],
+                                         settings_filter["cut-off"]).tolist()
+
+            ricardo.plot_train_velocity(ricardo_data_within_bounds, fig=fig, position=223)
+            ricardo.plot_acceleration(ricardo_data_within_bounds["time"],acc, fig=fig, position=224)
+
+        # ricardo_dic
 
 
         fig.suptitle(name)
@@ -91,7 +109,9 @@ if __name__ == '__main__':
     # fugro_data = fugro.get_data_at_location(fugro_file_dir, location="all",filetype="csv")
     fugro_data = fugro.load_rila_data(r"../data/Fugro/rila_data.pickle")
 
-    plot_data_on_sos_segment(sos_data, sensar_data, fugro_data)
+    ricardo_data = ricardo.load_inframon_data("./inframon.pickle")
+
+    plot_data_on_sos_segment(sos_data, sensar_data, fugro_data, ricardo_data)
 
     # fig.show()
 

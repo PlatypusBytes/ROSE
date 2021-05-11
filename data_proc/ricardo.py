@@ -43,9 +43,29 @@ def load_inframon_data(filename: str) -> Dict:
     return data
 
 
-def plot_speed(data):
-    plt.plot(data["time"], data["speed"])
-    plt.show()
+def plot_train_velocity(data, fig=None, position=111):
+    if fig is None:
+        fig = plt.figure()
+    ax = fig.add_subplot(position)
+
+    if data["time"].size > 0:
+        ax.plot(data["time"], data["speed"])
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("Train velocity [km/u]")
+
+    return fig, ax
+
+def plot_acceleration(time, acceleration, fig=None, position=111):
+    if fig is None:
+        fig = plt.figure()
+    ax = fig.add_subplot(position)
+
+    if time.size > 0:
+        ax.plot(time, acceleration)
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("acc_side_1")
+
+    return fig, ax
 
 def get_data_within_bounds(data: Dict, xlim: List, ylim: List) -> Dict:
     """
