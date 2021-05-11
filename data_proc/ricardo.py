@@ -29,6 +29,19 @@ def convert_lat_long_to_rd(lat, long):
 
     return x, y
 
+def load_inframon_data(filename: str) -> Dict:
+    """
+    loads processes inframon data
+
+
+    :param filename: input filename
+    :return:
+    """
+    with open(filename, "rb") as f:
+        data = pickle.load(f)
+
+    return data
+
 
 def read_inframon(file_names: List, output_f: str):
 
@@ -109,7 +122,9 @@ def read_inframon(file_names: List, output_f: str):
 
 
 if __name__ == '__main__':
-    filenames = [r"../data/Ricardo/Jan.json",
-                 r"../data/Ricardo/Jun.json",
-                 ]
-    read_inframon(filenames, "./")
+    # filenames = [r"../data/Ricardo/Jan.json",
+    #              r"../data/Ricardo/Jun.json",
+    #              ]
+    # read_inframon(filenames, "./")
+
+    load_inframon_data("./inframon.pickle")
