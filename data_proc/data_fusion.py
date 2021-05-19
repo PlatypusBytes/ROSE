@@ -33,6 +33,8 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict):
 
     for name, segment in sos_dict.items():
 
+        # if name == "Segment 1069":
+
         fig = plt.figure(figsize=(20,5))
         plt.tight_layout()
 
@@ -108,6 +110,8 @@ if __name__ == '__main__':
     # fugro_file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam-Eindhoven TKI Project"
     # fugro_data = fugro.get_data_at_location(fugro_file_dir, location="all",filetype="csv")
     fugro_data = fugro.load_rila_data(r"../data/Fugro/rila_data.pickle")
+
+    fugro_data = fugro.merge_data(fugro_data)
 
     ricardo_data = ricardo.load_inframon_data("./inframon.pickle")
 

@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.interpolate import interp2d, griddata
+from scipy.spatial import KDTree
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 import pyproj
@@ -50,7 +51,7 @@ def plot_settlement_in_range_vs_date(res: Dict, xlim: List, ylim: List, fig=None
         mean_settlement = (np.array(mean_heights) - mean_heights[0]) * m_to_mm
 
         # plot settlement and mean settlement vs dates
-        ax.plot(dates, settlement, 'o', color='blue')
+        ax.plot(dates, settlement, 'o', color='blue', markersize=0.5)
         ax.plot(dates, mean_settlement, 'o', color='orange')
         ax.set_xlabel("Date")
         ax.set_ylabel("Settlement [mm]")
@@ -167,6 +168,30 @@ def filter_data_within_bounds(xlim, ylim, res):
     heights_in_range = res["heights"][indices_in_range]
 
     return coordinates_in_range, heights_in_range
+
+def merge_data(res):
+
+    unique_dates = np.unique(res["dates"])
+
+    new_res = {'location': 'all',
+               'dates': unique_dates,
+               'data': []}
+
+    for date in unique_dates:
+        duplicate_dates = res["dates"] == date
+        # np.vstack(res["data"][duplicate_dates]["coordinates"])
+        merged_coordinates = np.vstack([item["coordinates"] for item in res["data"][duplicate_dates]])
+        merged_heights = np.concatenate([item["heights"] for item in res["data"][duplicate_dates]])
+
+        new_res["data"].append({"coordinates": merged_coordinates,
+                                "heights": merged_heights})
+
+
+
+    return new_res
+
+    a=res
+
 
 def get_data_at_location(file_dir, location: str ="all", filetype: str ='csv') -> Dict:
     """
@@ -293,27 +318,73 @@ def interpolate_coordinates(res: Dict, xlim: List, ylim: List) -> (List, List, n
     :return:
     """
 
+    search_radius = 1 #m
+
     # initialise lists
     dates = []
     coordinate_data = []
     height_data = []
     interpolated_heights = []
+    distances = []
 
+
+    i = 0
     # loop over dates and data
     for date, res_at_t in zip(res["dates"],res["data"]):
 
         # get only the data within limits at time t
         coordinates_in_range, heights_in_range = filter_data_within_bounds(xlim, ylim, res_at_t)
 
-        # if coordinates are within limitts, add dates, coordinates and height data to list
+        # if coordinates are within limits, add dates, coordinates and height data to list
         if coordinates_in_range.size > 0:
+
+            distance = np.sqrt(coordinates_in_range[:, 0] ** 2 + coordinates_in_range[:, 1] ** 2)
+            distance = distance[:,None]
+            distances.append(distance)
+
+            # if iteration is the first iteration, save initial position
+            if i == 0:
+                initial_distance = np.copy(distance)
+                interpolated_height = heights_in_range
+            else:
+
+                # find nearest distances compared to the initial distance
+                tree = KDTree(distance)
+                nearest_distances = tree.query(initial_distance,k=5,distance_upper_bound=search_radius)
+
+                # tmp[0]
+                valid = nearest_distances[1][:,:]<coordinates_in_range.shape[0]
+
+                interpolated_height = np.zeros(coordinate_data[0].shape[0])
+                for i in range(coordinate_data[0].shape[0]):
+                    indices = nearest_distances[1][i,valid[i,:]]
+                    # coordinates_in_range[i,:]
+                    tmp = coordinates_in_range[indices,:] - coordinate_data[0][i,:]
+                    tmp2 = np.abs(tmp) < search_radius
+                    valid_found_coordinates = tmp2[:, 0] & tmp2[:, 1]
+
+                    heights = heights_in_range[nearest_distances[1][i, valid[i, :]][valid_found_coordinates]]
+
+                    distance_from_point = nearest_distances[0][i, valid[i, :]][valid_found_coordinates]
+
+                    if len(distance_from_point) > 0:
+                        if any(distance_from_point < 1e-10):
+                            weights = (distance_from_point < 1e-10) * 1
+                        else:
+                            # inverse distance interpolation
+                            weights = 1/distance_from_point
+                            weights /= weights.sum()
+                        interpolated_heights_at_t = heights.dot(weights)
+                        interpolated_height[i] = interpolated_heights_at_t
+                    else:
+                        interpolated_height[i] = np.NAN
+
             dates.append(date)
             coordinate_data.append(coordinates_in_range)
             height_data.append(heights_in_range)
-
-            # interpolate height data on coordinates of the first measurement date
-            interpolated_height = griddata(coordinates_in_range, heights_in_range, (coordinate_data[0][:,0], coordinate_data[0][:,1]), method='linear')
             interpolated_heights.append(interpolated_height)
+
+            i += 1
 
     interpolated_heights = np.array(interpolated_heights)
 
@@ -418,6 +489,7 @@ if __name__ == '__main__':
     # save_fugro_data(res, r"..\data\Fugro\rila_data.pickle")
     res = load_rila_data(r"..\data\Fugro\rila_data.pickle")
 
+    merge_data(res)
     a=1+1
 
     # file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam_Eindhoven\Deltares_AmsterdamEindhovenKRDZ"
