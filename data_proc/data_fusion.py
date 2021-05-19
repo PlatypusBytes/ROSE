@@ -41,6 +41,17 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict):
     :return:
     """
 
+    # get date limits
+    # sensar_dates = sensar_dict.values()
+
+    sensar_dates = list(sensar_dict.values())[0]["dates"]
+    fugro_dates = fugro_dict["dates"]
+
+    min_date = min([min(sensar_dates), min(fugro_dates)])
+    max_date = max([max(sensar_dates), max(fugro_dates)])
+
+    date_lim = [min_date, max_date]
+
     # loop over segments
     for name, segment in sos_dict.items():
 
@@ -50,6 +61,8 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict):
 
         # get coordinates of current segments
         coordinates = np.array(list(segment.values())[0]['coordinates'])
+
+        # get coordinate limits
         xlim = [min(coordinates[:,0]), max(coordinates[:,0])]
         ylim = [min(coordinates[:,1]), max(coordinates[:,1])]
 
@@ -57,12 +70,12 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict):
         _, _ = SoS.ReadSosScenarios.plot_highlighted_sos(sos_data, name, fig=fig, position=325)
 
         # add plot of settlement within the current segment measured by the fugro rila system
-        _, _ = fugro.plot_settlement_in_range_vs_date(fugro_dict, xlim, ylim, fig=fig, position=321)
+        _, _ = fugro.plot_settlement_in_range_vs_date(fugro_dict, xlim, ylim, date_lim=date_lim, fig=fig, position=321)
 
         # add plot of Sensar settlement measurements within the current segment
         sensar_items_within_bounds = sensar.get_all_items_within_bounds(sensar_dict, xlim, ylim)
         if sensar_items_within_bounds:
-            _, _ = sensar.plot_settlements_from_item_list_over_time(sensar_items_within_bounds, fig=fig, position=323)
+            _, _ = sensar.plot_settlements_from_item_list_over_time(sensar_items_within_bounds,date_lim=date_lim, fig=fig, position=323)
 
         # get ricardo data
         ricardo_data_within_bounds =  ricardo.get_data_within_bounds(ricardo_dict["Jan"], xlim, ylim)

@@ -14,7 +14,7 @@ import csv
 import pickle
 from typing import List, Dict
 
-def plot_settlement_in_range_vs_date(res: Dict, xlim: List, ylim: List, fig=None,position = 111):
+def plot_settlement_in_range_vs_date(res: Dict, xlim: List, ylim: List,date_lim=None, fig=None,position = 111):
     """
     Plots the track settlement within a segment for each time step
 
@@ -55,6 +55,9 @@ def plot_settlement_in_range_vs_date(res: Dict, xlim: List, ylim: List, fig=None
         ax.plot(dates, mean_settlement, 'o', color='orange')
         ax.set_xlabel("Date")
         ax.set_ylabel("Settlement [mm]")
+
+        if date_lim is not None:
+            ax.set_xlim(date_lim)
 
     return fig, ax
 
@@ -316,7 +319,7 @@ def read_rila_data_from_krdz(filename) -> Dict:
     return res
 
 
-def interpolate_coordinates(res: Dict, xlim: List, ylim: List, search_radius: float =1) -> (List, List, np.ndarray):
+def interpolate_coordinates(res: Dict, xlim: List, ylim: List, search_radius: float=1) -> (List, List, np.ndarray):
     """
     Interpolate all data of each dataset on the height data locations of the first measurement date. Note that for this
     algorithm, it is not required to have sorted coordinates. Simple interpolation does not work, as the fugro data is

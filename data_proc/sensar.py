@@ -242,9 +242,9 @@ def get_statistical_information(dates_array: np.ndarray, settlements_array: np.n
     """
 
     # find unique time steps
-    diff = np.diff(dates_array)
+    diff = np.append(0,np.diff(dates_array))
     step_idxs = np.insert(np.where(diff>0),0,0)
-
+    # step_idxs = np.append(step_idxs, len(dates_array)-1)
     all_means = np.array([])
     new_dates = np.array([])
     all_stds = np.array([])
@@ -272,7 +272,7 @@ def plot_settlement_over_time(dates: np.ndarray, settlements: np.ndarray):
     plt.xlabel('Date [y]')
     plt.ylabel('Settlement [mm]')
 
-def plot_settlements_from_item_list_over_time(items_within_bounds, fig=None, position=111):
+def plot_settlements_from_item_list_over_time(items_within_bounds,date_lim=None, fig=None, position=111):
     """
 
     :param items_within_bounds:
@@ -289,6 +289,9 @@ def plot_settlements_from_item_list_over_time(items_within_bounds, fig=None, pos
     new_dates, all_means, all_stds = get_statistical_information(sorted_dates, sorted_settlements)
     plot_settlement_over_time(sorted_dates, sorted_settlements)
     plot_settlement_over_time(new_dates, all_means)
+
+    if date_lim is not None:
+        ax.set_xlim(date_lim)
 
     return fig, ax
 
