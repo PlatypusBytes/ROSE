@@ -241,3 +241,47 @@ class ReadSosScenarios:
             plt.close()
 
         return
+
+    @staticmethod
+    def plot_highlighted_sos(sos_dict, highlighted_segment_name, fig=None,position=111):
+        """
+        Plots the coordinates of all the SOS segments and highlights the chosen SOS segment
+
+        :param sos_dict: dictionary of all the sos data
+        :param highlighted_segment_name: name of the sos segment to be highlighted
+        :param fig:  optional existing figure
+        :param position: position of subplot, default: 111
+        :return:
+        """
+
+        # initialise figure if it is not an input
+        if fig is None:
+            fig = plt.figure()
+        ax = fig.add_subplot(position)
+
+        # initialise highlighted coordinates
+        highlighted_coordinates = np.array([])
+
+        # loop over sos segments
+        for name, segment in sos_dict.items():
+
+            if name == highlighted_segment_name:
+                # get coordinates of the to be highlighted sos segments
+                highlighted_coordinates = np.array(list(segment.values())[0]['coordinates'])
+            else:
+
+                # get and plot coordinates of the additional sos segments
+                coordinates = np.array(list(segment.values())[0]['coordinates'])
+                ax.plot(coordinates[:, 0], coordinates[:, 1], color='k')
+
+        # plot highlighted coordinates, if coordinates are found. This plot is added last, such that it is plotted on
+        # top.
+        if highlighted_coordinates.size > 0:
+            ax.plot(highlighted_coordinates[:, 0], highlighted_coordinates[:, 1], color='r', linewidth=5)
+
+        # set labels
+        ax.set_xlabel("x-coordinates [m]")
+        ax.set_ylabel("y-coordinates [m]")
+
+        return fig, ax
+

@@ -9,6 +9,7 @@ from matplotlib import gridspec
 import sensar
 import fugro
 import ricardo
+import SoS
 from rose.utils import signal_proc
 
 settings_filter = {"FS": 250,
@@ -30,47 +31,56 @@ def update_figure(ax,old_fig,new_fig,position):
 
 
 def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict):
+    """
+    Plots data from sensar, fugro and ricardo within each SOS segment in a separate subplot.
 
+    :param sos_dict: Sos data
+    :param sensar_dict: Sensar data
+    :param fugro_dict: Fugro rila data
+    :param ricardo_dict: Ricardo data
+    :return:
+    """
+
+    # loop over segments
     for name, segment in sos_dict.items():
 
-        # if name == "Segment 1069":
-
-        fig = plt.figure(figsize=(20,5))
+        # initialise figure
+        fig = plt.figure(figsize=(20,10))
         plt.tight_layout()
 
-
+        # get coordinates of current segments
         coordinates = np.array(list(segment.values())[0]['coordinates'])
         xlim = [min(coordinates[:,0]), max(coordinates[:,0])]
         ylim = [min(coordinates[:,1]), max(coordinates[:,1])]
 
+        # add plot of highlighted sos segments
+        _, _ = SoS.ReadSosScenarios.plot_highlighted_sos(sos_data, name, fig=fig, position=325)
+
+        # add plot of settlement within the current segment measured by the fugro rila system
+        _, _ = fugro.plot_settlement_in_range_vs_date(fugro_dict, xlim, ylim, fig=fig, position=321)
+
+        # add plot of Sensar settlement measurements within the current segment
         sensar_items_within_bounds = sensar.get_all_items_within_bounds(sensar_dict, xlim, ylim)
-
-        fig2, ax =  fugro.plot_settlement_in_range_vs_date(fugro_dict, xlim, ylim, fig=fig, position=221)
-        # fig2, ax = fugro.plot_average_height_in_range_vs_date(xlim, ylim, fugro_dict, fig=fig, position=121)
-
         if sensar_items_within_bounds:
-            fig3, ax2 = sensar.plot_settlements_from_item_list_over_time(sensar_items_within_bounds, fig=fig, position=222)
+            _, _ = sensar.plot_settlements_from_item_list_over_time(sensar_items_within_bounds, fig=fig, position=323)
 
-
+        # get ricardo data
         ricardo_data_within_bounds =  ricardo.get_data_within_bounds(ricardo_dict["Jan"], xlim, ylim)
-
         if ricardo_data_within_bounds["acc_side_1"].size>0:
+            # filter Ricardo measurements
             acc = signal_proc.filter_sig(ricardo_data_within_bounds["acc_side_1"],
                                          settings_filter["FS"], settings_filter["n"],
                                          settings_filter["cut-off"]).tolist()
 
-            ricardo.plot_train_velocity(ricardo_data_within_bounds, fig=fig, position=223)
-            ricardo.plot_acceleration(ricardo_data_within_bounds["time"],acc, fig=fig, position=224)
-
-        # ricardo_dic
+            # add plot of train velocity and aspot measurements by Ricardo
+            ricardo.plot_train_velocity(ricardo_data_within_bounds, fig=fig, position=322)
+            ricardo.plot_acceleration(ricardo_data_within_bounds["time"],acc, fig=fig, position=324)
 
 
         fig.suptitle(name)
         fig.savefig(Path("tmp", name))
 
         plt.close(fig)
-
-    # return fig
 
 if __name__ == '__main__':
 
@@ -102,6 +112,9 @@ if __name__ == '__main__':
     sos_fn = "../data_proc/SOS.json"
     with open(sos_fn, 'r') as f:
         sos_data = json.load(f)
+
+    # SoS.ReadSosScenarios.plot_highlighted_sos(sos_data,)
+    # plot_highlighted_sos(sos_dict, highlighted_segment_name)
 
     sensar_data = sensar.load_sensar_data("../data/Sensar/processed/processed_settlements.pickle")
 
