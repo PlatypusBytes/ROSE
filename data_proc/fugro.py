@@ -169,28 +169,35 @@ def filter_data_within_bounds(xlim, ylim, res):
 
     return coordinates_in_range, heights_in_range
 
-def merge_data(res):
 
+def merge_data(res: Dict):
+    """
+    Merges data of equal dates but different sections in one dataset
+
+    :param res: fugro data dictionary
+    :return:
+    """
+
+    # find all unique dates
     unique_dates = np.unique(res["dates"])
 
+    # initialise new dictionary
     new_res = {'location': 'all',
                'dates': unique_dates,
                'data': []}
 
     for date in unique_dates:
+
+        # merge coordinates and heights of data on duplicated dates
         duplicate_dates = res["dates"] == date
-        # np.vstack(res["data"][duplicate_dates]["coordinates"])
         merged_coordinates = np.vstack([item["coordinates"] for item in res["data"][duplicate_dates]])
         merged_heights = np.concatenate([item["heights"] for item in res["data"][duplicate_dates]])
 
+        # add merged data to new dictionary
         new_res["data"].append({"coordinates": merged_coordinates,
                                 "heights": merged_heights})
 
-
-
     return new_res
-
-    a=res
 
 
 def get_data_at_location(file_dir, location: str ="all", filetype: str ='csv') -> Dict:
@@ -252,8 +259,7 @@ def save_fugro_data(data: dict, filename: str) -> None:
 
 def load_rila_data(filename: str) -> Dict:
     """
-    loads processes rila data
-
+    loads processes Rila data
 
     :param filename: input filename
     :return:
@@ -266,6 +272,7 @@ def load_rila_data(filename: str) -> Dict:
 def write_krdz_coordinates_to_csv(filename: str, coordinates: np.ndarray):
     """
     Writes the fugro data coordinates to a csv file
+
     :param filename: output filename
     :param coordinates: coordinates
     :return:
@@ -279,6 +286,7 @@ def write_krdz_coordinates_to_csv(filename: str, coordinates: np.ndarray):
 def read_rila_data_from_krdz(filename) -> Dict:
     """
     Reads rila data from krdz file
+
     :param filename: krdz file name
     :return:
     """
@@ -308,29 +316,34 @@ def read_rila_data_from_krdz(filename) -> Dict:
     return res
 
 
-def interpolate_coordinates(res: Dict, xlim: List, ylim: List) -> (List, List, np.ndarray):
+def interpolate_coordinates(res: Dict, xlim: List, ylim: List, search_radius: float =1) -> (List, List, np.ndarray):
     """
-    interpolate all data of each data on the height data locations of the first measurement date
+    Interpolate all data of each dataset on the height data locations of the first measurement date. Note that for this
+    algorithm, it is not required to have sorted coordinates. Simple interpolation does not work, as the fugro data is
+    recorded on multiple tracks in the same dataset, where the measurement direction varies.
 
-    :param res: fugro results dictionary
+    For each date, first the distance to the [0,0] RD coordinate is calculated. Then the nearest distances compared to
+    the first date are calculated. This step is performed to speed up the search. As the nearest distance can be located
+    either side of the track, the following step is checking if the x and y coordinate are within the search radius.
+    Lastly an inverse distance interpolation is performed between the coordinates at the first date and the other
+    coordinates.
+
+    :param res: Fugro results dictionary
     :param xlim: x limit
     :param ylim: y limit
+    :param search_radius: radius where should be searched for close coordinates compared to the first data set
     :return:
     """
-
-    search_radius = 1 #m
 
     # initialise lists
     dates = []
     coordinate_data = []
-    height_data = []
     interpolated_heights = []
     distances = []
 
-
     i = 0
     # loop over dates and data
-    for date, res_at_t in zip(res["dates"],res["data"]):
+    for date, res_at_t in zip(res["dates"], res["data"]):
 
         # get only the data within limits at time t
         coordinates_in_range, heights_in_range = filter_data_within_bounds(xlim, ylim, res_at_t)
@@ -338,6 +351,7 @@ def interpolate_coordinates(res: Dict, xlim: List, ylim: List) -> (List, List, n
         # if coordinates are within limits, add dates, coordinates and height data to list
         if coordinates_in_range.size > 0:
 
+            # calculate distance of each coordinate from  [0,0] RD coordinate
             distance = np.sqrt(coordinates_in_range[:, 0] ** 2 + coordinates_in_range[:, 1] ** 2)
             distance = distance[:,None]
             distances.append(distance)
@@ -348,44 +362,61 @@ def interpolate_coordinates(res: Dict, xlim: List, ylim: List) -> (List, List, n
                 interpolated_height = heights_in_range
             else:
 
-                # find nearest distances compared to the initial distance
+                # find nearest distances compared to the initial distance. Note that this step is done to limit the
+                # search list of close coordinates and speed up the interpolation.
                 tree = KDTree(distance)
                 nearest_distances = tree.query(initial_distance,k=5,distance_upper_bound=search_radius)
 
-                # tmp[0]
+                # Get the valid nearest distances
                 valid = nearest_distances[1][:,:]<coordinates_in_range.shape[0]
 
+                # initialise interpolated height
                 interpolated_height = np.zeros(coordinate_data[0].shape[0])
+
+                # loop over coordinates of the first data set
                 for i in range(coordinate_data[0].shape[0]):
-                    indices = nearest_distances[1][i,valid[i,:]]
-                    # coordinates_in_range[i,:]
-                    tmp = coordinates_in_range[indices,:] - coordinate_data[0][i,:]
-                    tmp2 = np.abs(tmp) < search_radius
-                    valid_found_coordinates = tmp2[:, 0] & tmp2[:, 1]
 
+                    # get the indices of the nearest coordinates of compared to the coordinates of the first data set
+                    indices = nearest_distances[1][i, valid[i,:]]
+
+                    # calculate difference of x and y coordinates between the closest points in the current dataset
+                    # and the first data set.
+                    x_y_diff = coordinates_in_range[indices, :] - coordinate_data[0][i,:]
+
+                    # check which coordinates are within the search radius
+                    tmp = np.abs(x_y_diff) < search_radius
+
+                    # coordinates are valid if both dx and dy are within the search radius
+                    valid_found_coordinates = tmp[:, 0] & tmp[:, 1]
+
+                    # get heights and distances of the closest valid points compared to the first data set
                     heights = heights_in_range[nearest_distances[1][i, valid[i, :]][valid_found_coordinates]]
-
                     distance_from_point = nearest_distances[0][i, valid[i, :]][valid_found_coordinates]
 
                     if len(distance_from_point) > 0:
+                        # if the distance from the first data set is 0, set weights at 0.
                         if any(distance_from_point < 1e-10):
                             weights = (distance_from_point < 1e-10) * 1
                         else:
-                            # inverse distance interpolation
+                            # else perform an inverse distance interpolation
                             weights = 1/distance_from_point
                             weights /= weights.sum()
+
                         interpolated_heights_at_t = heights.dot(weights)
                         interpolated_height[i] = interpolated_heights_at_t
                     else:
+                        # if no valid coordinates, close to the first data set is found, set the interpolated height at
+                        # NAN
                         interpolated_height[i] = np.NAN
 
+            # append the dates, coordinate data, and the interpolated heights to lists
             dates.append(date)
             coordinate_data.append(coordinates_in_range)
-            height_data.append(heights_in_range)
             interpolated_heights.append(interpolated_height)
 
             i += 1
 
+    # convert interpolated heights to a numpy array
     interpolated_heights = np.array(interpolated_heights)
 
     return dates, coordinate_data, interpolated_heights
