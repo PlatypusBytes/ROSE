@@ -255,7 +255,7 @@ def get_statistical_information(dates_array: np.ndarray, settlements_array: np.n
 
     return new_dates, all_means, all_stds
 
-def plot_settlement_over_time(dates: np.ndarray, settlements: np.ndarray):
+def plot_settlement_over_time(dates: np.ndarray, settlements: np.ndarray, **kwargs):
     """
     Plots settlement over time
 
@@ -267,7 +267,7 @@ def plot_settlement_over_time(dates: np.ndarray, settlements: np.ndarray):
     if dates.dtype == np.float:
         dates = [datetime.fromtimestamp(int(date)) for date in dates]
 
-    plt.plot(dates, settlements, 'o')
+    plt.plot(dates, settlements, 'o', **kwargs)
 
     plt.xlabel('Date [y]')
     plt.ylabel('Settlement [mm]')
@@ -289,6 +289,8 @@ def plot_settlements_from_item_list_over_time(items_within_bounds,date_lim=None,
     new_dates, all_means, all_stds = get_statistical_information(sorted_dates, sorted_settlements)
     plot_settlement_over_time(sorted_dates, sorted_settlements)
     plot_settlement_over_time(new_dates, all_means)
+    plot_settlement_over_time(new_dates, all_means + all_stds, marker="_", color="red")
+    plot_settlement_over_time(new_dates, all_means - all_stds, marker="_", color="red")
 
     if date_lim is not None:
         ax.set_xlim(date_lim)
