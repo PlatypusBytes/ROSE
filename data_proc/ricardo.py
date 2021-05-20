@@ -8,6 +8,7 @@ from pyproj import Transformer
 import numpy as np
 import matplotlib.pyplot as plt
 
+import smooth
 from rose.utils import signal_proc
 
 
@@ -90,6 +91,24 @@ def get_data_within_bounds(data: Dict, xlim: List, ylim: List) -> Dict:
                     "segment": data["segment"][mask]}
 
     return bounded_data
+
+def smooth_signal_within_bounds_over_wave_length(data: Dict, wavelength: float, signal: np.ndarray):
+    """
+    This smooths a time series within bounds. Note that an average velocity is used for the smoothing. Therefore, this
+    function is not reliable during acceleration or deceleration.
+
+    :param data: ricardo data within bounds
+    :param wavelength: wavelength over which should be smoothed
+    :param signal: signal to be smoothed
+    :return:
+    """
+    velocity = np.mean(data["speed"]) / 3.6  # velocity in [m/s]
+    seconds = wavelength/velocity
+    dt = np.mean(np.diff(data["time"]))
+    n_points = int(seconds/dt)
+
+    smoothed_signal = smooth.smooth(signal, n_points)
+    return smoothed_signal
 
 
 def read_inframon(file_names: List, output_f: str):
