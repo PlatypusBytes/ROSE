@@ -221,10 +221,10 @@ class TestBenchmarkSet1:
         vertical_displacements = np.array([node.displacements[:,1] for node in beam_nodes])
 
         # process signal of numerical and analytical solution
-        _, amplitude_num,_,_ = sp.fft_sig(vertical_displacements[int((n_beams-1)/2), :], int(1/ time[1]),
-                                          nb_points=2**14)
-        _, amplitude_analyt, _, _ = sp.fft_sig(beam_analytical.u[int((n_beams-1)/2), :], int(1 / time[1]),
-                                               nb_points=2**14)
+        _, amplitude_num = sp.fft_sig(vertical_displacements[int((n_beams-1)/2), :], int(1/ time[1]),
+                                      nb_points=2**14)
+        _, amplitude_analyt = sp.fft_sig(beam_analytical.u[int((n_beams-1)/2), :], int(1 / time[1]),
+                                         nb_points=2**14)
 
         # assert if signal aplitudes are approximately equal at eigen frequency
         assert amplitude_num[163] == pytest.approx(amplitude_analyt[163], rel=1e-2)
@@ -479,10 +479,10 @@ class TestBenchmarkSet1:
         # get numerical frequencies and amplitudes
         vert_velocities = np.array([node.velocities[:, 1] for node in rod_nodes])
 
-        freq_num, amplitude_num, _, _ = sp.fft_sig(vert_velocities[-1, :], int(1 / time[1]),
-                                                   nb_points=2 ** 14)
-        freq_ana, amplitude_ana, _, _ = sp.fft_sig(pulse_load.v[-1, :], int(1 / time[1]),
-                                                   nb_points=2 ** 14)
+        freq_num, amplitude_num = sp.fft_sig(vert_velocities[-1, :], int(1 / time[1]),
+                                             nb_points=2 ** 14)
+        freq_ana, amplitude_ana = sp.fft_sig(pulse_load.v[-1, :], int(1 / time[1]),
+                                             nb_points=2 ** 14)
 
         # check if first eigen frequency is as expected
         assert first_eig_freq == pytest.approx(freq_num[amplitude_num == np.max(amplitude_num)][0], rel=0.01)
