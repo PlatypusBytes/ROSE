@@ -40,20 +40,16 @@ def plot_settlement_in_range_vs_date(res: Dict, xlim: List, ylim: List,date_lim=
         # calculate settlement
         settlement = np.subtract(interpolated_heights, interpolated_heights[0,:]) * m_to_mm
 
-        # calculate mean heights per date
-        mean_heights = []
-        for res_at_t in res["data"]:
-            coordinates_in_range, heights_in_range = filter_data_within_bounds(xlim, ylim, res_at_t)
-            mean_height = np.mean(heights_in_range)
-            mean_heights.append(mean_height)
-
-        mean_heights = np.array(mean_heights)[np.isfinite(mean_heights)]
-        mean_settlement = (np.array(mean_heights) - mean_heights[0]) * m_to_mm
+        # calculate mean heights and std per date
+        mean_sett = np.nanmean(settlement,axis=1)
+        std_sett = np.nanstd(settlement,axis=1)
 
         # plot settlement and mean settlement vs dates
         ax.plot(dates, settlement, 'o', color='blue', markersize=0.5)
-        ax.plot(dates, mean_settlement, 'o', color='orange')
-        ax.set_xlabel("Date")
+        ax.plot(dates, mean_sett, 'o', color='orange')
+        ax.plot(dates, mean_sett + std_sett, '_', color='red', markersize=10)
+        ax.plot(dates, mean_sett - std_sett, '_', color='red', markersize=10)
+        ax.set_xlabel("Date [y]")
         ax.set_ylabel("Settlement [mm]")
 
         if date_lim is not None:
