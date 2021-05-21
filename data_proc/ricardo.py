@@ -102,7 +102,7 @@ def smooth_signal_within_bounds_over_wave_length(data: Dict, wavelength: float, 
     :param signal: signal to be smoothed
     :return:
     """
-    velocity = np.mean(data["speed"]) / 3.6  # velocity in [m/s]
+    velocity = np.nanmean(data["speed"]) / 3.6  # velocity in [m/s]
     seconds = wavelength/velocity
     dt = np.mean(np.diff(data["time"]))
     n_points = int(seconds/dt)
