@@ -10,6 +10,8 @@ class ModelResults:
         self.result_names:List[str] = None # array of parameter names to be compared with observations e.g.: ["displacements_out"]
         self.result_indices = None # global indices of results to be compared with observations
         self.time_step_indices = None
+        self.result_function = None
+        self.args = {}
 
 class OptimisationModelPart:
     def __init__(self):
@@ -68,16 +70,28 @@ class Optimisation():
         # get results from model
         results = []
         for model_result in self.model_results:
-            for res_name in model_result.result_names:
-                result = getattr(self.model, res_name)[model_result.time_step_indices, :]
-                result = result[:, model_result.result_indices]
-                if method == 'maximum':
-                    result = np.max(np.abs(result),axis=0)
-                    results.append(result)
-                else:
-                    raise("Method is not implemented")
 
-        results = np.array(results)
+            if model_result.result_function is None:
+                for res_name in model_result.result_names:
+                    result = getattr(self.model, res_name)[model_result.time_step_indices, :]
+                    result = result[:, model_result.result_indices]
+                    if method == 'maximum':
+                        result = np.max(np.abs(result),axis=0)
+                        results.append(result)
+                    else:
+                        raise("Method is not implemented")
+
+                results = np.array(results)
+
+            else:
+                for res_name in model_result.result_names:
+                    signal = getattr(self.model, res_name)[model_result.time_step_indices, :]
+                    signal = signal[:, model_result.result_indices]
+
+                    result = np.array(model_result.result_function(signal, model_result.args))
+                    results.append(result)
+
+                results = np.array(results)
 
         residual = results - self.observations
         # calculate residual and return
