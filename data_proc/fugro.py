@@ -500,6 +500,38 @@ def read_rila_data_from_csv(filename) -> Dict:
     res["heights"] = heights
     return res
 
+def filter_data_at_point_coordinates(res, point_coordinates, search_radius):
+    """
+    Removes all rila coordinates and data in a range from a list of point coordinates
+
+    :param res: rila results dictionary
+    :param point_coordinates: point coordinates to be filtered out
+    :param search_radius: radius around point coordinates which are to be filtered out
+
+    :return:
+    """
+
+    for data in res["data"]:
+        rila_coordinates = data["coordinates"]
+
+        # initialise kd tree
+        tree = KDTree(rila_coordinates)
+
+        # initialise mask array
+        mask = np.ones(len(rila_coordinates) ).astype(bool)
+
+        # find all rila indices in range around point coordinates
+        masked_indices = [j for i in tree.query_ball_point(point_coordinates, search_radius) for j in i]
+
+        # set found indices at false
+        mask[masked_indices] = False
+
+        # remove coordinates and heights at found indices from results data
+        data["coordinates"] = data["coordinates"][mask,:]
+        data["heights"] = data["heights"][mask]
+
+    return res
+
 
 
 if __name__ == '__main__':
@@ -519,7 +551,9 @@ if __name__ == '__main__':
     # save_fugro_data(res, r"..\data\Fugro\rila_data.pickle")
     res = load_rila_data(r"..\data\Fugro\rila_data.pickle")
 
-    merge_data(res)
+    res = merge_data(res)
+    point_coordinates = np.array([[122730.096, 487773.31], [138101.172, 453431.389],[0,0]])
+    filter_data_at_point_coordinates(res, point_coordinates,1)
     a=1+1
 
     # file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam_Eindhoven\Deltares_AmsterdamEindhovenKRDZ"
