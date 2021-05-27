@@ -78,7 +78,7 @@ def plot_average_height_in_range_vs_date(xlim, ylim, res, fig=None,position = 11
     # get height data within limits and calculate mean
     heights = []
     for res_at_t in res["data"]:
-        coordinates_in_range, heights_in_range = filter_data_within_bounds(xlim, ylim, res_at_t)
+        coordinates_in_range, heights_in_range = get_data_within_bounds(xlim, ylim, res_at_t)
         mean_height = np.mean(heights_in_range)
         heights.append(mean_height)
 
@@ -124,7 +124,7 @@ def plot_height_vs_coords_in_range(xlim, ylim, res, fig=None, projection="3d"):
     for res_at_t in res["data"]:
 
         #get data within limits
-        coordinates_in_range, heights_in_range = filter_data_within_bounds(xlim, ylim, res_at_t)
+        coordinates_in_range, heights_in_range = get_data_within_bounds(xlim, ylim, res_at_t)
         if coordinates_in_range.size and coordinates_in_range.size:
 
             # plot data on a 3d projecten
@@ -152,7 +152,7 @@ def plot_height_vs_coords_in_range(xlim, ylim, res, fig=None, projection="3d"):
     return fig, ax
 
 
-def filter_data_within_bounds(xlim, ylim, res):
+def get_data_within_bounds(xlim, ylim, res):
     """
 
     :param xlim: x limit of search area
@@ -345,7 +345,7 @@ def interpolate_coordinates(res: Dict, xlim: List, ylim: List, search_radius: fl
     for date, res_at_t in zip(res["dates"], res["data"]):
 
         # get only the data within limits at time t
-        coordinates_in_range, heights_in_range = filter_data_within_bounds(xlim, ylim, res_at_t)
+        coordinates_in_range, heights_in_range = get_data_within_bounds(xlim, ylim, res_at_t)
 
         # if coordinates are within limits, add dates, coordinates and height data to list
         if coordinates_in_range.size > 0:
@@ -532,6 +532,38 @@ def filter_data_at_point_coordinates(res, point_coordinates, search_radius):
 
     return res
 
+def filter_data_within_bounds(xbounds: np.ndarray, ybounds: np.ndarray, res: Dict):
+    """
+    Filters data within x bounds and y bounds
+
+    :param xbounds: x limit of search area
+    :param ybounds: y limit of search area
+    :param res: RILA results dictionary
+    :return:
+    """
+
+    for data in res["data"]:
+
+        coordinates = data["coordinates"]
+
+        # initialize mask array as zeros
+        mask = np.zeros(coordinates.shape[0])
+
+        # find all coordinates within each x and y limit
+        for xlim, ylim in zip(xbounds, ybounds):
+            mask += (coordinates[:, 0] >= xlim[0]).astype(int) * \
+                    (coordinates[:, 0] <= xlim[1]).astype(int) * \
+                    (coordinates[:, 1] >= ylim[0]).astype(int) * \
+                    (coordinates[:, 1] <= ylim[1]).astype(int)
+
+        # invert and convert mask array as boolean array
+        mask = ~mask.astype(bool)
+
+        # filter coordinates and heights
+        data["coordinates"] = coordinates[mask,:]
+        data["heights"] = res["heights"][mask]
+
+    return res
 
 
 if __name__ == '__main__':
@@ -552,8 +584,20 @@ if __name__ == '__main__':
     res = load_rila_data(r"..\data\Fugro\rila_data.pickle")
 
     res = merge_data(res)
-    point_coordinates = np.array([[122730.096, 487773.31], [138101.172, 453431.389],[0,0]])
-    filter_data_at_point_coordinates(res, point_coordinates,1)
+    # point_coordinates = np.array([[122730.096, 487773.31], [138101.172, 453431.389],[0,0]])
+    # filter_data_at_point_coordinates(res, point_coordinates,1)
+
+
+    import data_discontinuities as dd
+
+    fn = r"D:\software_development\rose\data\data_discontinuities\wissel.json"
+
+    all_coordinates = dd.get_coordinates_from_json(fn)
+    x_bounds, y_bounds = dd.get_bounds_of_lines(all_coordinates)
+
+
+    filter_data_within_bounds(x_bounds, y_bounds, res["data"][0])
+
     a=1+1
 
     # file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam_Eindhoven\Deltares_AmsterdamEindhovenKRDZ"
