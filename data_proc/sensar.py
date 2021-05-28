@@ -298,6 +298,64 @@ def plot_settlements_from_item_list_over_time(items_within_bounds,date_lim=None,
     return fig, ax
 
 
+def calculate_centroids(data: Dict):
+    """
+    Calculates centroids of all values in sensar data dict
+    :param data: sensar data dictionary
+    :return:
+    """
+
+    # get all coordinates in data dict
+    coordinates = [value["coordinates"] for value in list(data.values())]
+
+    # calculate and return centroids
+    return np.array([[np.mean(coordinate[:,0]), np.mean(coordinate[:,1])] for coordinate in coordinates])
+
+
+def filter_data_within_bounds(xbounds: np.ndarray, ybounds: np.ndarray, data: Dict):
+    """
+    Filters data which lies partly or completely within x bounds and y bounds
+
+    :param xbounds: x limit of search area
+    :param ybounds: y limit of search area
+    :param data: sensar data dictionary
+    :return:
+    """
+
+    # gets coordinates of the sensar data
+    coordinates = [value["coordinates"] for value in list(data.values())]
+
+    # get the end coordinates of each Sensar data line
+    min_coordinates = np.array([[np.min(coordinate[:,0]), np.min(coordinate[:,1])] for coordinate in coordinates])
+    max_coordinates = np.array([[np.min(coordinate[:, 0]), np.min(coordinate[:, 1])] for coordinate in coordinates])
+
+    # initialize mask array as zeros
+    mask = np.zeros(min_coordinates.shape[0])
+
+    # find all lines which are partly or completely within each x and y limit
+    for xlim, ylim in zip(xbounds, ybounds):
+        mask += (min_coordinates[:, 0] >= xlim[0]).astype(int) * \
+                (min_coordinates[:, 0] <= xlim[1]).astype(int) * \
+                (min_coordinates[:, 1] >= ylim[0]).astype(int) * \
+                (min_coordinates[:, 1] <= ylim[1]).astype(int) + \
+                (max_coordinates[:, 0] >= xlim[0]).astype(int) * \
+                (max_coordinates[:, 0] <= xlim[1]).astype(int) * \
+                (max_coordinates[:, 1] >= ylim[0]).astype(int) * \
+                (max_coordinates[:, 1] <= ylim[1]).astype(int)
+
+    # invert and convert mask array as boolean array
+    mask = ~mask.astype(bool)
+
+    # convert dictionary to np array
+    np_data = np.array(list(data.items()))
+
+    # filter data
+    filtered_data = np_data[mask,:]
+
+    # convert filtered data to dictionary
+    filtered_data = dict(filtered_data)
+
+    return filtered_data
 
 if __name__ == '__main__':
 
@@ -305,6 +363,16 @@ if __name__ == '__main__':
     # save_sensar_data(data, "../../data/Sensar/processed/processed_settlements.pickle")
 
     data = load_sensar_data("../data/Sensar/processed/processed_settlements.pickle")
+
+    import data_discontinuities as dd
+
+    fn = r"D:\software_development\rose\data\data_discontinuities\wissel.json"
+
+    all_coordinates = dd.get_coordinates_from_json(fn)
+    x_bounds, y_bounds = dd.get_bounds_of_lines(all_coordinates)
+
+    filtered_data = filter_data_within_bounds(x_bounds, y_bounds, data)
+    # centroids = calculate_centroids(data)
 
     # items_within_bounds = get_all_items_within_bounds(data, [144276, 144465], [439011,439301])
 
