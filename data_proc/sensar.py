@@ -1,6 +1,7 @@
 import fiona
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.spatial import KDTree
 
 import pickle
 import os
@@ -312,6 +313,48 @@ def calculate_centroids(data: Dict):
     return np.array([[np.mean(coordinate[:,0]), np.mean(coordinate[:,1])] for coordinate in coordinates])
 
 
+def filter_data_at_point_coordinates(res, point_coordinates):
+    """
+    Checks if point coordinates lay within sensar data lines, if so, the corresponding sensar data is filtered
+
+    :param res: sensar results dictionary
+    :param point_coordinates: point coordinates to be filtered out
+
+    :return:
+    """
+
+    # gets coordinates of the sensar data
+    coordinates = [value["coordinates"] for value in list(res.values())]
+
+    # get the end coordinates of each Sensar data line
+    min_coordinates = np.array([[np.min(coordinate[:, 0]), np.min(coordinate[:, 1])] for coordinate in coordinates])
+    max_coordinates = np.array([[np.max(coordinate[:, 0]), np.max(coordinate[:, 1])] for coordinate in coordinates])
+
+    # initialize mask array as zeros
+    mask = np.zeros(min_coordinates.shape[0])
+
+    # find all points which are located at sensar data and adds to mask array
+    for coord in point_coordinates:
+
+        mask += (min_coordinates[:,0] <= coord[0]).astype(int)* \
+                (max_coordinates[:, 0] >= coord[0]).astype(int) * \
+                (min_coordinates[:, 1] <= coord[1]).astype(int) * \
+                (max_coordinates[:, 1] >= coord[1]).astype(int)
+
+    # invert and convert mask array as boolean array
+    mask = ~mask.astype(bool)
+
+    # convert dictionary to np array
+    np_data = np.array(list(res.items()))
+
+    # filter data
+    filtered_data = np_data[mask,:]
+
+    # convert filtered data to dictionary
+    filtered_data = dict(filtered_data)
+
+    return filtered_data
+
 def filter_data_within_bounds(xbounds: np.ndarray, ybounds: np.ndarray, data: Dict):
     """
     Filters data which lies partly or completely within x bounds and y bounds
@@ -326,8 +369,8 @@ def filter_data_within_bounds(xbounds: np.ndarray, ybounds: np.ndarray, data: Di
     coordinates = [value["coordinates"] for value in list(data.values())]
 
     # get the end coordinates of each Sensar data line
-    min_coordinates = np.array([[np.min(coordinate[:,0]), np.min(coordinate[:,1])] for coordinate in coordinates])
-    max_coordinates = np.array([[np.min(coordinate[:, 0]), np.min(coordinate[:, 1])] for coordinate in coordinates])
+    min_coordinates = np.array([[np.min(coordinate[:, 0]), np.min(coordinate[:, 1])] for coordinate in coordinates])
+    max_coordinates = np.array([[np.max(coordinate[:, 0]), np.max(coordinate[:, 1])] for coordinate in coordinates])
 
     # initialize mask array as zeros
     mask = np.zeros(min_coordinates.shape[0])
@@ -371,7 +414,13 @@ if __name__ == '__main__':
     all_coordinates = dd.get_coordinates_from_json(fn)
     x_bounds, y_bounds = dd.get_bounds_of_lines(all_coordinates)
 
-    filtered_data = filter_data_within_bounds(x_bounds, y_bounds, data)
+
+    point_coordinates = np.array([[122730.096, 487773.31], [138101.172, 453431.389],[0,0]])
+    # filter_data_at_point_coordinates(res, point_coordinates,1)
+
+    filter_data_at_point_coordinates(data, point_coordinates)
+
+    # filtered_data = filter_data_within_bounds(x_bounds, y_bounds, data)
     # centroids = calculate_centroids(data)
 
     # items_within_bounds = get_all_items_within_bounds(data, [144276, 144465], [439011,439301])
