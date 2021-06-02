@@ -561,7 +561,7 @@ def filter_data_within_bounds(xbounds: np.ndarray, ybounds: np.ndarray, res: Dic
 
         # filter coordinates and heights
         data["coordinates"] = coordinates[mask,:]
-        data["heights"] = res["heights"][mask]
+        data["heights"] = data["heights"][mask]
 
     return res
 
@@ -595,8 +595,7 @@ if __name__ == '__main__':
     all_coordinates = dd.get_coordinates_from_json(fn)
     x_bounds, y_bounds = dd.get_bounds_of_lines(all_coordinates)
 
-
-    filter_data_within_bounds(x_bounds, y_bounds, res["data"][0])
+    res = filter_data_within_bounds(x_bounds, y_bounds, res)
 
     a=1+1
 
