@@ -33,7 +33,7 @@ for name, segment in sos_data.items():
 
     heights = []
     for res_at_t in res["data"]:
-        coordinates_in_range, heights_in_range = filter_data_within_bounds(xlim, ylim, res_at_t)
+        coordinates_in_range, heights_in_range = get_data_within_bounds(xlim, ylim, res_at_t)
         mean_height = np.mean(heights_in_range)
         heights.append(mean_height)
 
