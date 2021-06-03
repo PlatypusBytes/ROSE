@@ -7,6 +7,7 @@ from typing import List, Dict
 from pyproj import Transformer
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.spatial import KDTree
 
 import smooth
 from rose.utils import signal_proc
@@ -64,7 +65,7 @@ def plot_acceleration(time, acceleration, fig=None, position=111):
     if time.size > 0:
         ax.plot(time, acceleration)
         ax.set_xlabel("Time [s]")
-        ax.set_ylabel("acc_side_1")
+        ax.set_ylabel("Axle acceleration [$\mathregular{m/s^{2}}$]")
 
     return fig, ax
 
@@ -187,6 +188,78 @@ def read_inframon(file_names: List, output_f: str):
         pickle.dump(results, f)
 
     return results
+
+
+def filter_data_at_point_coordinates(data, point_coordinates, search_radius):
+    """
+    Removes all ricardo coordinates and data in a range from a list of point coordinates
+
+    :param data: ricardo results dictionary
+    :param point_coordinates: point coordinates to be filtered out
+    :param search_radius: radius around point coordinates which are to be filtered out
+
+    :return:
+    """
+
+    ricardo_coordinates = data["coordinates"]
+
+    # initialise kd tree
+    tree = KDTree(ricardo_coordinates)
+
+    # initialise mask array
+    mask = np.ones(len(ricardo_coordinates)).astype(bool)
+
+    # find all rila indices in range around point coordinates
+    masked_indices = [j for i in tree.query_ball_point(point_coordinates, search_radius) for j in i]
+
+    # set found indices at false
+    mask[masked_indices] = False
+
+    # remove coordinates and heights at found indices from results data
+    data["coordinates"] = data["coordinates"][mask,:]
+    data["time"] = data["time"][mask]
+    data["speed"] = data["speed"][mask]
+    data["acc_side_1"] = data["acc_side_1"][mask]
+    data["acc_side_2"] = data["acc_side_2"][mask]
+    data["segment"] = data["segment"][mask]
+
+    return data
+
+
+def filter_data_within_bounds(xbounds: np.ndarray, ybounds: np.ndarray, data: Dict):
+    """
+    Filters data within x bounds and y bounds
+
+    :param xbounds: x limit of search area
+    :param ybounds: y limit of search area
+    :param data: ricardo dataset
+    :return:
+    """
+
+    coordinates = data["coordinates"]
+
+    # initialize mask array as zeros
+    mask = np.zeros(coordinates.shape[0])
+
+    # find all coordinates within each x and y limit
+    for xlim, ylim in zip(xbounds, ybounds):
+        mask += (coordinates[:, 0] >= xlim[0]).astype(int) * \
+                (coordinates[:, 0] <= xlim[1]).astype(int) * \
+                (coordinates[:, 1] >= ylim[0]).astype(int) * \
+                (coordinates[:, 1] <= ylim[1]).astype(int)
+
+    # invert and convert mask array as boolean array
+    mask = ~mask.astype(bool)
+
+    # filter coordinates and heights
+    data["coordinates"] = coordinates[mask,:]
+    data["time"] = data["time"][mask]
+    data["speed"] = data["speed"][mask]
+    data["acc_side_1"] = data["acc_side_1"][mask]
+    data["acc_side_2"] = data["acc_side_2"][mask]
+    data["segment"] = data["segment"][mask]
+
+    return data
 
 
 if __name__ == '__main__':
