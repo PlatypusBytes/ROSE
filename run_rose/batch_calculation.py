@@ -164,8 +164,8 @@ def set_base_model():
     coupled_model.time = time
     coupled_model.initialisation_time = initialisation_time
 
-    coupled_model.herzian_contact_coef = herzian_contact_coef
-    coupled_model.herzian_power = herzian_power
+    coupled_model.hertzian_contact_coef = herzian_contact_coef
+    coupled_model.hertzian_power = herzian_power
 
     coupled_model.solver = solver
 
