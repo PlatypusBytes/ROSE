@@ -3,6 +3,7 @@ import rose.model.utils as utils
 import logging
 from typing import List
 
+
 # todo move this class
 class Material:
     """
@@ -62,6 +63,7 @@ class Section:
             logging.error("Second moment of inertia not defined")
         if self.shear_factor is None:
             logging.error("Shear factor not defined")
+
 
 class ModelPart:
     """
@@ -530,7 +532,7 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
 
     def set_y_shape_functions(self, x):
         """
-        |Sets y shape functions of the timoshenko beam element
+        |Sets y shape functions of the Timoshenko beam element
 
         |B.S.Gan, An Isogeometric Approach to Beam Structures, Chapter 3
         DOI10.1007/978-3-319-56493-7_3

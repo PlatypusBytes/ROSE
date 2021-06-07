@@ -15,8 +15,8 @@ class CoupledTrainTrack(GlobalSystem):
         self.track: GlobalSystem                      # track system model part (track, soil, BC's, etc.)
         self.rail: TimoshenkoBeamElementModelPart     # rail model part which is in contact with train
 
-        self.herzian_contact_coef = None
-        self.herzian_power = None
+        self.hertzian_contact_coef = None
+        self.hertzian_power = None
 
         self.irregularities_at_wheels = None
 
@@ -152,12 +152,12 @@ class CoupledTrainTrack(GlobalSystem):
 
     def calculate_static_contact_deformation(self):
         """
-        Calculates static contact deformation based on herzion contact theory
+        Calculates static contact deformation based on Hertzian contact theory
         :return:
         """
 
-        G = self.herzian_contact_coef
-        pow = self.herzian_power
+        G = self.hertzian_contact_coef
+        pow = self.hertzian_power
 
         self.static_contact_deformation = np.array([np.sign(wheel.total_static_load) * G * abs(wheel.total_static_load)
                                                     ** (1/pow) for wheel in self.train.wheels])
@@ -176,8 +176,8 @@ class CoupledTrainTrack(GlobalSystem):
         elastic_wheel_deformation = self.__calculate_elastic_wheel_deformation(t)
 
         contact_force = np.sign(elastic_wheel_deformation - du_wheels) * \
-                        np.nan_to_num(np.power(1 / self.herzian_contact_coef * (elastic_wheel_deformation - du_wheels)
-                        , self.herzian_power))
+                        np.nan_to_num(np.power(1 / self.hertzian_contact_coef * (elastic_wheel_deformation - du_wheels)
+                                               , self.hertzian_power))
 
         return contact_force
 

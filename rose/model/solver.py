@@ -180,7 +180,7 @@ class ZhaiSolver(Solver):
 
     def newmark_iteration(self, u, v, a, a_new, dt):
         """
-        Perform Wewmark iteration as corrector for displacement and velocity
+        Perform Newmark iteration as corrector for displacement and velocity
 
         :param u: displacement
         :param v: velocity

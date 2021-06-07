@@ -864,8 +864,8 @@ class TestBenchmarkSet2:
         coupled_model.time = time
         # coupled_model.initialisation_time = initialisation_time
 
-        coupled_model.herzian_contact_coef = 9.1e-7
-        coupled_model.herzian_power = 3 / 2
+        coupled_model.hertzian_contact_coef = 9.1e-7
+        coupled_model.hertzian_power = 3 / 2
 
         coupled_model.solver = solver
         coupled_model.velocities = velocities
@@ -1022,8 +1022,8 @@ class TestBenchmarkSet2:
         coupled_model.rail = beam
 
         coupled_model.time = time
-        coupled_model.herzian_contact_coef = herzian_contact_cof
-        coupled_model.herzian_power = herzian_power
+        coupled_model.hertzian_contact_coef = herzian_contact_cof
+        coupled_model.hertzian_power = herzian_power
 
         coupled_model.solver = solver
         coupled_model.solver.load_func = coupled_model.update_force_vector

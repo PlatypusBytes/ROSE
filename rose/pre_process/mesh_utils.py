@@ -1,5 +1,4 @@
 from rose.model.geometry import Node, Element, Mesh
-
 from rose.model.track import Rail, RailPad, Sleeper
 from rose.model.soil import Soil
 from rose.model.model_part import ConstraintModelPart, ElementModelPart
@@ -182,6 +181,7 @@ def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
         mesh,
     )
 
+
 def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes: List[Mesh]):
     """
     Combines multiple horizontal track parts. This function takes a list of tracks and connects the track parts to a
@@ -191,7 +191,7 @@ def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes:
     This function assumes horizontal tracks over the x-axis
 
     :param tracks: Ordered list of dictionaries of model parts belonging to a horizontal track part
-    :param meshes: list of meshes belowing to the track parts
+    :param meshes: list of meshes belonging to the track parts
     :return:
     """
 
