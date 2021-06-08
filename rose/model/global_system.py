@@ -368,7 +368,6 @@ class GlobalSystem:
 
         self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)),dtype=float)
 
-
     def __calculate_rayleigh_damping_factors(self):
         """
         Calculate rayleigh damping coefficients
@@ -389,15 +388,15 @@ class GlobalSystem:
         with the following formula:
 
         .. math::
-            C = a0 \dot M + a1 \dot K
-            a0 = \omega1 * \omega2 * a1
-            a1 = 2 * \xi / (\omega1 * \omega2)
+            C = a0 \cdot M + a1 \cdot K  \n
+            a0 = \\omega 1 * \\omega 2 * a1 \n
+            a1 = 2 * \\xi / (\\omega 1 * \\omega 2) \n
 
-        Where C is the rayleigh damping matrix
-        M is the global mass matrix
-        K is the global stiffness matrix
-        :math: '\omega1' and :math: '\omega2' are the first and second radial frequency
-        :math: '\xi' is the rayleigh damping factor
+        Where C is the rayleigh damping matrix \n
+        M is the global mass matrix \n
+        K is the global stiffness matrix \n
+        :math:`{\\omega}1` and :math:`{\\omega}2` are the first and second radial frequency \n
+        :math:`{\\xi}` is the rayleigh damping factor \n
 
         :return:
         """
