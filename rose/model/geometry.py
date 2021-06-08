@@ -238,7 +238,7 @@ class Mesh:
         """
         Checks if element is unique and adds the element to the mesh if the element is unique.
 
-        :param elements: Eodes to be added to the mesh, if unique.
+        :param elements: Elements to be added to the mesh, if unique.
         :return:
         """
         for element in elements:
