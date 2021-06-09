@@ -16,11 +16,13 @@ from scipy.spatial import KDTree
 from scipy import sparse
 from scipy import interpolate
 
+
 def filer_location(locations: np.array, lower_limit: float, upper_limit: float):
     locations[locations > upper_limit] = upper_limit
     locations[locations < lower_limit] = lower_limit
 
     return locations
+
 
 def filter_data_outside_range(
     data: np.array, locations: np.array, lower_limit: float, upper_limit: float
@@ -29,11 +31,7 @@ def filter_data_outside_range(
     data[locations > upper_limit] = 0
     data[locations < lower_limit] = 0
 
-    # new_locations = copy.deepcopy(locations)
-    # new_locations[locations > upper_limit] = upper_limit
-    # new_locations[locations < lower_limit] = lower_limit
-
-    return data #, new_locations
+    return data
 
 
 def calculate_cumulative_distance_of_coordinates(coordinates: np.array):
@@ -171,23 +169,6 @@ def delete_from_lil(mat: sparse.lil_matrix, row_indices=[], col_indices=[]):
     else:
         return mat
 
-# def calculate_rotation(node1: Node, node2: Node):
-#     """
-#     Calculates rotation between 2 nodes in a 2d space
-#     :param node1: first node
-#     :param node2: second node
-#     :return:
-#     """
-#     #todo make general, now it works for 2 nodes in a 2d space
-#     if np.isclose(node2.coordinates[0] - node1.coordinates[0], 0):
-#         return np.pi/2 * np.sign((node2.coordinates[1] - node1.coordinates[1]))
-#
-#     rot = 0
-#     if node2.coordinates[0] < node1.coordinates[0]:
-#         rot += np.pi
-#
-#     rot += np.arctan((node2.coordinates[1] - node1.coordinates[1])/ (node2.coordinates[0] - node1.coordinates[0]))
-#     return rot
 
 def calculate_rotation(coord1: np.ndarray, coord2: np.ndarray):
     """

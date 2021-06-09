@@ -13,38 +13,77 @@ g = 9.81
 
 
 class Wheel(ElementModelPart):
+    """
+    Wheel model part class.This class bases from :class:`~rose.model.model_part.ElementModelPart`.
+
+    :Attributes:
+
+        - :self.mass:                   wheel mass
+        - :self.total_static_load:      total static load of the wheel
+        - :self.distances:              Distance from the zero coordinate to the wheel at every time step
+        - :self.active_n_dof:           Number of active degrees of freedom of the wheel
+    """
     def __init__(self):
         super().__init__()
-        self.mass = 0 #1e-10
+        self.mass = 0
         self.total_static_load = None
         self.distances = None
-
-        # self.index_dof = [None]
-
+        self.active_n_dof = None
 
     @property
     def y_disp_dof(self):
         return True
 
     def set_aux_mass_matrix(self):
+        """
+        Sets the local auxiliary mass matrix for the wheel.
+        :return:
+        """
         self.aux_mass_matrix = np.zeros((1, 1))
         self.aux_mass_matrix[0] = self.mass
 
     def set_aux_stiffness_matrix(self):
+        """
+        Sets the local auxiliary stiffness matrix for the wheel.
+        :return:
+        """
         self.aux_stiffness_matrix = np.zeros((1, 1))
 
     def set_aux_damping_matrix(self):
+        """
+        Sets the local auxiliary damping matrix for the wheel.
+        :return:
+        """
         self.aux_damping_matrix = np.zeros((1, 1))
 
     def set_static_force_vector(self):
+        """
+        Calculates the static load of the wheel and adds to the static force vector. Static load is calculated as
+        -mass * gravity constant
+        :return:
+        """
         self.static_force_vector = np.zeros((1, 1))
         self.static_force_vector[0,0] = -self.mass * g
 
     def set_mesh(self,mesh, y=0, z=0):
+        """
+        Sets the initial mesh of the wheel and adds the mesh to the train mesh.
+
+        :param mesh: train mesh
+        :param y: initial y coordinate of the wheel
+        :param z: initial z coordinate of the wheel
+        :return:
+        """
         self.nodes = [Node(self.distances[0], y, z)]
         mesh.add_unique_nodes_to_mesh(self.nodes)
 
     def calculate_active_n_dof(self, index_dof):
+        """
+        Calculates the amount and indices of active degrees of freedom of the wheel.
+
+        :param index_dof: index of the degree of freedom in the global system
+        :return:
+        """
         self.active_n_dof = 1
 
         self.nodes[0].index_dof[1] = index_dof
@@ -53,27 +92,49 @@ class Wheel(ElementModelPart):
         return index_dof
 
     def calculate_total_static_load(self, external_load):
+        """
+        Calculates the total static load on the wheel, this includes the static load of the wheel itself + static
+        external force
+        :param external_load: external static load which works on the wheel
+        :return:
+        """
         self.total_static_load = self.static_force_vector[0, 0] + external_load
 
 
 class Bogie(ElementModelPart):
+    """
+    Bogie model part class. This class bases from :class:`~rose.model.model_part.ElementModelPart`. A bogie is a mass
+    which can translate and rotate. The bogie is connected to a number of wheels which are located at a certain distance
+    from the middle of the bogie.
+
+    :Attributes:
+        - :self.wheels:                 all wheels which are connected to the bogie
+        - :self.wheel_distances:        List of distance of each connected wheel to the centre of the bogie, including sign
+        - :self.mass:                   Mass of the bogie
+        - :self.inertia:                Moment of inertia of the bogie
+        - :self.stiffness:              Stiffness of the spring between the wheels and the bogie
+        - :self.damping:                Damping of the dampers between the wheels and the bogie
+        - :self.length:                 Length of the bogie
+        - :self.total_static_load:      Total static load of the bogie plus static external load
+        - :self.distances:              Distance from the zero coordinate to the bogie centre at every time step
+        - :self.active_n_dof:           Number of active degrees of freedom of the bogie + connected wheels
+    """
     def __init__(self):
         super().__init__()
 
-        self.wheels = None
-        self.wheel_distances = 0  # including sign
+        self.wheels: List = []
+        self.wheel_distances: List = []  # including sign
         self.mass = 0
         self.inertia = 0
         self.stiffness = 0  # stiffness between bogie and wheels
         self.damping = 0
         self.length = 0
 
-        self.__n_wheels = None
-
         self.total_static_load = None
         self.distances = None
+        self.active_n_dof = None
 
-        # self.index_dof = [None, None]
+        self.__n_wheels = None
 
     @property
     def y_disp_dof(self):
@@ -84,55 +145,98 @@ class Bogie(ElementModelPart):
         return True
 
     def set_mesh(self, mesh, y=1, z=0):
+        """
+        Sets the initial mesh of the bogie and wheels and adds the mesh to the train mesh.
+
+        :param mesh: train mesh
+        :param y: initial y coordinate of the bogie centre
+        :param z: initial z coordinate of the bogie centre
+        :return:
+        """
+
+        # Create nodes of the bogie
         self.nodes = [Node(self.distances[0], y, z)]
 
+        # add nodes to train mesh
         mesh.add_unique_nodes_to_mesh(self.nodes)
 
+        # create mesh of the wheels which are connected to the bogie
         for wheel in self.wheels:
             wheel.set_mesh(mesh)
 
-    # def __add_wheel_mass_matrix(self, wheel, aux_mass_matrix):
-    #     pass
-
     def calculate_active_n_dof(self, index_dof):
-        self.active_n_dof = 2 + len(self.wheels)
+        """
+        Calculates the amount and indices of active degrees of freedom of the bogie. This includes the active degrees
+        of freedom of the connected wheels.
 
-        self.nodes[0].index_dof[1] = index_dof
-        index_dof += 1
-        self.nodes[0].index_dof[2] = index_dof
-        index_dof += 1
+        :param index_dof: index of the degree of freedom in the global system
+        :return:
+        """
 
+        # set index of the degrees of freedom of the bogie
+        for node in self.nodes:
+            node.index_dof[1] = index_dof
+            index_dof += 1
+            node.index_dof[2] = index_dof
+            index_dof += 1
+
+        # calculate active degrees of freedom of the wheels and sets indices of the degrees of freedom of the wheels
         for idx, wheel in enumerate(self.wheels):
             index_dof = wheel.calculate_active_n_dof(index_dof)
 
-        self.active_n_dof = 2 + sum([wheel.active_n_dof for wheel in self.wheels])
+        # calculate active number of degrees of freedom for only the bogie
+        active_n_dof_bogie = 2 * len(self.nodes)
+
+        # calculate active number of degrees of freedom of the bogie + connected wheels
+        self.active_n_dof = active_n_dof_bogie + sum([wheel.active_n_dof for wheel in self.wheels])
         return index_dof
 
-
     def set_aux_mass_matrix(self):
+        """
+        Sets the local auxiliary mass matrix of the bogie + connected wheels.
+        :return:
+        """
 
+        # initialise local mass matrix
         self.aux_mass_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
 
+        # set bogie part of the local mass matrix
         self.aux_mass_matrix[0, 0] = self.mass
         self.aux_mass_matrix[1, 1] = self.inertia
 
-        l = 2
+        # set connected wheels part of the local mass matrix
+        l = 2  # local degree of freedom counter
         for wheel in self.wheels:
+            # set mass matrix of a wheel
             wheel.set_aux_mass_matrix()
             n_dof_wheel = wheel.aux_mass_matrix.shape[0]
+
+            # add mass matrix of the wheels to the bogie local mass matrix
             for j in range(n_dof_wheel):
                 for k in range(n_dof_wheel):
                     self.aux_mass_matrix[l + j, l + k] = wheel.aux_mass_matrix[j, k]
             l += n_dof_wheel
 
     def set_aux_stiffness_matrix(self):
+        """
+        Sets the local auxiliary stiffness matrix of the bogie + connected wheels.
+        :return:
+        """
+
+        # initialise local stiffness matrix
         self.aux_stiffness_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
+
+        # set bogie part of the local stiffness matrix
         self.aux_stiffness_matrix[0, 0] = len(self.wheels) * self.stiffness
 
-        l = 2
+        # set connected wheels part of the local stiffness matrix
+        l = 2  # local degree of freedom counter
         for i in range(len(self.wheels)):
+            # set stiffness matrix of a wheel
             self.wheels[i].set_aux_stiffness_matrix()
             n_dof_wheel = self.wheels[i].aux_stiffness_matrix.shape[0]
+
+            # add interaction between the bogie and wheels to the bogie local stiffness matrix
             self.aux_stiffness_matrix[1, 1] += self.stiffness * self.wheel_distances[i] ** 2
 
             self.aux_stiffness_matrix[0, l] += -self.stiffness
@@ -143,6 +247,7 @@ class Bogie(ElementModelPart):
 
             self.aux_stiffness_matrix[l, l] += self.stiffness
 
+            # add stiffness matrix of the wheels to the bogie local stiffness matrix
             for j in range(n_dof_wheel):
                 for k in range(n_dof_wheel):
                     self.aux_stiffness_matrix[l + j, l + k] += self.wheels[i].aux_stiffness_matrix[j, k]
@@ -150,13 +255,25 @@ class Bogie(ElementModelPart):
             l += n_dof_wheel
 
     def set_aux_damping_matrix(self):
+        """
+        Sets the local auxiliary damping matrix of the bogie + connected wheels.
+        :return:
+        """
+
+        # initialise local damping matrix
         self.aux_damping_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
+
+        # set bogie part of the local damping matrix
         self.aux_damping_matrix[0, 0] = len(self.wheels) * self.damping
 
-        l = 2
+        # set connected wheels part of the local damping matrix
+        l = 2  # local degree of freedom counter
         for i in range(len(self.wheels)):
+            # set damping matrix of a wheel
             self.wheels[i].set_aux_damping_matrix()
             n_dof_wheel = self.wheels[i].aux_damping_matrix.shape[0]
+
+            # add interaction between the bogie and wheels to the bogie local damping matrix
             self.aux_damping_matrix[1, 1] += self.damping * self.wheel_distances[i] ** 2
 
             self.aux_damping_matrix[0, l] += -self.damping
@@ -167,6 +284,7 @@ class Bogie(ElementModelPart):
 
             self.aux_damping_matrix[l, l] += self.damping
 
+            # add damping matrix of the wheels to the bogie local damping matrix
             for j in range(n_dof_wheel):
                 for k in range(n_dof_wheel):
                     self.aux_damping_matrix[l + j, l + k] += self.wheels[i].aux_damping_matrix[j, k]
@@ -174,68 +292,79 @@ class Bogie(ElementModelPart):
             l += n_dof_wheel
 
     def set_static_force_vector(self):
+        """
+        Calculates the static load of the bogie and wheels and adds to the local static force vector. Static load is
+        calculated as -mass * gravity constant
+        :return:
+        """
+
+        # calculate static load of the bogie
         self.static_force_vector = np.zeros((self.active_n_dof, 1))
         self.static_force_vector[0, 0] = -self.mass * g
 
-        l=2
+        # set connected wheels part of the local static matrix
+        l = 2  # local degree of freedom counter
         for i in range(len(self.wheels)):
+            # set static load vector of a wheel
             self.wheels[i].set_static_force_vector()
             n_dof_wheel = self.wheels[i].static_force_vector.shape[0]
 
+            # add static load vector of the wheels to the bogie static load vector
             for j in range(n_dof_wheel):
                 self.static_force_vector[l+j, 0] += self.wheels[i].static_force_vector[j, 0]
             l += n_dof_wheel
 
-
-    # def __trim_global_matrices_on_indices(self, row_indices: List, col_indices: List):
-    #     """
-    #     Removes items in global stiffness, mass, damping and force vector on row and column indices
-    #     :param row_indices:
-    #     :param col_indices:
-    #     :return:
-    #     """
-    #
-    #     self.global_stiffness_matrix = utils.delete_from_lil(
-    #         self.global_stiffness_matrix,
-    #         row_indices=row_indices,
-    #         col_indices=col_indices,
-    #     )
-    #     self.global_mass_matrix = utils.delete_from_lil(
-    #         self.global_mass_matrix, row_indices=row_indices, col_indices=col_indices
-    #     )
-    #     self.global_damping_matrix = utils.delete_from_lil(
-    #         self.global_damping_matrix, row_indices=row_indices, col_indices=col_indices
-    #     )
-    #
-    #     self.global_force_vector = utils.delete_from_lil(
-    #         self.global_force_vector, row_indices=row_indices
-    #     )
-
-
     def calculate_total_static_load(self, external_load):
+        """
+        Calculates the total static load on the bogie and on the wheels, this includes the static load of the bogie
+        itself + static external force
+        :param external_load: external static load which works on the centre of the bogie
+        :return:
+        """
+
+        # calculate static load on the bogie itself
         self.total_static_load = self.static_force_vector[0, 0] + external_load
 
+        # distribute the total static load on the bogie over the amount of connected wheels
         distributed_load = self.total_static_load / len(self.wheels)
         for wheel in self.wheels:
             wheel.calculate_total_static_load(distributed_load)
 
 
 class Cart(ElementModelPart):
+    """
+    Cart model part class. This class bases from :class:`~rose.model.model_part.ElementModelPart`. A cart is a mass
+    which can translate and rotate. The cart is connected to a number of bogies which are located at a certain distance
+    from the middle of the cart.
+
+    :Attributes:
+        - :self.bogies:                 all bogies which are connected to the cart
+        - :self.bogie_distances:        List of distance of each connected bogie to the centre of the cart, including sign
+        - :self.mass:                   Mass of the cart
+        - :self.inertia:                Moment of inertia of the cart
+        - :self.stiffness:              Stiffness of the spring between the bogies and the cart
+        - :self.damping:                Damping of the dampers between the bogies and the cart
+        - :self.length:                 Length of the cart
+        - :self.total_static_load:      Total static load of the cart plus static external load
+        - :self.distances:              Distance from the zero coordinate to the cart centre at every time step
+        - :self.active_n_dof:           Number of active degrees of freedom of the cart + connected bogies
+    """
     def __init__(self):
         super().__init__()
 
-        self.bogies = None
-        self.bogie_distances = None  # including sign
+        self.bogies: List = []
+        self.bogie_distances: List = []  # including sign
         self.mass = 0
-        self.inertia =0
+        self.inertia = 0
         self.stiffness = 0  # stiffness cart - bogie
         self.damping = 0
         self.length = None
 
-        self.__n_bogies = None
-
         self.total_static_load = None
         self.distances = None
+        self.active_n_dof = None
+
+        self.__n_bogies = None
 
     @property
     def y_disp_dof(self):
@@ -246,50 +375,97 @@ class Cart(ElementModelPart):
         return True
 
     def set_mesh(self, mesh, y=2, z=0):
+        """
+        Sets the initial mesh of the cart and bogies and adds the mesh to the train mesh.
+
+        :param mesh: train mesh
+        :param y: initial y coordinate of the bogie centre
+        :param z: initial z coordinate of the bogie centre
+        :return:
+        """
+        # Create nodes of the cart
         self.nodes = [Node(self.distances[0], y, z)]
 
+        # add nodes to train mesh
         mesh.add_unique_nodes_to_mesh(self.nodes)
 
+        # create mesh of the bogies which are connected to the cart
         for bogie in self.bogies:
             bogie.set_mesh(mesh)
 
     def calculate_active_n_dof(self, index_dof):
+        """
+        Calculates the amount and indices of active degrees of freedom of the cart. This includes the active degrees
+        of freedom of the connected bogies.
 
+        :param index_dof: index of the degree of freedom in the global system
+        :return:
+        """
+
+        # set index of the degrees of freedom of the cart
         for node in self.nodes:
             node.index_dof[1] = index_dof
             index_dof += 1
             node.index_dof[2] = index_dof
             index_dof += 1
 
+        # calculate active degrees of freedom of the bogies and sets indices of the degrees of freedom of the bogies
         for bogie in self.bogies:
             index_dof = bogie.calculate_active_n_dof(index_dof)
 
-        self.active_n_dof = 2 + sum([bogie.active_n_dof for bogie in self.bogies])
+        # calculate active number of degrees of freedom for only the cart
+        active_n_dof_cart = 2 * len(self.nodes)
+
+        # calculate active number of degrees of freedom of the cart + connected bogies
+        self.active_n_dof = active_n_dof_cart + sum([bogie.active_n_dof for bogie in self.bogies])
         return index_dof
 
     def set_aux_mass_matrix(self):
+        """
+        Sets the local auxiliary mass matrix of the cart + connected bogies.
+        :return:
+        """
+
+        # initialise local mass matrix
         self.aux_mass_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
+
+        # set cart part of the local mass matrix
         self.aux_mass_matrix[0, 0] = self.mass
         self.aux_mass_matrix[1, 1] = self.inertia
 
-        l = 2
+        # set connected bogies part of the local mass matrix
+        l = 2  # local degree of freedom counter
         for bogie in self.bogies:
+            # set mass matrix of a bogie
             bogie.set_aux_mass_matrix()
             n_dof_bogie = bogie.aux_mass_matrix.shape[0]
+
+            # add mass matrix of the bogies to the cart local mass matrix
             for j in range(n_dof_bogie):
                 for k in range(n_dof_bogie):
                     self.aux_mass_matrix[l + j, l + k] += bogie.aux_mass_matrix[j, k]
             l += n_dof_bogie
 
     def set_aux_stiffness_matrix(self):
+        """
+        Sets the local auxiliary stiffness matrix of the cart + connected bogies.
+        :return:
+        """
+
+        # initialise local stiffness matrix
         self.aux_stiffness_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
 
+        # set cart part of the local stiffness matrix
         self.aux_stiffness_matrix[0, 0] = len(self.bogies) * self.stiffness
 
-        l = 2
+        # set connected bogies part of the local stiffness matrix
+        l = 2  # local degree of freedom counter
         for i in range(len(self.bogies)):
+            # set stiffness matrix of a bogie
             self.bogies[i].set_aux_stiffness_matrix()
             n_dof_bogie = self.bogies[i].aux_stiffness_matrix.shape[0]
+
+            # add interaction between the cart and bogies to the cart local stiffness matrix
             self.aux_stiffness_matrix[1, 1] += self.stiffness * self.bogie_distances[i] ** 2
 
             self.aux_stiffness_matrix[0, l] += -self.stiffness
@@ -300,20 +476,32 @@ class Cart(ElementModelPart):
 
             self.aux_stiffness_matrix[l, l] += self.stiffness
 
+            # add stiffness matrix of the bogies to the cart local stiffness matrix
             for j in range(n_dof_bogie):
                 for k in range(n_dof_bogie):
                     self.aux_stiffness_matrix[l + j, l + k] += self.bogies[i].aux_stiffness_matrix[j, k]
             l += n_dof_bogie
 
     def set_aux_damping_matrix(self):
+        """
+        Sets the local auxiliary damping matrix of the cart + connected bogies.
+        :return:
+        """
+
+        # initialise local damping matrix
         self.aux_damping_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
 
+        # set cart part of the local damping matrix
         self.aux_damping_matrix[0, 0] = len(self.bogies) * self.damping
 
-        l = 2
+        # set connected bogies part of the local damping matrix
+        l = 2  # local degree of freedom counter
         for i in range(len(self.bogies)):
+            # set damping matrix of a bogie
             self.bogies[i].set_aux_damping_matrix()
             n_dof_bogie = self.bogies[i].aux_damping_matrix.shape[0]
+
+            # add interaction between the cart and bogies to the cart local damping matrix
             self.aux_damping_matrix[1, 1] += self.damping * self.bogie_distances[i] ** 2
 
             self.aux_damping_matrix[0, l] += -self.damping
@@ -324,27 +512,47 @@ class Cart(ElementModelPart):
 
             self.aux_damping_matrix[l, l] += self.damping
 
+            # add damping matrix of the bogies to the cart local damping matrix
             for j in range(n_dof_bogie):
                 for k in range(n_dof_bogie):
                     self.aux_damping_matrix[l + j, l + k] += self.bogies[i].aux_damping_matrix[j, k]
             l += n_dof_bogie
 
     def set_static_force_vector(self):
+        """
+        Calculates the static load of the cart and bogies and adds to the local static force vector. Static load is
+        calculated as -mass * gravity constant
+        :return:
+        """
+
+        # calculate static load of the cart
         self.static_force_vector = np.zeros((self.active_n_dof, 1))
         self.static_force_vector[0, 0] = -self.mass * g
 
-        l = 2
+        # set connected bogies part of the local static matrix
+        l = 2  # local degree of freedom counter
         for i in range(len(self.bogies)):
+            # set static load vector of a bogie
             self.bogies[i].set_static_force_vector()
             n_dof_bogie = self.bogies[i].static_force_vector.shape[0]
 
+            # add static load vector of the bogies to the cart static load vector
             for j in range(n_dof_bogie):
                 self.static_force_vector[l + j, 0] += self.bogies[i].static_force_vector[j, 0]
             l += n_dof_bogie
 
     def calculate_total_static_load(self, external_load):
+        """
+        Calculates the total static load on the cart and on the bogies, this includes the static load of the cart
+        itself + static external force
+        :param external_load: external static load which works on the centre of the cart
+        :return:
+        """
+
+        # calculate static load on the bogie itself
         self.total_static_load = self.static_force_vector[0,0] + external_load
 
+        # distribute the total static load on the cart over the amount of connected bogies
         distributed_load = self.total_static_load / len(self.bogies)
         for bogie in self.bogies:
             bogie.calculate_total_static_load(distributed_load)
@@ -358,9 +566,6 @@ class TrainModel(GlobalSystem):
 
         self.__bogies = None
         self.__wheels = None
-        #
-        # self.herzian_contact_cof = None
-        # self.herzian_power = 3/2
 
         self.static_wheel_load = None
         self.static_wheel_deformation = None
@@ -491,22 +696,6 @@ class TrainModel(GlobalSystem):
         distributed_load = self.total_static_load / len(self.carts)
         for cart in self.carts:
             cart.calculate_total_static_load(distributed_load)
-
-    # def calculate_static_wheel_deformation(self):
-    #     self.calculate_total_static_load()
-    #
-    #     static_wheel_loads = np.array([wheel.total_static_load for wheel in self.wheels])
-    #     self.static_wheel_deformation = self.herzian_contact_cof * np.sign(static_wheel_loads) * abs(static_wheel_loads) ** (1/self.herzian_power)
-
-    # def __calculate_elastic_wheel_deformation(self, t):
-    #
-    #     elastic_wheel_deformation = (
-    #         # self.static_wheel_deformation
-    #             - self.irregularities_at_wheels[:, t]
-    #     )
-    #
-    #     return elastic_wheel_deformation
-
 
     def initialise_irregularities_at_wheels(self):
         if self.irregularities_at_wheels is None:
