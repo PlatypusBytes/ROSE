@@ -9,34 +9,62 @@ class InvalidRailException(Exception):
 
 
 class Rail(TimoshenkoBeamElementModelPart):
+    """
+    Rail element model part class. This class bases from
+    :class:`~rose.model.model_part.TimoshenkoBeamElementModelPart`.
+
+    :Attributes:
+
+    """
+
     def __init__(self):
         super().__init__()
 
     def calculate_length_rail(self):
+        """
+        Calculates the length of the rail elements. It is required that all element within the model part have an equal
+        size.
+        :return:
+        """
 
+        # calculate coordinate differences between each node
         xdiff = np.diff([node.coordinates[0] for node in self.nodes])
         ydiff = np.diff([node.coordinates[1] for node in self.nodes])
         zdiff = np.diff([node.coordinates[2] for node in self.nodes])
 
+        # calculate total distances for each element
         distances = np.sqrt(np.square(xdiff) + np.square(ydiff) + np.square(zdiff))
 
+        # check if all elements are the same size
         if distances.size > 0:
             if not np.all(np.isclose(distances[0], distances)):
                 raise InvalidRailException("distance between sleepers is not equal")
 
+            # assign length element
             self.length_element = distances[0]
 
     def initialize(self):
+        """
+        Initialises rail model part. Input is validated and the length of the rail is calculated
+        :return:
+        """
         self.validate_input()
         self.calculate_length_rail()
         super(Rail, self).initialize()
 
 
 class Sleeper(ElementModelPart):
+    """
+    Sleeper element model part class. This class bases from
+    :class:`~rose.model.model_part.ElementModelPart`. This model part is a point which contains a mass.
+
+    :Attributes:
+
+        - :self.mass:           mass of the sleeper
+    """
     def __init__(self):
         super().__init__()
         self.mass = None
-        self.height_sleeper = 0.1
 
     @property
     def y_disp_dof(self):
@@ -53,12 +81,12 @@ class Sleeper(ElementModelPart):
 
 
 class RailPad(RodElementModelPart):
+    """
+    Rail pad element model part class. This class bases from
+    :class:`~rose.model.model_part.RodElementModelPart`.
+
+    :Attributes:
+
+    """
     def __init__(self):
         super().__init__()
-        self.stiffness = None
-        self.damping = None
-        self.aux_stiffness_matrix = None
-        self.aux_damping_matrix = None
-
-if __name__ == "__main__":
-    pass

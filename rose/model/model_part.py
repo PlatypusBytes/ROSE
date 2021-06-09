@@ -252,7 +252,6 @@ class ElementModelPart(ModelPart):
         """
         return self.__rotation_matrix
 
-    @abc.abstractmethod
     def set_rotation_matrix(self, rotation, dim):
         """
         Sets the rotation matrix. This function is meant as an abstract method
@@ -263,7 +262,6 @@ class ElementModelPart(ModelPart):
         """
         pass
 
-    @abc.abstractmethod
     def set_normal_shape_functions(self, x):
         """
         Sets the local normal shape functions at distance x. This function is meant as an abstract method
@@ -273,7 +271,6 @@ class ElementModelPart(ModelPart):
         """
         pass
 
-    @abc.abstractmethod
     def set_y_shape_functions(self, x):
         """
         Sets the local shear shape functions at distance x. This function is meant as an abstract method
@@ -283,7 +280,6 @@ class ElementModelPart(ModelPart):
         """
         pass
 
-    @abc.abstractmethod
     def set_z_rot_shape_functions(self, x):
         """
         Sets the rotation around the z-axis shape functions at distance x. This function is meant as an abstract method
@@ -469,8 +465,6 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         self._z_rot_shape_functions = np.zeros(4)
 
         self.__timoshenko_factor = 0
-
-
 
     @property
     def normal_dof(self):
