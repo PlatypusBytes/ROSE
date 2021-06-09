@@ -26,7 +26,8 @@ class NoDispRotCondition(ConditionModelPart):
 
 class LoadCondition(ConditionModelPart):
     """
-    Class which contains a load boundary condition. This class bases from ConditionModelPart
+    Class which contains a load boundary condition. This class bases from
+    :class:`~rose.model.boundary_conditions.ConditionModelPart`.
 
     :Attributes:
 

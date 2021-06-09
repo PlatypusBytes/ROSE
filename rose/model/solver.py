@@ -8,6 +8,7 @@ from tqdm import tqdm
 from rose.model.exceptions import *
 import logging
 
+
 def init(m_global, c_global, k_global, force_ini, u, v):
     r"""
     Calculation of the initial conditions - acceleration for the first time-step.
@@ -31,6 +32,30 @@ def init(m_global, c_global, k_global, force_ini, u, v):
 
 
 class Solver:
+    """
+    Solver class. This class forms the base for each solver.
+
+    :Attributes:
+
+        - :self.u0:                 initial displacement vector
+        - :self.v0:                 initial velocity vector
+        - :self.u:                  full displacement matrix [ndof, number of time steps]
+        - :self.v:                  full velocity matrix [ndof, number of time steps]
+        - :self.a:                  full acceleration matrix [ndof, number of time steps]
+        - :self.f:                  full force matrix [ndof, number of time steps]
+        - :self.time:               time discretisation
+        - :self.load_func:          optional custom load function to alter external force during calculation
+        - :self.stiffness_func:     optional custom stiffness function to alter stiffness matrix during calculation
+        - :self.mass_func:          optional custom mass function to alter mass matrix during calculation
+        - :self.damping_func:       optional custom damping function to alter damping matrix during calculation
+        - :self.output_interval:    number of time steps interval in which output results are stored
+        - :self.u_out:              output displacement stored at self.output_interval
+        - :self.v_out:              output velocities stored at self.output_interval
+        - :self.a_out:              output accelerations stored at self.output_interval
+        - :self.time_out:           output time discretisation stored at self.output_interval
+        - :self.number_equations:   number of equations to be solved
+    """
+
     def __init__(self):
         # define initial conditions
         self.u0 = []
@@ -40,7 +65,7 @@ class Solver:
         self.u = []
         self.v = []
         self.a = []
-        self.f = [] # external force vector
+        self.f = []
         self.time = []
 
         # load function
@@ -54,12 +79,20 @@ class Solver:
         self.v_out = []
         self.a_out = []
         self.time_out = []
-        return
+
+        self.number_equations = None
 
     def initialise(self, number_equations, time):
+        """
+        Initialises the solver before the calculation starts
+
+        :param number_equations: number of equations to be solved
+        :param time: time discretisation
+        :return:
+        """
         print("Initialising solver")
-        self.u0 = np.zeros((number_equations))
-        self.v0 = np.zeros((number_equations))
+        self.u0 = np.zeros(number_equations)
+        self.v0 = np.zeros(number_equations)
 
         self.time = np.array(time)
 
@@ -68,11 +101,24 @@ class Solver:
         self.a = np.zeros((len(time), number_equations))
         self.f = np.zeros((len(time), number_equations))
 
+        self.number_equations = number_equations
+
     def update(self, t_start_idx):
+        """
+        Updates the solver on a certain stage. Initial conditions are retrieved from previously calculated values for
+        displacements and velocities.
+
+        :param t_start_idx: start time index of current stage
+        :return:
+        """
         self.u0 = self.u[t_start_idx, :]
         self.v0 = self.v[t_start_idx, :]
 
     def finalise(self):
+        """
+        Finalises the solver. Displacements, velocities, accelerations and time are stored at a certain interval.
+        :return:
+        """
         self.u_out = self.u[0::self.output_interval,:]
         self.v_out = self.v[0::self.output_interval,:]
         self.a_out = self.a[0::self.output_interval,:]
@@ -80,10 +126,22 @@ class Solver:
         self.time_out = self.time[0::self.output_interval]
 
     def validate_input(self, F, t_start_idx, t_end_idx):
+        """
+        Validates solver input at current stage. It is checked if the external force vector shape corresponds with the
+        time discretisation. Furthermore, it is checked if all time steps in the current stage are equal.
+
+        :param F:           External force vector.
+        :param t_start_idx: first time index of current stage
+        :param t_end_idx:   last time index of current stage
+        :return:
+        """
+
+        # validate shape external force vector
         if len(self.time) != np.shape(F)[1]:
             logging.error("Solver error: Solver time is not equal to force vector time")
             raise TimeException("Solver time is not equal to force vector time")
 
+        # validate time step size
         diff = np.diff(self.time[t_start_idx:t_end_idx])
         if diff.size >0:
             if not np.all(np.isclose(diff, diff[0])):
@@ -92,6 +150,17 @@ class Solver:
 
 
 class ZhaiSolver(Solver):
+    """
+    Zhai Solver class. This class contains the explicit solver according to [Zhai 1996]. This class bases from
+    :class:`~rose.model.solver.Solver`.
+
+    :Attributes:
+
+       - :self.psi:      Zhai numerical stability parameter
+       - :self.phi:      Zhai numerical stability parameter
+       - :self.beta:     Newmark numerical stability parameter
+       - :self.gamma:    Newmark numerical stability parameter
+    """
     def __init__(self):
         super(ZhaiSolver, self).__init__()
 
@@ -99,8 +168,6 @@ class ZhaiSolver(Solver):
         self.phi = 0.5
         self.beta = 1/4
         self.gamma = 1/2
-
-        self.number_equations = None
 
     def calculate_initial_values(self, M, C, K, F, u0, v0):
         """
@@ -119,14 +186,14 @@ class ZhaiSolver(Solver):
         a0 = self.evaluate_acceleration(inv_M, C, K, F, u0, v0)
         return inv_M, a0
 
-
     def calculate_force(self, u, F, t):
         """
         Calculate external force if a load function is given. If no load function is given, force is taken from current
         load vector
-        :param u:
-        :param F:
-        :param t:
+
+        :param u: displacement at time t
+        :param F: External force matrix
+        :param t: current time step
         :return:
         """
         if self.load_func is not None:
@@ -146,7 +213,7 @@ class ZhaiSolver(Solver):
         :param v: velocity
         :param a: acceleration
         :param a_old: acceleration at previous time step
-        :param dt: delta time
+        :param dt: time step size
         :param is_initial: bool to indicate current iteration is the initial iteration
         :return:
         """
@@ -163,7 +230,8 @@ class ZhaiSolver(Solver):
         v_new = v + (1 + phi) * a * dt - phi * a_old * dt
         return u_new, v_new
 
-    def evaluate_acceleration(self, inv_M, C, K, F, u, v):
+    @staticmethod
+    def evaluate_acceleration(inv_M, C, K, F, u, v):
         """
         Calculate acceleration
 
@@ -196,7 +264,7 @@ class ZhaiSolver(Solver):
 
     def calculate(self, M, C, K, F, t_start_idx, t_end_idx):
         """
-        Perform calculation with Zhai solver [Zhai 1996]
+        Perform calculation with the explicit Zhai solver [Zhai 1996]
 
         :param M: Mass matrix
         :param C: Damping matrix
@@ -216,6 +284,7 @@ class ZhaiSolver(Solver):
         force = F[:, t_start_idx].toarray()
         force = force[:,0]
 
+        # get initial displacement, velocity, acceleration and inverse mass matrix
         u = self.u0
         v = self.v0
         inv_M, a = self.calculate_initial_values(M, C, K, force, u, v)
@@ -275,20 +344,45 @@ class ZhaiSolver(Solver):
 
         # close the progress bar
         pbar.close()
-        return
 
 
 class NewmarkSolver(Solver):
+    """
+    Newmark Solver class. This class contains the implicit incremental Newmark solver. This class bases from
+    :class:`~rose.model.solver.Solver`.
+
+    :Attributes:
+
+       - :self.beta:     Newmark numerical stability parameter
+       - :self.gamma:    Newmark numerical stability parameter
+    """
+
     def __init__(self):
         super(NewmarkSolver, self).__init__()
         self.beta = 0.25
         self.gamma = 0.5
 
     def update_force(self, u, F_previous, t):
+        """
+        Updates the external force vector at time t
+
+        :param u: displacement vector at time t
+        :param F_previous: Force vector at previous time step
+        :param t:  current time step index
+        :return:
+        """
+
+        # calculates force with custom load function
         force = self.load_func(u, t)
+
+        # Convert force vector to a 1d numpy array
         if issparse(force):
             force = force.toarray()[:, 0]
+
+        # calculate force increment with respect to the previous time step
         d_force = force - F_previous
+
+        # copy force vector such that force vector data at each time step is maintained
         F_total = np.copy(force)
 
         return d_force, F_total
@@ -298,17 +392,19 @@ class NewmarkSolver(Solver):
         Newmark integration scheme.
         Incremental formulation.
 
-        :param settings: dictionary with the integration settings
         :param M: Mass matrix
         :param C: Damping matrix
         :param K: Stiffness matrix
         :param F: External force matrix
-        :param t_start_idx: time index of starting time for the analysis
-        :param t_end_idx: time index of end time for the analysis
+        :param t_start_idx: time index of starting time for the stage analysis
+        :param t_end_idx: time index of end time for the stage analysis
         :return:
         """
 
+        # validate solver index
         self.validate_input(F, t_start_idx, t_end_idx)
+
+        # calculate time step size
         # todo correct t_step, as it is not correct, but tests succeed
         t_step = (self.time[t_end_idx] - self.time[t_start_idx]) / (
             (t_end_idx - t_start_idx))
@@ -398,15 +494,20 @@ class NewmarkSolver(Solver):
             self.u[t, :] = u
             self.v[t, :] = v
             self.a[t, :] = a
-            # self.f[t, :] = force_ext
 
+        # calculate nodal force
         self.f[:, :] = np.transpose(K.dot(np.transpose(self.u)))
         # close the progress bar
         pbar.close()
-        return
 
 
 class StaticSolver(Solver):
+    """
+    Static Solver class. This class contains the static incremental solver. This class bases from
+    :class:`~rose.model.solver.Solver`.
+
+    """
+
     def __init__(self):
         super(StaticSolver, self).__init__()
 
@@ -417,8 +518,8 @@ class StaticSolver(Solver):
 
         :param K: Stiffness matrix
         :param F: External force matrix
-        :param t_start_idx: time index of starting time for the analysis
-        :param t_end_idx: time index of end time for the analysis
+        :param t_start_idx: time index of starting time for the stage analysis
+        :param t_end_idx: time index of end time for the stage analysis
         :return:
         """
 
@@ -458,23 +559,3 @@ class StaticSolver(Solver):
 
         # close the progress bar
         pbar.close()
-        return
-
-    def save_data(self):
-        """
-        Saves the data into a binary pickle file
-        """
-
-        # construct dic structure
-        data = {
-            "displacement": self.u,
-            "velocity": self.v,
-            "acceleration": self.a,
-            "time": self.time,
-        }
-
-        # dump data
-        with open(os.path.join(self.output_folder, "data.pickle"), "wb") as f:
-            pickle.dump(data, f)
-
-        return
