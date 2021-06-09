@@ -554,7 +554,6 @@ class TestBenchmarkSet1:
         train_model.sec_stiffness = 5.32e6
         train_model.prim_damping = 4.9e4
         train_model.sec_damping = 7e4
-        train_model.herzian_contact_cof = 1
 
         # set elements
         material = Material()

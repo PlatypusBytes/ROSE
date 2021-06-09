@@ -11,6 +11,7 @@ from rose.model.solver import NewmarkSolver, StaticSolver, ZhaiSolver
 
 g = 9.81
 
+
 class Wheel(ElementModelPart):
     def __init__(self):
         super().__init__()
@@ -18,9 +19,8 @@ class Wheel(ElementModelPart):
         self.total_static_load = None
         self.distances = None
 
-        self.index_dof = [None]
+        # self.index_dof = [None]
 
-        self.nodes = None
 
     @property
     def y_disp_dof(self):
@@ -29,7 +29,6 @@ class Wheel(ElementModelPart):
     def set_aux_mass_matrix(self):
         self.aux_mass_matrix = np.zeros((1, 1))
         self.aux_mass_matrix[0] = self.mass
-
 
     def set_aux_stiffness_matrix(self):
         self.aux_stiffness_matrix = np.zeros((1, 1))
@@ -74,7 +73,7 @@ class Bogie(ElementModelPart):
         self.total_static_load = None
         self.distances = None
 
-        self.index_dof = [None, None]
+        # self.index_dof = [None, None]
 
     @property
     def y_disp_dof(self):
@@ -92,8 +91,8 @@ class Bogie(ElementModelPart):
         for wheel in self.wheels:
             wheel.set_mesh(mesh)
 
-    def __add_wheel_mass_matrix(self, wheel, aux_mass_matrix):
-        pass
+    # def __add_wheel_mass_matrix(self, wheel, aux_mass_matrix):
+    #     pass
 
     def calculate_active_n_dof(self, index_dof):
         self.active_n_dof = 2 + len(self.wheels)
@@ -188,29 +187,29 @@ class Bogie(ElementModelPart):
             l += n_dof_wheel
 
 
-    def __trim_global_matrices_on_indices(self, row_indices: List, col_indices: List):
-        """
-        Removes items in global stiffness, mass, damping and force vector on row and column indices
-        :param row_indices:
-        :param col_indices:
-        :return:
-        """
-
-        self.global_stiffness_matrix = utils.delete_from_lil(
-            self.global_stiffness_matrix,
-            row_indices=row_indices,
-            col_indices=col_indices,
-        )
-        self.global_mass_matrix = utils.delete_from_lil(
-            self.global_mass_matrix, row_indices=row_indices, col_indices=col_indices
-        )
-        self.global_damping_matrix = utils.delete_from_lil(
-            self.global_damping_matrix, row_indices=row_indices, col_indices=col_indices
-        )
-
-        self.global_force_vector = utils.delete_from_lil(
-            self.global_force_vector, row_indices=row_indices
-        )
+    # def __trim_global_matrices_on_indices(self, row_indices: List, col_indices: List):
+    #     """
+    #     Removes items in global stiffness, mass, damping and force vector on row and column indices
+    #     :param row_indices:
+    #     :param col_indices:
+    #     :return:
+    #     """
+    #
+    #     self.global_stiffness_matrix = utils.delete_from_lil(
+    #         self.global_stiffness_matrix,
+    #         row_indices=row_indices,
+    #         col_indices=col_indices,
+    #     )
+    #     self.global_mass_matrix = utils.delete_from_lil(
+    #         self.global_mass_matrix, row_indices=row_indices, col_indices=col_indices
+    #     )
+    #     self.global_damping_matrix = utils.delete_from_lil(
+    #         self.global_damping_matrix, row_indices=row_indices, col_indices=col_indices
+    #     )
+    #
+    #     self.global_force_vector = utils.delete_from_lil(
+    #         self.global_force_vector, row_indices=row_indices
+    #     )
 
 
     def calculate_total_static_load(self, external_load):
@@ -267,7 +266,6 @@ class Cart(ElementModelPart):
 
         self.active_n_dof = 2 + sum([bogie.active_n_dof for bogie in self.bogies])
         return index_dof
-
 
     def set_aux_mass_matrix(self):
         self.aux_mass_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
@@ -360,9 +358,9 @@ class TrainModel(GlobalSystem):
 
         self.__bogies = None
         self.__wheels = None
-
-        self.herzian_contact_cof = None
-        self.herzian_power = 3/2
+        #
+        # self.herzian_contact_cof = None
+        # self.herzian_power = 3/2
 
         self.static_wheel_load = None
         self.static_wheel_deformation = None
@@ -377,7 +375,6 @@ class TrainModel(GlobalSystem):
         self.total_static_load = None
 
         self.contact_dofs = None
-
 
     @property
     def bogies(self):
@@ -495,20 +492,20 @@ class TrainModel(GlobalSystem):
         for cart in self.carts:
             cart.calculate_total_static_load(distributed_load)
 
-    def calculate_static_wheel_deformation(self):
-        self.calculate_total_static_load()
+    # def calculate_static_wheel_deformation(self):
+    #     self.calculate_total_static_load()
+    #
+    #     static_wheel_loads = np.array([wheel.total_static_load for wheel in self.wheels])
+    #     self.static_wheel_deformation = self.herzian_contact_cof * np.sign(static_wheel_loads) * abs(static_wheel_loads) ** (1/self.herzian_power)
 
-        static_wheel_loads = np.array([wheel.total_static_load for wheel in self.wheels])
-        self.static_wheel_deformation = self.herzian_contact_cof * np.sign(static_wheel_loads) * abs(static_wheel_loads) ** (1/self.herzian_power)
-
-    def __calculate_elastic_wheel_deformation(self, t):
-
-        elastic_wheel_deformation = (
-            # self.static_wheel_deformation
-                - self.irregularities_at_wheels[:, t]
-        )
-
-        return elastic_wheel_deformation
+    # def __calculate_elastic_wheel_deformation(self, t):
+    #
+    #     elastic_wheel_deformation = (
+    #         # self.static_wheel_deformation
+    #             - self.irregularities_at_wheels[:, t]
+    #     )
+    #
+    #     return elastic_wheel_deformation
 
 
     def initialise_irregularities_at_wheels(self):
