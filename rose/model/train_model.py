@@ -559,41 +559,67 @@ class Cart(ElementModelPart):
 
 
 class TrainModel(GlobalSystem):
+    """
+    Train model part class. This class bases from :class:`~rose.model.global_system.GlobalSystem`. This class contains
+    all the attributes, and functions which are exclusively related to the train model. The class contains the mesh
+    and model parts of all the train elements.
+
+    :Attributes:
+        - :self.carts:                      all carts which are connected to the train
+        - :self.cart_distances:             list of dinstances between the [0,0] coordinate to the middle of each cart
+        - :self.static_force_vector:        Global force vector of only the static load of the train.
+        - :self.velocities:                 np array of the velocity of the train at each time step
+        - :self.time:                       time discretisation
+        - :self.irregularities_at_wheels:   np array of irregularities at the wheels at each time step
+        - :self.total_static_load:          Total static load working on the carts
+        - :self.contact_dofs:               global degree of freedom indices which are in contact with the surface (rail)
+    """
     def __init__(self):
         super().__init__()
-        self.carts = None
-        self.cart_distances = None
+        self.carts: List = None
+        self.cart_distances: List = None
+        self.static_force_vector: np.ndarray = None
+
+        self.velocities: np.ndarray = None
+        self.time: np.ndarray = None
+
+        self.irregularities_at_wheels: np.ndarray = None
+        self.total_static_load: float = None
+
+        self.contact_dofs: List = None
 
         self.__bogies = None
         self.__wheels = None
 
-        self.static_wheel_load = None
-        self.static_wheel_deformation = None
-
-        self.static_force_vector = None
-
-        self.velocities = None
-        self.time = None
-
-        self.deformation_wheels = None
-        self.irregularities_at_wheels = None
-        self.total_static_load = None
-
-        self.contact_dofs = None
-
     @property
     def bogies(self):
+        """
+        All bogies which are part of the train
+
+        :return:
+        """
         return self.__bogies
 
     @property
     def wheels(self):
+        """
+        All wheels which are part of the train
+
+        :return:
+        """
         return self.__wheels
 
     def set_mesh(self):
+        """
+        Sets the mesh of the complete train
+        :return:
+        """
 
+        # set mesh for each cart
         for cart in self.carts:
             cart.set_mesh(self.mesh)
 
+        # collect nodes
         self.nodes = list(self.mesh.nodes)
 
     def __get_bogies(self):
@@ -607,28 +633,44 @@ class TrainModel(GlobalSystem):
             self.__wheels.extend(bogie.wheels)
 
     def get_train_parts(self):
+        """
+        Collect all bogies and wheels which are connected to the train
+        :return:
+        """
         self.__get_bogies()
         self.__get_wheels()
 
-
     def initialise_ndof(self):
+        """
+        Initialise all indices of the degrees of freedom within the train. Also calculates total number of degrees of
+        freedom
+        :return:
+        """
 
+        # calculate active number of degree of freedom for each cart
         index_dof = 0
         for cart in self.carts:
             index_dof = cart.calculate_active_n_dof(index_dof)
 
+        # calculate total number of degrees of freedom of thw whole train
         self.total_n_dof = sum([cart.active_n_dof for cart in self.carts])
 
     def set_global_mass_matrix(self):
         """
-        Set mass matrix of train
+        Set global mass matrix of train
         :return:
         """
 
+        # initialise global mass matrix
         self.global_mass_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
-        l = 0
+
+        # set local mass matrices for each cart and add to global mass matrix
+        l = 0  # global degree of freedom counter
         for cart in self.carts:
+            # set local mass matrix of cart
             cart.set_aux_mass_matrix()
+
+            # add local mass matrix of cart to global mass matrix of train
             n_dof_cart = cart.aux_mass_matrix.shape[0]
             for j in range(n_dof_cart):
                 for k in range(n_dof_cart):
@@ -637,38 +679,47 @@ class TrainModel(GlobalSystem):
 
     def set_global_stiffness_matrix(self):
         """
-        Set stiffness matrix of train
+        Set global stiffness matrix of train
         :return:
         """
 
+        # initialise global stiffness matrix
         self.global_stiffness_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
-        l = 0
+
+        # set local stiffness matrices for each cart and add to global stiffness matrix
+        l = 0  # global degree of freedom counter
         for cart in self.carts:
+            # set local stiffness matrix of cart
             cart.set_aux_stiffness_matrix()
+
+            # add local stiffness matrix of cart to global stiffness matrix of train
             n_dof_cart = cart.aux_stiffness_matrix.shape[0]
             for j in range(n_dof_cart):
                 for k in range(n_dof_cart):
                     self.global_stiffness_matrix[l + j, l + k] += cart.aux_stiffness_matrix[j, k]
-
             l += n_dof_cart
 
     def set_global_damping_matrix(self):
         """
-        Set damping matrix of train
+        Set global damping matrix of train
         :return:
         """
 
+        # initialise global damping matrix
         self.global_damping_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
-        l = 0
+
+        # set local damping matrices for each cart and add to global damping matrix
+        l = 0  # global degree of freedom counter
         for cart in self.carts:
+            # set local damping matrix of cart
             cart.set_aux_damping_matrix()
+
+            # add local damping matrix of cart to global damping matrix of train
             n_dof_cart = cart.aux_damping_matrix.shape[0]
             for j in range(n_dof_cart):
                 for k in range(n_dof_cart):
                     self.global_damping_matrix[l + j, l + k] += cart.aux_damping_matrix[j, k]
-
             l += n_dof_cart
-
 
     def set_static_force_vector(self):
         """
@@ -676,9 +727,11 @@ class TrainModel(GlobalSystem):
         :return:
         """
 
+        # initialise global static force vector
         self.static_force_vector = np.zeros((self.total_n_dof, 1))
 
-        l = 0
+        # set static force vector for each cart and add to global static force vector
+        l = 0  # global degree of freedom counter
         for cart in self.carts:
 
             # set static force vector of cart
@@ -691,69 +744,111 @@ class TrainModel(GlobalSystem):
             l += n_dof_cart
 
     def calculate_total_static_load(self, external_load=0):
+        """
+        Calculates the total static load working on the complete train
+        :param external_load: Optional external load working on the train
+        :return:
+        """
 
+        # set static load on the train
         self.total_static_load = external_load
+
+        # divide static load among carts
         distributed_load = self.total_static_load / len(self.carts)
+
+        # add static load on all the carts
         for cart in self.carts:
             cart.calculate_total_static_load(distributed_load)
 
     def initialise_irregularities_at_wheels(self):
+        """
+        Initialise irregularities at the train wheels. If the irregularities are not initialised by the user, the
+        irregularities at the wheels are set at 0.
+        :return:
+        """
         if self.irregularities_at_wheels is None:
-            self.irregularities_at_wheels =np.zeros((len(self.wheels), len(self.time)))
+            self.irregularities_at_wheels = np.zeros((len(self.wheels), len(self.time)))
 
     def get_contact_dofs(self):
+        """
+        Gets the indices of the train degrees of freedom which are in contact with the surface (rail)
+        :return:
+        """
+
         wheel_dofs = []
+        # loop over each wheel
         for wheel in self.wheels:
             for node in wheel.nodes:
+
+                # get all active wheel degrees of freedom
                 for idx_dof in node.index_dof:
                     if idx_dof is not None:
                         wheel_dofs.append(idx_dof)
 
+        # append wheel degrees of freedom to contact degrees of freedom
         self.contact_dofs = wheel_dofs
 
     def initialize_force_vector(self):
-        self.global_force_vector = np.zeros((self.total_n_dof, len(self.time)))
-        self.set_static_force_vector()
+        """
+        Initialise global force vector of the train
+        :return:
+        """
 
+        self.global_force_vector = np.zeros((self.total_n_dof, len(self.time)))
+
+        # add static force vector to global force vector
+        self.set_static_force_vector()
         self.global_force_vector += self.static_force_vector
 
     def calculate_distances(self):
         """
         Calculate the distance of each element of the train for each time step.
-        Set mesh of each element of the train.
         :return:
         """
 
+        # calculate time steps
         dt = np.diff(self.time)
 
         # calculate distance from velocity and time
         distances = np.cumsum(np.append(0, self.velocities[:-1] * dt))
 
-        # calculated distance for each time step for each cart
+        # calculate distance from the [0, 0] coordinate to the the middle of each cart at each time step
         for i, cart in enumerate(self.carts):
             cart.distances = np.zeros(len(self.time))
             cart.distances = distances + self.cart_distances[i]
 
-            # calculated distance for each time step for each bogie of cart
+            # calculate distance from the [0, 0] coordinate to the the middle of each bogie at each time step
             for j, bogie in enumerate(cart.bogies):
                 bogie.distances = np.zeros(len(self.time))
                 bogie.distances = cart.distances + cart.bogie_distances[j]
 
-                # calculated distance for each time step for each wheel of bogie
+                # calculate distance from the [0, 0] coordinate to the the middle of each wheel at each time step
                 for k, wheel in enumerate(bogie.wheels):
                     wheel.distances = np.zeros(len(self.time))
                     wheel.distances = bogie.distances + bogie.wheel_distances[k]
 
     def initialise_global_matrices(self):
+        """
+        Inititalise each global train matrix. I.e. mass matrix, damping matrix, stiffness matrix, force vector.
+        :return:
+        """
 
+        # initialise global matrices
         self.set_global_mass_matrix()
         self.set_global_damping_matrix()
         self.set_global_stiffness_matrix()
         self.initialize_force_vector()
 
+        # remove obsolete indices from global matrices
         self.trim_global_matrices()
 
     def initialise(self):
+        """
+        Initialise train. Set geometry, set degrees of freedom, initialises global matrices and vectors, stages and
+        solver.
+
+        :return:
+        """
         # Setup geometry
         self.calculate_distances()
         self.set_mesh()
@@ -761,17 +856,21 @@ class TrainModel(GlobalSystem):
         # Get bogies and wheels
         self.get_train_parts()
 
+        # initialise irregularities at the wheels
         self.initialise_irregularities_at_wheels()
 
-        # setup number degree of freedom
+        # setup numbers of degree of freedom and get contact degrees of freedom
         self.initialise_ndof()
         self.get_contact_dofs()
 
+        # initialise global matrices and force vector
         self.initialise_global_matrices()
         self.calculate_total_static_load()
 
+        # get stage divisions
         self.set_stage_time_ids()
 
+        # initialise solver
         self.solver.initialise(self.total_n_dof, self.time)
 
     def trim_global_matrices(self):
@@ -780,33 +879,45 @@ class TrainModel(GlobalSystem):
         :return:
         """
 
+        # trim global matrices
         super().trim_all_global_matrices()
-        self.get_contact_dofs()
 
+        # reset contact degrees of freedom
+        self.get_contact_dofs()
 
     def calculate_initial_displacement(self, wheel_displacements, shift_in_ndof=0):
         """
         Calculates the initial displacement of the train
-        :param wheel_displacements:
+
+        :param wheel_displacements: displacement of track below initial location of the wheels
         :param shift_in_ndof: shift in number degree of freedom, relevant in coupled systems, default is set at 0
         :return:
         """
 
-        # transfer matrices to compressed sparsed column matrices
+        # transform matrices to sparse lil matrices
         K = sparse.lil_matrix(np.copy(self.global_stiffness_matrix))
         F = sparse.lil_matrix(np.copy(self.global_force_vector))
 
+        # get the vertical degree of freedom of the wheels
         wheel_dofs = [wheel.nodes[0].index_dof[1] - shift_in_ndof for wheel in self.wheels]
+
+        # initialise static solver
         ini_solver = StaticSolver()
         ini_solver.initialise(self.total_n_dof - len(wheel_dofs), self.time)
+
+        # remove wheel degrees of freedom from the system
         K = utils.delete_from_lil(
             K, row_indices=wheel_dofs, col_indices=wheel_dofs).tocsc()
         F = utils.delete_from_lil(
             F, row_indices=wheel_dofs).tocsc()
+
+        # calculate initial displacement of the train, excluding the wheels
         ini_solver.calculate(K, F, 0, 1)
 
         # todo take into account initial differential settlements between wheels, for now max displacement of wheel is
         #  taken. This can improve numerical stability.
+
+        # add wheel displacements to the initial displacement of the train system
         mask = np.ones(self.solver.u[0,:].shape, bool)
         mask[wheel_dofs] = False
         self.solver.u[0, mask] = ini_solver.u[1, :] + max(wheel_displacements)
@@ -814,25 +925,28 @@ class TrainModel(GlobalSystem):
 
     def calculate_stage(self, start_time_id, end_time_id):
         """
-        Calculates the global system
+        Calculates a stage of the train system
+
+        :param start_time_id: first time index of the stage
+        :param end_time_id: final time index of the stage
         :return:
         """
 
-        # transfer matrices to compressed sparsed column matrices
+        # transform matrices to sparse column matrices
         M = sparse.csc_matrix(self.global_mass_matrix)
         C = sparse.csc_matrix(self.global_damping_matrix)
         K = sparse.csc_matrix(self.global_stiffness_matrix)
         F = sparse.csc_matrix(self.global_force_vector)
 
-        # run_stages with Zhai solver
+        # run_stage with Zhai solver
         if isinstance(self.solver, ZhaiSolver):
             self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
 
-        # run_stages with Newmark solver
+        # run_stage with Newmark solver
         if isinstance(self.solver, NewmarkSolver):
             self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
 
-        # run_stages with Static solver
+        # run_stage with Static solver
         if isinstance(self.solver, StaticSolver):
             self.solver.calculate(K, F, start_time_id, end_time_id)
 
@@ -847,14 +961,20 @@ class TrainModel(GlobalSystem):
 
     def update_stage(self, start_time_id, end_time_id):
         """
-        Updates model parts and solver
-        :param start_time_id:
-        :param end_time_id:
+        Updates solver
+
+        :param start_time_id: first time index of the stage
+        :param end_time_id: final time index of the stage
         :return:
         """
         self.solver.update(start_time_id)
 
     def main(self):
+        """
+        Main function of the class. The system is initialised. Each stage is calculated.
+
+        :return:
+        """
 
         self.initialise()
 
