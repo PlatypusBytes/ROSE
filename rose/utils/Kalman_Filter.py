@@ -48,6 +48,20 @@ class KalmanFilter:
 
         return
 
+    def update_control_matrices(self, timestep):
+
+        # A: prediction matrix: relation between equation of motion and velocity
+        self.A = np.array([[1, timestep], [0, 1]])
+
+        # B: control matrix: relation between equation of motion and acceleration
+        self.B = np.array([1 / 2 * timestep ** 2, timestep])
+
+        # H: matrix to change format
+        self.H = np.diag(np.diag(self.A))
+
+        # C: matrix to change format for measurements
+        self.C = np.diag(np.diag(self.A))
+
     def state_matrix(self):
 
         self.x = np.dot(self.A, self.x) + np.dot(self.B, self.u) + self.w
@@ -110,7 +124,7 @@ class KalmanFilter:
 
     def predicted_state(self):
 
-        self.x = self.x + np.dot(self.K, (self.observation - np.dot(self.H, self.x)))
+        self.x = self.x + np.dot(self.K, (self.Y - np.dot(self.H, self.x)))
 
         # update to results
         self.updated_x.append(self.x)
@@ -146,6 +160,7 @@ if __name__ == "__main__":
 
     for i in range(1, len(observations)):
         print(f"######################\n{i}\n######################")
+        kf.update_control_matrices(delta_t)
         kf.state_matrix()
         # kf.process_cov_matrix(P0[0], P0[1])
         kf.predict_process_cov_matrix()
