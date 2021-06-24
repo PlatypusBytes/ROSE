@@ -45,11 +45,22 @@ def load_inframon_data(filename: str) -> Dict:
     return data
 
 
-def plot_train_velocity(data, fig=None, position=111):
+def plot_train_velocity(data: Dict, fig=None, position=111):
+    """
+    Plots train velocity versus time
+
+    :param data: Ricardo data dictionary
+    :param fig: optional existing figure
+    :param position: position in subplot
+    :return:
+    """
+
+    # initialises figure if it does not exists
     if fig is None:
         fig = plt.figure()
     ax = fig.add_subplot(position)
 
+    # plots time series
     if data["time"].size > 0:
         ax.plot(data["time"], data["speed"])
         ax.set_xlabel("Time [s]")
@@ -57,15 +68,104 @@ def plot_train_velocity(data, fig=None, position=111):
 
     return fig, ax
 
-def plot_acceleration(time, acceleration, fig=None, position=111):
+def plot_velocity_signal(time, acceleration, fig=None, position=111):
+    """
+    Integrates acceleration to velocity and plots a time series of the axle velocity time series
+
+    :param time: time array
+    :param acceleration:  acceleration array
+    :param fig: optional existing figure
+    :param position: position in subplot
+    :return:
+    """
+
+    # integrations acceleration signal to velocity signal
+    velocity = signal_proc.int_sig(acceleration, time, hp=True,
+                              mov=False, baseline=False, ini_cond=0)
+
+    # initialises figure if it does not exists
     if fig is None:
         fig = plt.figure()
     ax = fig.add_subplot(position)
 
+    # plots time series
+    if time.size > 0:
+        ax.plot(time, velocity)
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("Axle velocity [$\mathregular{m/s}$]")
+
+    return fig, ax
+
+def plot_acceleration_signal(time, acceleration, fig=None, position=111):
+    """
+    Plots a time series of the axle acceleration time series
+
+    :param time: time array
+    :param acceleration:  acceleration array
+    :param fig: optional existing figure
+    :param position: position in subplot
+    :return:
+    """
+
+    # initialises figure if it does not exists
+    if fig is None:
+        fig = plt.figure()
+    ax = fig.add_subplot(position)
+
+    # plots time series
     if time.size > 0:
         ax.plot(time, acceleration)
         ax.set_xlabel("Time [s]")
         ax.set_ylabel("Axle acceleration [$\mathregular{m/s^{2}}$]")
+
+    return fig, ax
+
+
+def plot_fft_acceleration_signal(data, acceleration, smoothing_distance,fig=None,position=111):
+
+    time = data["time"]
+
+    m_to_mm = 1e3
+    freq, ampl = signal_proc.fft_sig(np.array(acceleration), 250)
+    ampl = smooth_signal_within_bounds_over_wave_length(data, smoothing_distance, ampl)
+
+    # initialises figure if it does not exists
+    if fig is None:
+        fig = plt.figure()
+    ax = fig.add_subplot(position)
+
+    # plots time series
+    if time.size > 0:
+        ax.plot(freq, ampl * m_to_mm)
+        ax.set_xlabel("Frequency [Hz]")
+        ax.set_ylabel("Axle acceleration amplitude [$\mathregular{mm/s^{2}/Hz}$]")
+
+    return fig, ax
+
+
+def plot_fft_velocity_signal(data, acceleration, smoothing_distance, fig=None, position=111):
+    m_to_mm = 1e3
+
+    time = data["time"]
+
+    # integrations acceleration signal to velocity signal
+    velocity = signal_proc.int_sig(acceleration, time, hp=True,
+                              mov=False, baseline=False, ini_cond=0)
+
+    freq, ampl = signal_proc.fft_sig(np.array(velocity), 250)
+
+    ampl = smooth_signal_within_bounds_over_wave_length(data, smoothing_distance, ampl)
+
+    # initialises figure if it does not exists
+    if fig is None:
+        fig = plt.figure()
+    ax = fig.add_subplot(position)
+
+    # plots time series
+    if time.size > 0:
+        ax.plot(freq, ampl * m_to_mm)
+        ax.set_xlabel("Frequency [Hz]")
+        ax.set_ylabel("Axle velocity amplitude [$\mathregular{mm/s/Hz}$]")
 
     return fig, ax
 
@@ -157,31 +257,6 @@ def read_inframon(file_names: List, output_f: str):
         results[name]["acc_side_1"] = acc_side_1
         results[name]["acc_side_2"] = acc_side_2
         results[name]["segment"] = segment
-
-    #     # results[name]["acc_side_1"] = signal_proc.filter_sig(results[name]["acc_side_1"],
-    #     #                                                      settings_filter["FS"], settings_filter["n"], settings_filter["cut-off"]).tolist()
-    #     # results[name]["acc_side_2"] = signal_proc.filter_sig(results[name]["acc_side_2"],
-    #     #                                                      settings_filter["FS"], settings_filter["n"], settings_filter["cut-off"]).tolist()
-    #
-    #     tmp = signal_proc.filter_sig(results[name]["acc_side_1"],
-    #                                                          settings_filter["FS"], settings_filter["n"],
-    #                                                          settings_filter["cut-off"]).tolist()
-    #     tmp2 = signal_proc.filter_sig(results[name]["acc_side_2"],
-    #                                                          settings_filter["FS"], settings_filter["n"],
-    #                                                          settings_filter["cut-off"]).tolist()
-    #
-    #     f1, a1, _, _ = signal_proc.fft_sig(results[name]["acc_side_2"], settings_filter["FS"])
-    #     f2, a2, _, _ = signal_proc.fft_sig(np.array(tmp2), settings_filter["FS"])
-    #
-    #
-    # plt.plot(f1, a1)
-    # plt.plot(f2, a2)
-    # plt.xlim(0,  settings_filter["FS"]/2)
-    # plt.show()
-    #
-    # plt.plot(results[name]["acc_side_2"])
-    # plt.plot(tmp2)
-    # plt.show()
 
     # write results to pickle
     with open(os.path.join(output_f, "inframon.pickle"), "wb") as f:
