@@ -9,6 +9,9 @@ from typing import Dict, List
 
 from datetime import datetime
 
+import rose.utils.Kalman_Filter as KF
+
+
 def get_coordinates(feature: Dict) -> np.ndarray:
     """
     Gets coordinates from Sensar geopackage feature
@@ -16,6 +19,7 @@ def get_coordinates(feature: Dict) -> np.ndarray:
     :return:
     """
     return np.array([list(coord) for coord in feature["geometry"]["coordinates"]])
+
 
 def get_settlement(feature: Dict) -> (List, List):
     """
@@ -37,6 +41,107 @@ def get_settlement(feature: Dict) -> (List, List):
                 settlements.append(settlement)
 
     return dates, settlements
+
+
+def filter_dataset(data: Dict) -> Dict:
+    """
+    Filter all sensar timeseries with kalman filter.
+
+    :param data: Sensar data dictionary
+    :return:
+    """
+
+    # loop over each time series
+    for key,value in data.items():
+
+        # plt.plot(data[key]["dates"], data[key]["settlements"], 'o')
+
+        # filter signal from back to front
+        flipped = filter_signal(data[key], is_flip=True)
+
+        # filter signal from front to back
+        non_flipped = filter_signal(data[key], is_flip=False)
+
+        # combine flipped and non flipped filtered signals such that start and end of timeseries are filtered more
+        # accurately
+        combined = np.append(flipped[:int(len(flipped) / 2)],
+                             non_flipped[int(len(flipped) / 2):]
+                             - non_flipped[int(len(flipped) / 2)] + flipped[int(len(flipped) / 2)])
+
+        # replace time series with filtered time series
+        data[key]["settlements"] = combined
+
+        # plt.plot(data[key]["dates"], flipped, 'x')
+        # plt.plot(data[key]["dates"], non_flipped, 'v')
+        # plt.plot(data[key]["dates"], combined, '^')
+        #
+        # plt.show()
+
+    return data
+
+
+
+def filter_signal(feature, is_flip=False):
+    """
+    Filters one time series with the Kalman filter
+
+    :param feature: time series data
+    :param is_flip: If true, time series is filtered from back to front
+    :return:
+    """
+
+    dates = feature["dates"]
+
+    # flip time series if required
+    if is_flip:
+        settlements = np.flip(feature["settlements"])
+        settlements = settlements-settlements[0]
+    else:
+        settlements = feature["settlements"]
+
+    # get dates in seconds
+    timestamps = np.array([date.timestamp() for date in dates])
+    # calculate timestamps relative to the first time stamp
+    timestamps = timestamps - timestamps[0]
+
+    # calculate timesteps in years
+    dt = np.diff(timestamps) / 3600 / 24 / 365
+
+    # calculate settlement differences at each time step
+    sett_diff = np.diff(settlements)
+    # calculate velocities
+    velocities = np.append(0, sett_diff / dt)
+
+    # set observations array
+    observations = np.array([settlements, velocities]).T
+
+    # calculate standard deviation of settlements and calculated velocities
+    disp_std = np.std(sett_diff)
+    velocity_std = np.std(velocities)
+
+    # initialise kalman filter
+    kf = KF.KalmanFilter([0, 0], 2, [disp_std, velocity_std], dt[0], independent=True)
+
+    # loop over each observation and perform iterative kalman filter operations
+    for i in range(1, len(settlements)):
+        kf.update_control_matrices(dt[i - 1])
+        kf.predict_process_cov_matrix()
+        kf.error_covariance_measures(disp_std, velocity_std)
+        kf.kalman_gain()
+        kf.new_observation(observations[i])
+        kf.predicted_state()
+        kf.update_process_covariance_matrix()
+
+    # assign Kalman filter results to updated settlements array
+    if is_flip:
+        updated_settlements = np.flip(np.array(kf.updated_x)[:, 0])
+    else:
+        updated_settlements = np.array(kf.updated_x)[:, 0]
+
+    updated_settlements = updated_settlements - updated_settlements[0]
+
+    return updated_settlements
+
 
 def read_geopackage(filename: str) -> Dict:
     """
@@ -256,6 +361,7 @@ def get_statistical_information(dates_array: np.ndarray, settlements_array: np.n
 
     return new_dates, all_means, all_stds
 
+
 def plot_settlement_over_time(dates: np.ndarray, settlements: np.ndarray, **kwargs):
     """
     Plots settlement over time
@@ -272,6 +378,7 @@ def plot_settlement_over_time(dates: np.ndarray, settlements: np.ndarray, **kwar
 
     plt.xlabel('Date [y]')
     plt.ylabel('Settlement [mm]')
+
 
 def plot_settlements_from_item_list_over_time(items_within_bounds,date_lim=None, fig=None, position=111):
     """
@@ -336,7 +443,7 @@ def filter_data_at_point_coordinates(res, point_coordinates):
     # find all points which are located at sensar data and adds to mask array
     for coord in point_coordinates:
 
-        mask += (min_coordinates[:,0] <= coord[0]).astype(int)* \
+        mask += (min_coordinates[:,0] <= coord[0]).astype(int) * \
                 (max_coordinates[:, 0] >= coord[0]).astype(int) * \
                 (min_coordinates[:, 1] <= coord[1]).astype(int) * \
                 (max_coordinates[:, 1] >= coord[1]).astype(int)
@@ -403,82 +510,85 @@ def filter_data_within_bounds(xbounds: np.ndarray, ybounds: np.ndarray, data: Di
 if __name__ == '__main__':
 
     # data = read_geopackage(r"../data/Sensar/20190047_01_20210308/data/data.gpkg")
-    # save_sensar_data(data, "../../data/Sensar/processed/processed_settlements.pickle")
-
+    # save_sensar_data(data, "../data/Sensar/processed/filtered_processed_settlements_combined.pickle")
+    #
     data = load_sensar_data("../data/Sensar/processed/processed_settlements.pickle")
 
-    import data_discontinuities as dd
+    filter_dataset(data)
 
-    fn = r"D:\software_development\rose\data\data_discontinuities\wissel.json"
-
-    all_coordinates = dd.get_coordinates_from_json(fn)
-    x_bounds, y_bounds = dd.get_bounds_of_lines(all_coordinates)
-
-
-    point_coordinates = np.array([[122730.096, 487773.31], [138101.172, 453431.389],[0,0]])
-    # filter_data_at_point_coordinates(res, point_coordinates,1)
-
-    filter_data_at_point_coordinates(data, point_coordinates)
-
-    # filtered_data = filter_data_within_bounds(x_bounds, y_bounds, data)
-    # centroids = calculate_centroids(data)
-
-    # items_within_bounds = get_all_items_within_bounds(data, [144276, 144465], [439011,439301])
-
-    xlim = [128326, 128410]
-    ylim = [467723, 468058]
-
-    # items_within_bounds = get_all_items_within_bounds(data, [128162,128868], [467049, 470502])
-    items_within_bounds = get_all_items_within_bounds(data, xlim, ylim)
-
-    all_dates = []
-    all_settlements = []
-    for item in items_within_bounds:
-        dates = np.array([d.timestamp() for d in item['dates']])
-        settlements = np.array(item['settlements'])
-        all_settlements.append(settlements)
-        all_dates.append(dates)
-
-    all_dates, all_settlements = map_settlement_at_starting_date(all_dates, all_settlements)
-
-    all_dates2 = np.array([date for dates in all_dates for date in dates])
-    all_settlements2 = np.array([settlement for settlements in all_settlements for settlement in settlements])
-
-    all_dates = all_dates2
-    all_settlements = all_settlements2
-
-    sorted_indices = np.argsort(all_dates)
-
-    sorted_dates = all_dates[sorted_indices]
-    sorted_settlements = all_settlements[sorted_indices]
-    # sorted_velocities = all_velocities[sorted_indices]
-
-    diff = np.diff(sorted_dates)
-
-    step_idxs = np.insert(np.where(diff>0),0,0)
-
-    all_means = np.array([])
-    new_dates = np.array([])
-    all_stds = np.array([])
-    for i in range(1,len(step_idxs)):
-        new_dates = np.append(new_dates,sorted_dates[step_idxs[i-1]])
-        all_means = np.append(all_means, np.mean(sorted_settlements[step_idxs[i-1]:step_idxs[i]]))
-        all_stds = np.append(all_stds, np.std(sorted_settlements[step_idxs[i-1]:step_idxs[i]]))
-
-    trend = np.polyfit(sorted_dates,sorted_settlements,1)
-    trend_new = np.polyfit(new_dates,all_means,1)
-    trend_3 = np.polyfit(new_dates,all_means + 2*all_stds,1)
-    trend_4 = np.polyfit(new_dates,all_means - 2*all_stds,1)
-
-
-
-    new_dates = [datetime.fromtimestamp(int(date)) for date in new_dates]
-    sorted_dates = [datetime.fromtimestamp(int(date)) for date in sorted_dates]
-    plt.plot(sorted_dates, sorted_settlements, 'o')
-    plt.plot(new_dates,all_means,'o')
-    # plt.plot(sorted_dates,np.polyval(trend,sorted_dates))
-    # plt.plot(new_dates,np.polyval(trend_new,new_dates))
-    # plt.plot(new_dates,np.polyval(trend_3,new_dates))
-    # plt.plot(new_dates,np.polyval(trend_4,new_dates))
-
-    plt.show()
+    #
+    # import data_discontinuities as dd
+    #
+    # fn = r"D:\software_development\rose\data\data_discontinuities\wissel.json"
+    #
+    # all_coordinates = dd.get_coordinates_from_json(fn)
+    # x_bounds, y_bounds = dd.get_bounds_of_lines(all_coordinates)
+    #
+    #
+    # point_coordinates = np.array([[122730.096, 487773.31], [138101.172, 453431.389],[0,0]])
+    # # filter_data_at_point_coordinates(res, point_coordinates,1)
+    #
+    # filter_data_at_point_coordinates(data, point_coordinates)
+    #
+    # # filtered_data = filter_data_within_bounds(x_bounds, y_bounds, data)
+    # # centroids = calculate_centroids(data)
+    #
+    # # items_within_bounds = get_all_items_within_bounds(data, [144276, 144465], [439011,439301])
+    #
+    # xlim = [128326, 128410]
+    # ylim = [467723, 468058]
+    #
+    # # items_within_bounds = get_all_items_within_bounds(data, [128162,128868], [467049, 470502])
+    # items_within_bounds = get_all_items_within_bounds(data, xlim, ylim)
+    #
+    # all_dates = []
+    # all_settlements = []
+    # for item in items_within_bounds:
+    #     dates = np.array([d.timestamp() for d in item['dates']])
+    #     settlements = np.array(item['settlements'])
+    #     all_settlements.append(settlements)
+    #     all_dates.append(dates)
+    #
+    # all_dates, all_settlements = map_settlement_at_starting_date(all_dates, all_settlements)
+    #
+    # all_dates2 = np.array([date for dates in all_dates for date in dates])
+    # all_settlements2 = np.array([settlement for settlements in all_settlements for settlement in settlements])
+    #
+    # all_dates = all_dates2
+    # all_settlements = all_settlements2
+    #
+    # sorted_indices = np.argsort(all_dates)
+    #
+    # sorted_dates = all_dates[sorted_indices]
+    # sorted_settlements = all_settlements[sorted_indices]
+    # # sorted_velocities = all_velocities[sorted_indices]
+    #
+    # diff = np.diff(sorted_dates)
+    #
+    # step_idxs = np.insert(np.where(diff>0),0,0)
+    #
+    # all_means = np.array([])
+    # new_dates = np.array([])
+    # all_stds = np.array([])
+    # for i in range(1,len(step_idxs)):
+    #     new_dates = np.append(new_dates,sorted_dates[step_idxs[i-1]])
+    #     all_means = np.append(all_means, np.mean(sorted_settlements[step_idxs[i-1]:step_idxs[i]]))
+    #     all_stds = np.append(all_stds, np.std(sorted_settlements[step_idxs[i-1]:step_idxs[i]]))
+    #
+    # trend = np.polyfit(sorted_dates,sorted_settlements,1)
+    # trend_new = np.polyfit(new_dates,all_means,1)
+    # trend_3 = np.polyfit(new_dates,all_means + 2*all_stds,1)
+    # trend_4 = np.polyfit(new_dates,all_means - 2*all_stds,1)
+    #
+    #
+    #
+    # new_dates = [datetime.fromtimestamp(int(date)) for date in new_dates]
+    # sorted_dates = [datetime.fromtimestamp(int(date)) for date in sorted_dates]
+    # plt.plot(sorted_dates, sorted_settlements, 'o')
+    # plt.plot(new_dates,all_means,'o')
+    # # plt.plot(sorted_dates,np.polyval(trend,sorted_dates))
+    # # plt.plot(new_dates,np.polyval(trend_new,new_dates))
+    # # plt.plot(new_dates,np.polyval(trend_3,new_dates))
+    # # plt.plot(new_dates,np.polyval(trend_4,new_dates))
+    #
+    # plt.show()
