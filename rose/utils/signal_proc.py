@@ -44,10 +44,24 @@ def fft_sig(sig, FS, nb_points=None):
     freq = np.linspace(0, 1, nfft) * FS
 
     # usual representation
-    freq = freq[:int(nfft / 2)]
-    ampl = 2 * ampl[:int(nfft / 2)]
+    # freq = freq[:int(nfft / 2)]
+    # ampl = 2 * ampl[:int(nfft / 2)]
 
-    return freq, ampl
+    return freq, ampl, phas
+
+
+def inverse_fft_sig(amplitude, phase, FS):
+
+    import numpy as np
+
+    spectrum = np.fft.ifft(amplitude * np.exp(1j * phase), len(amplitude))
+
+    signal = np.real(spectrum) * len(amplitude)
+
+    time = np.cumsum(np.ones(len(amplitude)) * 1 / FS)
+
+    return time, signal
+
 
 
 def int_sig(sig, tim, rule="trap", baseline=False, mov=False, hp=False, ini_cond=None, fpass=0.5, n=6):
