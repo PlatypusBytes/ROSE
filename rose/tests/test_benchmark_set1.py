@@ -221,12 +221,12 @@ class TestBenchmarkSet1:
         vertical_displacements = np.array([node.displacements[:,1] for node in beam_nodes])
 
         # process signal of numerical and analytical solution
-        _, amplitude_num = sp.fft_sig(vertical_displacements[int((n_beams-1)/2), :], int(1/ time[1]),
+        _, amplitude_num, _ = sp.fft_sig(vertical_displacements[int((n_beams-1)/2), :], int(1/ time[1]),
                                       nb_points=2**14)
-        _, amplitude_analyt = sp.fft_sig(beam_analytical.u[int((n_beams-1)/2), :], int(1 / time[1]),
+        _, amplitude_analyt, _ = sp.fft_sig(beam_analytical.u[int((n_beams-1)/2), :], int(1 / time[1]),
                                          nb_points=2**14)
 
-        # assert if signal aplitudes are approximately equal at eigen frequency
+        # assert if signal amplitudes are approximately equal at eigen frequency
         assert amplitude_num[163] == pytest.approx(amplitude_analyt[163], rel=1e-2)
 
 
@@ -449,7 +449,6 @@ class TestBenchmarkSet1:
         beam.radial_frequency_one = 2
         beam.radial_frequency_two = 500
 
-
         # setup cantilever foundation
         foundation1 = ConstraintModelPart(x_disp_dof=False, y_disp_dof=False, z_rot_dof=False)
         foundation1.nodes = [rod_nodes[0]]
@@ -479,9 +478,9 @@ class TestBenchmarkSet1:
         # get numerical frequencies and amplitudes
         vert_velocities = np.array([node.velocities[:, 1] for node in rod_nodes])
 
-        freq_num, amplitude_num = sp.fft_sig(vert_velocities[-1, :], int(1 / time[1]),
+        freq_num, amplitude_num, _ = sp.fft_sig(vert_velocities[-1, :], int(1 / time[1]),
                                              nb_points=2 ** 14)
-        freq_ana, amplitude_ana = sp.fft_sig(pulse_load.v[-1, :], int(1 / time[1]),
+        freq_ana, amplitude_ana, _ = sp.fft_sig(pulse_load.v[-1, :], int(1 / time[1]),
                                              nb_points=2 ** 14)
 
         # check if first eigen frequency is as expected
