@@ -52,9 +52,7 @@ def filter_dataset(data: Dict) -> Dict:
     """
 
     # loop over each time series
-    for key,value in data.items():
-
-        # plt.plot(data[key]["dates"], data[key]["settlements"], 'o')
+    for key, value in data.items():
 
         # filter signal from back to front
         flipped = filter_signal(data[key], is_flip=True)
@@ -64,9 +62,12 @@ def filter_dataset(data: Dict) -> Dict:
 
         # combine flipped and non flipped filtered signals such that start and end of timeseries are filtered more
         # accurately
-        combined = np.append(flipped[:int(len(flipped) / 2)],
-                             non_flipped[int(len(flipped) / 2):]
-                             - non_flipped[int(len(flipped) / 2)] + flipped[int(len(flipped) / 2)])
+        if flipped.size >0 and non_flipped.size>0:
+            combined = np.append(flipped[:int(len(flipped) / 2)],
+                                 non_flipped[int(len(flipped) / 2):]
+                                 - non_flipped[int(len(flipped) / 2)] + flipped[int(len(flipped) / 2)])
+        else:
+            combined = np.array([])
 
         # replace time series with filtered time series
         data[key]["settlements"] = combined
@@ -78,7 +79,6 @@ def filter_dataset(data: Dict) -> Dict:
         # plt.show()
 
     return data
-
 
 
 def filter_signal(feature, is_flip=False):
@@ -95,9 +95,15 @@ def filter_signal(feature, is_flip=False):
     # flip time series if required
     if is_flip:
         settlements = np.flip(feature["settlements"])
+        # if settlements are not present, return
+        if settlements.size == 0:
+            return settlements
         settlements = settlements-settlements[0]
     else:
-        settlements = feature["settlements"]
+        settlements = np.array(feature["settlements"])
+        # if settlements are not present, return
+        if settlements.size == 0:
+            return settlements
 
     # get dates in seconds
     timestamps = np.array([date.timestamp() for date in dates])
@@ -321,8 +327,10 @@ def get_all_dates_and_settlement_as_sorted_array(items):
             # convert dates to timestamps
             dates = np.array([d.timestamp() for d in item['dates']])
             settlements = np.array(item['settlements'])
-            all_settlements.append(settlements)
-            all_dates.append(dates)
+
+            if settlements.size>0 and dates.size>0:
+                all_settlements.append(settlements)
+                all_dates.append(dates)
 
         # maps all settlements at starting date
         all_dates, all_settlements = map_settlement_at_starting_date(all_dates, all_settlements)
@@ -462,6 +470,7 @@ def filter_data_at_point_coordinates(res, point_coordinates):
 
     return filtered_data
 
+
 def filter_data_within_bounds(xbounds: np.ndarray, ybounds: np.ndarray, data: Dict):
     """
     Filters data which lies partly or completely within x bounds and y bounds
@@ -507,14 +516,96 @@ def filter_data_within_bounds(xbounds: np.ndarray, ybounds: np.ndarray, data: Di
 
     return filtered_data
 
+
+def plot_old_and_new_dataset(old_sensar, new_sensar,sos_dict):
+    import SoS
+    from pathlib import Path
+
+
+    sensar_dates = list(old_sensar.values())[0]["dates"]
+
+    min_date = min(sensar_dates)
+    max_date = max(sensar_dates)
+
+    date_lim = [min_date, max_date]
+
+    # loop over sos segments
+    for name, segment in sos_dict.items():
+
+        # if name == "Segment 1072":
+        #
+        # if name == "Segment 1003":
+        # initialise figure
+            fig = plt.figure(figsize=(20, 10))
+            plt.tight_layout()
+
+            # get coordinates of current segments
+            coordinates = np.array(list(segment.values())[0]['coordinates'])
+
+            # get coordinate limits
+            xlim = [min(coordinates[:, 0]), max(coordinates[:, 0])]
+            ylim = [min(coordinates[:, 1]), max(coordinates[:, 1])]
+
+            # fugro.plot_date_vs_mileage(xlim, ylim, fugro_dict)
+
+            # add plot of highlighted sos segments
+            _, _ = SoS.ReadSosScenarios.plot_highlighted_sos(sos_data, name, fig=fig, position=221)
+            plt.grid()
+
+
+            # add plot of Sensar settlement measurements within the current segment
+            sensar_items_within_bounds1 = get_all_items_within_bounds(old_sensar, xlim, ylim)
+            if sensar_items_within_bounds1:
+                _, ax = plot_settlements_from_item_list_over_time(sensar_items_within_bounds1, date_lim=date_lim,
+                                                                        fig=fig, position=223)
+                plt.grid()
+
+                ax.title.set_text('Old dataset')
+
+                ylim1 = plt.subplot(223).get_ylim()
+
+
+            sensar_items_within_bounds2 = get_all_items_within_bounds(new_sensar, xlim, ylim)
+            if sensar_items_within_bounds2:
+                _, ax = plot_settlements_from_item_list_over_time(sensar_items_within_bounds2, date_lim=date_lim,
+                                                                        fig=fig, position=224)
+                plt.grid()
+
+                ax.title.set_text('New dataset')
+                ylim2 = plt.subplot(224).get_ylim()
+
+            if sensar_items_within_bounds1 and sensar_items_within_bounds2:
+
+                plt.subplot(223).set_ylim(min(ylim1[0], ylim2[0]), max(ylim1[1], ylim2[1]))
+                plt.subplot(224).set_ylim(min(ylim1[0], ylim2[0]), max(ylim1[1], ylim2[1]))
+
+
+            fig.suptitle(name)
+            fig.savefig(Path("sensar_old_vs_new", name))
+
+            plt.close(fig)
+
+
 if __name__ == '__main__':
 
-    # data = read_geopackage(r"../data/Sensar/20190047_01_20210308/data/data.gpkg")
-    # save_sensar_data(data, "../data/Sensar/processed/filtered_processed_settlements_combined.pickle")
+    import json
+    # data = read_geopackage(r"../data/Sensar/20190047_02_20210630\data/data.gpkg")
+    # save_sensar_data(data, "../data/Sensar/processed/processed_settlements_2.pickle")
     #
-    data = load_sensar_data("../data/Sensar/processed/processed_settlements.pickle")
+    old_data = load_sensar_data("../data/Sensar/processed/processed_settlements.pickle")
+    new_data = load_sensar_data("../data/Sensar/processed/processed_settlements_2.pickle")
 
-    filter_dataset(data)
+    # filter_dataset(data)
+    #
+    # save_sensar_data(data, "../data/Sensar/processed/filtered_processed_settlements_combined2.pickle")
+
+
+    sos_fn = "../data_proc/SOS.json"
+    with open(sos_fn, 'r') as f:
+        sos_data = json.load(f)
+
+    plot_old_and_new_dataset(old_data, new_data, sos_data)
+
 
     #
     # import data_discontinuities as dd
