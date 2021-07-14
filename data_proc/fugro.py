@@ -12,7 +12,11 @@ from pathlib import Path
 from datetime import datetime
 import csv
 import pickle
+import re
 from typing import List, Dict
+
+from rose.utils import signal_proc
+
 
 def plot_settlement_in_range_vs_date(res: Dict, xlim: List, ylim: List,date_lim=None, fig=None,position = 111):
     """
@@ -152,6 +156,167 @@ def plot_height_vs_coords_in_range(xlim, ylim, res, fig=None, projection="3d"):
     return fig, ax
 
 
+
+def plot_date_vs_mileage2(xlim, ylim, res, fig=None):
+    """
+    # todo clean up
+    :param xlim:
+    :param ylim:
+    :param res:
+    :param fig:
+    :return:
+    """
+
+    m_to_mm = 1e3
+
+    # create figure if it does not exist
+    if fig is None:
+        fig = plt.figure()
+
+    ax = plt.axes()
+
+    # interpolate heights and coordinates on first measurement
+    dates, coordinate_data, interpolated_heights = interpolate_coordinates(res, xlim, ylim)
+
+    for i in range(len(coordinate_data)):
+
+        discont_indices = np.where(np.abs(np.diff(coordinate_data[i][:, 0])) > 1.5)
+
+        coords_1 = coordinate_data[0][:discont_indices[0][0] + 1, :]
+        coords_2 = coordinate_data[0][discont_indices[0][0] + 1:, :]
+
+        # diff_1 = np.diff(coords_1)
+        # diff_2 = np.diff(coords_2)
+        #
+        diff_1 = np.diff(coords_1, axis=0)
+        diff_2 = np.diff(coords_2, axis=0)
+
+        distances_1 = np.sqrt(np.sum(np.diff(coords_1,axis=0)**2,axis=1))
+        distances_1 = np.cumsum(distances_1)
+        distances_1 = np.append(0,distances_1)
+
+
+
+        # diff_1 = np.diff(coords_1)
+        # diff_2 = np.diff(coords_2)
+
+        heights_1 = interpolated_heights[0][:discont_indices[0][0] + 1]
+        heights_2 = interpolated_heights[0][discont_indices[0][0] + 1:]
+
+
+        freq, amp, phas = signal_proc.fft_sig(heights_1 - np.mean(heights_1),distances_1[1])
+
+        # plt.plot(1/freq, amp)
+
+        filt = signal_proc.filter_sig(heights_1 - np.mean(heights_1), distances_1[1], 1 / 25, 10, type="highpass")
+        filt = signal_proc.filter_sig(filt, distances_1[1], 1 / 3, 10, type="lowpass")
+        freq, amp, phas = signal_proc.fft_sig(filt, distances_1[1])
+
+        # plt.plot(1 / freq, amp)
+
+        # plt.show()
+
+        t, u = signal_proc.inverse_fft_sig(amp, phas, distances_1[1])
+
+
+        plt.plot(t,u+ np.mean(heights_1))
+        plt.plot(distances_1,heights_1)
+        plt.show()
+
+    # plt.plot(1/freq, amp)
+    # plt.show()
+
+    # get data within limits
+
+    # im_array = np.array[]
+
+    # settlement = np.subtract(interpolated_heights, interpolated_heights[0, :]) * m_to_mm
+
+    # im = ax.imshow(settlement, aspect='auto', cmap='gray',extent=[0,0.1,0,12])
+    # ax.set_ylabel("Column length [m]", fontsize=12)
+    # ax.set_xlabel("Column width [m]", fontsize=12)
+    # # cax = plt.axes([0.55, 0.1, 0.075, 0.8])
+    # cbar = plt.colorbar(im, fraction=0.1, pad=0.01)
+    # cbar.set_label("Displacement [mm]", fontsize=10)
+    #
+    # plt.show()
+
+
+def plot_date_vs_mileage(xlim, ylim, res, fig=None,position=111):
+    """
+    # todo clean up
+    :param xlim:
+    :param ylim:
+    :param res:
+    :param fig:
+    :param position:
+    :return:
+    """
+
+    m_to_mm = 1e3
+
+    # create figure if it does not exist
+    if fig is None:
+        fig = plt.figure()
+
+    ax = fig.add_subplot(position)
+
+    # interpolate heights and coordinates on first measurement
+    dates, coordinate_data, interpolated_heights = interpolate_coordinates(res, xlim, ylim)
+
+    dates = [date.date() for date in dates]
+
+    # get data within limits
+
+    # im_array = np.array[]
+
+    discont_indices = np.where(np.abs(np.diff(coordinate_data[0][:, 0])) > 1.5)
+
+    coords_1 = coordinate_data[0][:discont_indices[0][0] + 1, :]
+    coords_2 = coordinate_data[0][discont_indices[0][0] + 1:, :]
+
+    # diff_1 = np.diff(coords_1)
+    # diff_2 = np.diff(coords_2)
+    #
+    diff_1 = np.diff(coords_1, axis=0)
+    diff_2 = np.diff(coords_2, axis=0)
+
+    distances_1 = np.sqrt(np.sum(np.diff(coords_1, axis=0) ** 2, axis=1))
+    distances_1 = np.cumsum(distances_1)
+    distances_1 = np.append(0, distances_1)
+
+    settlement = np.subtract(interpolated_heights[:,:discont_indices[0][0]], interpolated_heights[0, :discont_indices[0][0]]) * m_to_mm
+
+    im = ax.imshow(settlement, aspect='auto', cmap='gray',extent=[0,distances_1[-1],0,13])
+    ax.set_ylabel("Column length [m]", fontsize=12)
+    ax.set_xlabel("Mileage [m]", fontsize=12)
+    # cax = plt.axes([0.55, 0.1, 0.075, 0.8])
+    cbar = plt.colorbar(im, fraction=0.1, pad=0.01)
+    cbar.set_label("Displacement [mm]", fontsize=10)
+
+    y_ticks = [i for i in range(len(dates))]
+
+
+    ax.set_yticks(y_ticks)
+
+    # dates_reverse = np.copy(dates)
+    # np.fliplr(dates_reverse)
+
+    ax.set_yticklabels(np.flip(dates))
+
+    # plt.show()
+
+
+    # plt.close()
+    #
+    # # plot data on a 3d projecten
+    #
+    #
+    # ax.set_xlabel("x-coord")
+    # ax.set_ylabel("y-coord")
+    # ax.set_zlabel("height [m NAP]")
+
+
 def get_data_within_bounds(xlim, ylim, res):
     """
 
@@ -201,32 +366,47 @@ def merge_data(res: Dict):
 
 def get_data_at_location(file_dir, location: str ="all", filetype: str ='csv') -> Dict:
     """
+    #todo add posibility to retrieve data from location, currently all data is retrieved
+
     :param file_dir: directory where all data files are located
     :param location: location of the data
     :param filetype: 'csv' or 'KRDZ'
     :return:
     """
 
-    # if location is all, get all files in dir which end with the desired extension
-    # else get all files based on the location
-    if location == "all":
-        files = list(Path(file_dir).glob("*." + filetype))
-    else:
-        files = list(Path(file_dir).glob(location + "*"))
+    # # if location is all, get all files in dir which end with the desired extension
+    # # else get all files based on the location
+    # if location == "all":
+    #     files = list(Path(file_dir).glob("*." + filetype))
+    # else:
+    #     files = list(Path(file_dir).glob(location + "*"))
 
     # initialise results dictionary
     res = {"location": location,
            "dates": [],
            "data": []}
 
-    # add data from all desired files to dictionary
-    for file in files:
-        date = datetime.strptime(file.stem.split('_')[-1],"%Y%m")
-        res["dates"].append(date)
-        if filetype == "KRDZ":
-            res["data"].append(read_rila_data_from_krdz(file))
-        if filetype == "csv":
-            res["data"].append(read_rila_data_from_csv(file))
+    # add all files with desired extension from main directory
+    # todo make date match more general
+    for path, subdirs, files in os.walk(file_dir):
+        for file in files:
+            if filetype == "KRDZ" and file.endswith("KRDZ"):
+                date_match = re.search(r'\d{4}-\d{2}-\d{2}', file)
+                res["dates"].append(datetime.strptime(date_match.group(), "%Y-%m-%d"))
+                res["data"].append(read_rila_data_from_krdz(Path(path,file)))
+            if filetype == "csv" and file.endswith("csv"):
+                date_match = re.search(r'\d{4}-\d{2}-\d{2}', file)
+                res["dates"].append(datetime.strptime(date_match.group(), "%Y-%m-%d"))
+                res["data"].append(read_rila_data_from_csv(Path(path,file)))
+
+    # # add data from all desired files to dictionary
+    # for file in files:
+    #     date = datetime.strptime(file.stem.split('_')[-1],"%Y%m")
+    #     res["dates"].append(date)
+    #     if filetype == "KRDZ":
+    #         res["data"].append(read_rila_data_from_krdz(file))
+    #     if filetype == "csv":
+    #         res["data"].append(read_rila_data_from_csv(file))
 
     # convert dates and data to nd arrays
     res["dates"] = np.array(res["dates"])
@@ -306,16 +486,21 @@ def read_rila_data_from_krdz(filename) -> Dict:
         coords.append([float(splitted_line[1]), float(splitted_line[2])])
         heights.append(float(splitted_line[5]))
 
-    # convert coordinates and heights to np array
+    # find unique coordinates and preserve original order
     coords = np.array(coords)
-    heights = np.array(heights)
+    _, unique_indices = np.unique(coords,axis=0,return_index=True)
+    unique_indices = np.sort(unique_indices)
+    coords = coords[unique_indices]
+
+    # get heights at unique coordinates
+    heights = np.array(heights)[unique_indices]
 
     res["coordinates"] = coords
     res["heights"] = heights
     return res
 
 
-def interpolate_coordinates(res: Dict, xlim: List, ylim: List, search_radius: float=1) -> (List, List, np.ndarray):
+def interpolate_coordinates(res: Dict, xlim: List, ylim: List, search_radius: float = 1) -> (List, List, np.ndarray):
     """
     Interpolate all data of each dataset on the height data locations of the first measurement date. Note that for this
     algorithm, it is not required to have sorted coordinates. Simple interpolation does not work, as the fugro data is
@@ -352,7 +537,7 @@ def interpolate_coordinates(res: Dict, xlim: List, ylim: List, search_radius: fl
 
             # calculate distance of each coordinate from  [0,0] RD coordinate
             distance = np.sqrt(coordinates_in_range[:, 0] ** 2 + coordinates_in_range[:, 1] ** 2)
-            distance = distance[:,None]
+            distance = distance[:, None]
             distances.append(distance)
 
             # if iteration is the first iteration, save initial position
@@ -364,7 +549,7 @@ def interpolate_coordinates(res: Dict, xlim: List, ylim: List, search_radius: fl
                 # find nearest distances compared to the initial distance. Note that this step is done to limit the
                 # search list of close coordinates and speed up the interpolation.
                 tree = KDTree(distance)
-                nearest_distances = tree.query(initial_distance,k=5,distance_upper_bound=search_radius)
+                nearest_distances = tree.query(initial_distance, k=5, distance_upper_bound=search_radius)
 
                 # Get the valid nearest distances
                 valid = nearest_distances[1][:,:]<coordinates_in_range.shape[0]
@@ -460,11 +645,12 @@ def convert_lat_long_to_rd(lat, long):
     """
 
     crs_wgs = pyproj.Proj(init='epsg:4326')
-    crs_bng  = pyproj.Proj(init="epsg:28992")
+    crs_bng = pyproj.Proj(init="epsg:28992")
 
     x, y = pyproj.transform(crs_wgs, crs_bng, long, lat)
 
     return x,y
+
 
 def read_rila_data_from_csv(filename) -> Dict:
     """
@@ -500,6 +686,7 @@ def read_rila_data_from_csv(filename) -> Dict:
     res["heights"] = heights
     return res
 
+
 def filter_data_at_point_coordinates(res, point_coordinates, search_radius):
     """
     Removes all rila coordinates and data in a range from a list of point coordinates
@@ -531,6 +718,7 @@ def filter_data_at_point_coordinates(res, point_coordinates, search_radius):
         data["heights"] = data["heights"][mask]
 
     return res
+
 
 def filter_data_within_bounds(xbounds: np.ndarray, ybounds: np.ndarray, res: Dict):
     """
@@ -579,25 +767,29 @@ if __name__ == '__main__':
 
     # read_rila_data_from_krdz(filename)
     # res = read_rila_data_from_csv(filename)
-    # res = get_data_at_location(r"..\data\Fugro\Amsterdam-Eindhoven TKI Project", location="all")
-    # save_fugro_data(res, r"..\data\Fugro\rila_data.pickle")
-    res = load_rila_data(r"..\data\Fugro\rila_data.pickle")
-
+    dir = r"D:\software_development\rose\data\Fugro\AMS-to-EIN"
+    res = get_data_at_location(dir, location="all",filetype="KRDZ")
     res = merge_data(res)
-    # point_coordinates = np.array([[122730.096, 487773.31], [138101.172, 453431.389],[0,0]])
-    # filter_data_at_point_coordinates(res, point_coordinates,1)
+    # res = get_data_at_location(r"..\data\Fugro\Amsterdam-Eindhoven TKI Project", location="all")
+    save_fugro_data(res, r"..\data\Fugro\updated_rila_data.pickle")
+    # res = load_rila_data(r"..\data\Fugro\rila_data.pickle")
 
-
-    import data_discontinuities as dd
-
-    fn = r"D:\software_development\rose\data\data_discontinuities\wissel.json"
-
-    all_coordinates = dd.get_coordinates_from_json(fn)
-    x_bounds, y_bounds = dd.get_bounds_of_lines(all_coordinates)
-
-    res = filter_data_within_bounds(x_bounds, y_bounds, res)
-
-    a=1+1
+    # res = merge_data(res)
+    # # point_coordinates = np.array([[122730.096, 487773.31], [138101.172, 453431.389],[0,0]])
+    # # filter_data_at_point_coordinates(res, point_coordinates,1)
+    #
+    # # plot_date_vs_mileage(xlim, ylim, res, fig=None)
+    #
+    # import data_discontinuities as dd
+    #
+    # fn = r"D:\software_development\rose\data\data_discontinuities\wissel.json"
+    #
+    # all_coordinates = dd.get_coordinates_from_json(fn)
+    # x_bounds, y_bounds = dd.get_bounds_of_lines(all_coordinates)
+    #
+    # res = filter_data_within_bounds(x_bounds, y_bounds, res)
+    #
+    # a=1+1
 
     # file_dir = r"D:\software_development\ROSE\data\Fugro\Amsterdam_Eindhoven\Deltares_AmsterdamEindhovenKRDZ"
     # # res = get_data_at_location(file_dir, location="Amsterdam_Utrecht")
