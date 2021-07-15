@@ -10,9 +10,9 @@ class Macro:
         self.base = base  # length of foundation
 
         # variables
-        self.M0 = M0
         self.V0 = V0
         self.H0 = H0
+        self.M0 = M0
         self.V_cyc = V_cyc
         self.omega = np.array([omega])  # frequency
         self.layers_file = layers_file  # file with soil layers
@@ -30,10 +30,11 @@ class Macro:
 
         # variables
         self.nb_cycles = total_nb_cycles
-        self.forces = []
+        self.force = []
+        self.force_norm = []
         self.elastic_stiffness_matrix = []
         self.plastic_stiffness_matrix = []
-        self.u = np.zeros(int(self.nb_cycles))
+        self.u = np.zeros((int(self.nb_cycles), 3))
 
         # functions
         self.f = []  # yield function
@@ -54,14 +55,15 @@ class Macro:
         self.Qm = self.M0 / (self.base * self.V_max)
         self.Qcyc = self.V_cyc / self.V_max
 
-        self.forces = np.array([self.Qv, self.Qh, self.Qm])
+        self.force = np.array([self.V0, self.H0, self.M0])
+        self.force_norm = np.array([self.Qv, self.Qh, self.Qm])
 
     def force_max(self):
 
         # ToDo: Aron
         # following DFoundation (EC7)
         # self.Vmax = c * Nc + q * Nq + 0.5 * gamma * self.base * Ngamma
-        self.V_max = 500
+        self.V_max = 1000
 
         # A MACROELEMENT FORMULATION FOR SHALLOW FOUNDATIONS 911
         # CHATZIGOGOS ET AL. (2011)
@@ -87,7 +89,7 @@ class Macro:
         data.correction_incompressible()
         data.static_cone()
         data.dynamic_stiffness(self.omega)
-        Kv = np.real(data.K_dyn)
+        Kv = np.real(data.K_dyn)[0]
 
         # horizontal stiffness
         self.layers_file[0][-1] = "H"
@@ -96,7 +98,7 @@ class Macro:
         data.correction_incompressible()
         data.static_cone()
         data.dynamic_stiffness(self.omega)
-        Kh = np.real(data.K_dyn)
+        Kh = np.real(data.K_dyn)[0]
 
         # rotational stiffness
         ktheta = 1 # ToDo: extend wolf
@@ -110,8 +112,8 @@ class Macro:
     def plastic_matrix(self):
 
         # derived from Maxima: correct elastoplastic matrix
-        Kv = self.elastic_stiffness_matrix[0, 0][0]
-        Kh = self.elastic_stiffness_matrix[1, 1][0]
+        Kv = self.elastic_stiffness_matrix[0, 0]
+        Kh = self.elastic_stiffness_matrix[1, 1]
         Kt = self.elastic_stiffness_matrix[2, 2]
 
         self.plastic_stiffness_matrix = np.array([[(4 * Kv ** 2 * self.Qv ** 2) / (4 * Kv * self.Qv ** 2 + (4 * Kt * self.Qm ** 2) / self.Qm_max ** 4 + (4 * Kh * self.Qh ** 2) / self.Qh_max ** 4),
@@ -135,12 +137,12 @@ class Macro:
         Qv_cyc_inc = self.Qcyc / nb_steps # increment of V_cyc
 
         # force for compaction
-        force_comp = self.V0 + self.V_cyc
+        force_comp = (self.force + np.array([self.V_cyc, 0, 0]))
 
         for n in range(1, self.nb_cycles):
 
             # elastic
-            u_e = 1 / self.elastic_stiffness_matrix[0, 0] * (self.V0 + self.V_cyc)
+            u_e = np.dot(np.linalg.inv(self.elastic_stiffness_matrix), force_comp)
 
             # compaction
             u_comp = force_comp / self.alpha * (1 / n) ** self.beta
@@ -148,14 +150,14 @@ class Macro:
             # viscoplastic
             norm_v_cyc = 0
             for i in range(nb_steps):
-                norm_v_cyc += i * Qv_cyc_inc
+                norm_v_cyc = i * Qv_cyc_inc
 
                 # check if elastic / plastic
                 elastic = self.yield_function(self.Qv + norm_v_cyc, self.Qh, self.Qm)
                 if elastic:
-                    u_vp = 0
+                    u_vp = np.zeros(3)
                 else:
-                    u_vp = (self.elastic_stiffness_matrix[0, 0] - self.plastic_stiffness_matrix[0, 0]) ** -1 * (self.V0 + self.V_cyc)
+                    u_vp = np.dot(np.linalg.inv(self.elastic_stiffness_matrix - self.plastic_stiffness_matrix), force_comp)
 
             # plastic multiplier creep
             # ToDo: improve distance
@@ -164,7 +166,7 @@ class Macro:
                 print("Warning point starts in plasticity")
             plastic_mult = self.zeta * (self.V_cyc / distance) ** self.iota
 
-            self.u[n] = u_comp + (u_e + u_vp) * plastic_mult
+            self.u[n, :] = u_comp + (u_e + u_vp) * plastic_mult
 
         return
 
@@ -191,24 +193,32 @@ if __name__ == "__main__":
     v = 0.2
     emb = ["embankment", E / (2 * (1 + v)), v, 2000, 0.05, 1]
     layers = run_wolf.read_file(r"../run_rose/SOS/SOS.json", emb)
-    lay = layers[0][1]
+    lay = layers[2][1]
 
+
+    b = 0.25  # width sleeper
+    omega = (20 / 140 / 3.6) * 2 * np.pi
     V0 = 50
-    H0 = 10
-    M0 = 30
+    H0 = 0
+    M0 = 0
     V_cyc = 200
+    nb_cycles = 2000
     # model parameters
-    param = {"alpha": 250000,
-             "beta": -0.15,
+    param = {"alpha": 2500,
+             "beta": -0.05,
              "zeta": 100,
              "iota": 1e-4}
-    m = Macro(1, V0, H0, M0, V_cyc,  2 * np.pi, lay, 200, **param)
+    import time
+    t_ini = time.time()
+    m = Macro(b, V0, H0, M0, V_cyc,  omega, lay, nb_cycles, **param)
     m.main()
-
+    print(f"time: {time.time() - t_ini} s")
     import matplotlib.pylab as plt
-    plt.plot(range(m.nb_cycles), m.u)
+    plt.plot(range(m.nb_cycles), m.u[:, 0])
+    # plt.plot(range(m.nb_cycles), m.u[:, 1])
+    # plt.plot(range(m.nb_cycles), m.u[:, 2])
     plt.grid()
     plt.xlabel("Number of cycles [-]")
-    plt.xlabel("Vertical displacement [m]")
+    plt.ylabel("Vertical displacement [m]")
     plt.xlim(left=0)
     plt.show()
