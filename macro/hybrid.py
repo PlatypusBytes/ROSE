@@ -59,11 +59,27 @@ class Macro:
         self.force_norm = np.array([self.Qv, self.Qh, self.Qm])
 
     def force_max(self):
+        """
+        Bearing capacity according to Brich Hansen
+        :return:
+        """
 
         # ToDo: Aron
         # following DFoundation (EC7)
-        # self.Vmax = c * Nc + q * Nq + 0.5 * gamma * self.base * Ngamma
-        self.V_max = 1000
+        phi_mean = 30 # weighted mean friction angle in effective zone below foundation
+        c_mean = 2 # weighted mean cohesion in effective zone below foundation
+        q = 0 # effective pressure of the soil at the same height as the foundation base
+        gamma_mean = 20 # weighted mean volumetric weight in effective zone below foundation
+
+        N_q = np.exp(np.pi * np.tan(np.radians(phi_mean))) * np.tan(np.radians(45 + 0.5*phi_mean))**2
+        N_gamma = 2 * (N_q - 1)*np.tan(np.radians(phi_mean))
+        N_c = (N_q-1)/np.tan(np.radians(phi_mean))
+
+        length_sleeper = 2.6 # length sleeper  [m]
+
+        sigma_max = c_mean * N_c + q * N_q + 0.5 * gamma_mean * self.base * N_gamma
+        self.V_max = sigma_max * self.base # * length_sleeper
+        # self.V_max = 1000
 
         # A MACROELEMENT FORMULATION FOR SHALLOW FOUNDATIONS 911
         # CHATZIGOGOS ET AL. (2011)
