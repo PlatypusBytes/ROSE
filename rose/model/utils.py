@@ -1,53 +1,48 @@
-from scipy import sparse
+from rose.model.geometry import Node, Element
+
 import numpy as np
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import LineString, Polygon, Point
+from scipy.spatial import KDTree
+from scipy import sparse, interpolate
 
 from typing import List
-
-# from src.boundary_conditions import LoadCondition
-from rose.model.geometry import Node, Element
-from scipy import sparse
-from scipy.spatial.distance import cdist
-
 import copy
-
-from shapely.geometry import Point
-from scipy.spatial import KDTree
-from scipy import sparse
-from scipy import interpolate
 
 
 def filer_location(locations: np.array, lower_limit: float, upper_limit: float):
+    """
+    Filter location array which is outside lower and upper limit. If location is outside limits, it is set to the
+    corresponding limit
+
+    :param locations: location array to be filtered
+    :param lower_limit: lower limit of location array
+    :param upper_limit: upper limit of location array
+    :return:
+    """
+
+    # filter location array outside limits and set location to limit
     locations[locations > upper_limit] = upper_limit
     locations[locations < lower_limit] = lower_limit
 
     return locations
 
 
-def filter_data_outside_range(
-    data: np.array, locations: np.array, lower_limit: float, upper_limit: float
-):
-    # Set force at 0 when its located outside the range
+def filter_data_outside_range(data: np.array, locations: np.array, lower_limit: float, upper_limit: float):
+    """
+    Filters data outside upper and lower location limits
+
+    :param data: data array to be filtered
+    :param locations: location array to ben checked for limits
+    :param lower_limit: lower limit of location array
+    :param upper_limit: upper limit of location array
+    :return:
+    """
+
+    # Set data at 0 when its located outside the limits
     data[locations > upper_limit] = 0
     data[locations < lower_limit] = 0
 
     return data
-
-
-def calculate_cumulative_distance_of_coordinates(coordinates: np.array):
-    """
-    Calculates cumulative distance between a sorted coordinate array
-    :param coordinates:
-    :return:
-    """
-    return np.append(
-        0,
-        np.cumsum(
-            distance_np(
-                coordinates[:-1, :], coordinates[1:, :], axis=1
-            )
-        ),
-    )
 
 
 def interpolate_cumulative_distance_on_nodes(
@@ -56,25 +51,33 @@ def interpolate_cumulative_distance_on_nodes(
     """
     Interpolate cumulative distances on coordinates
 
-    :param cumulative_distances:
-    :param coordinates:
-    :param new_cumulative_distances:
+    :param cumulative_distances: cumulative distance array of the nodes
+    :param coordinates: nodal coordinates
+    :param new_cumulative_distances: new cumulative distance array to be interpolated with
     :return:
     """
 
-    # set interpolation functions
+    # set interpolation functions in x,y,z direction
     fx = interpolate.interp1d(cumulative_distances, coordinates[:, 0])
     fy = interpolate.interp1d(cumulative_distances, coordinates[:, 1])
     fz = interpolate.interp1d(cumulative_distances, coordinates[:, 2])
 
-    # interpolate
+    # interpolate in x,y,z direction
     new_x_coords = fx(new_cumulative_distances)
     new_y_coords = fy(new_cumulative_distances)
     new_z_coords = fz(new_cumulative_distances)
 
     return np.array([new_x_coords, new_y_coords, new_z_coords]).transpose()
 
+
 def calculate_cum_distance_from_velocity(time, velocities):
+    """
+    Calculate cumulative distance by multiplying the time steps by the velocities
+
+    :param time: time discretisation
+    :param velocities: array of velocity each time step
+    :return:
+    """
     cum_distances = np.append(
                     0,
                     np.cumsum((time[1:] - time[:-1]) * velocities[:-1])
@@ -82,52 +85,29 @@ def calculate_cum_distance_from_velocity(time, velocities):
     return cum_distances
 
 
-def reshape_force_vector(n_nodes_element, dofs, force_vector):
+def reshape_aux_matrix(n_nodes_element: int, dofs: list, aux_matrix: np.ndarray) -> np.ndarray:
     """
-    Reshapes force vector of the model part based on the total possible degrees of freedom (active and unactive). This
-    function is required to easily fill the global force vector
-
-    :param n_nodes: number of nodes per element
-    :param dofs: list of degrees of freedoms
-    :param force_vector: current force vector
-    :return:
-    """
-
-    new_force_vector = np.zeros((n_nodes_element * len(dofs), 1))
-
-    dofs = np.asarray(dofs)
-    for i in range(n_nodes_element):
-        for k in range(len(dofs)):
-            if dofs[k]:
-                new_force_vector[
-                    i * len(dofs) + k, 0
-                ] = force_vector[
-                    i * sum(dofs) + sum(dofs[0:k]),
-                    0,
-                ]
-
-    return new_force_vector
-
-
-def reshape_aux_matrix(n_nodes_element, dofs, aux_matrix):
-    """
-    Reshapes aux matrix of the model part based on the total possible degrees of freedom (active and unactive). This
+    Reshapes aux matrix of the model part based on the total possible degrees of freedom (active and inactive). This
     function is required to easily fill the global matrices
 
-    :param n_nodes: number of nodes per element
-    :param dofs: list of degrees of freedoms
-    :param aux_matrix: current auxiliar matrix
+    :param n_nodes_element: number of nodes per element
+    :param dofs: list of all possible degrees of freedoms per element
+    :param aux_matrix: current auxiliary matrix
     :return:
     """
+
+    # inititalise reshaped auxiliary matrix
     new_aux_matrix = np.zeros((n_nodes_element * len(dofs), n_nodes_element * len(dofs)))
 
-    dofs = np.asarray(dofs)
+    # loop over nodes per element
     for i in range(n_nodes_element):
         for j in range(n_nodes_element):
+            # loop over possible degrees of freedom
             for k in range(len(dofs)):
                 if dofs[k]:
                     for l in range(len(dofs)):
                         if dofs[l]:
+                            # if degree of freedom is active, add data from original aux matrix to reshaped aux matrix
                             new_aux_matrix[
                                 i * len(dofs) + k, j * len(dofs) + l
                             ] = aux_matrix[
@@ -140,11 +120,17 @@ def reshape_aux_matrix(n_nodes_element, dofs, aux_matrix):
 
 def delete_from_lil(mat: sparse.lil_matrix, row_indices=[], col_indices=[]):
     """
-    Remove the rows (denoted by ``row_indices``) and columns (denoted by ``col_indices``) from the lil sparse matrix
-    ``mat``.
+    Remove the rows  and columns  from the lil sparse matrix
+
     WARNING: Indices of altered axes are reset in the returned matrix
+
+    :param mat: matrix to be trimmed
+    :param row_indices: row indices to be removed
+    :param col_indices: column indices to be removed
+    :return:
     """
 
+    # fill rows and cols if row_indices and col_indices are to be removed
     rows = []
     cols = []
     if row_indices:
@@ -152,16 +138,21 @@ def delete_from_lil(mat: sparse.lil_matrix, row_indices=[], col_indices=[]):
     if col_indices:
         cols = list(col_indices)
 
+    # remove both rows and columns from matrix
     if len(rows) > 0 and len(cols) > 0:
         row_mask = np.ones(mat.shape[0], dtype=bool)
         row_mask[rows] = False
         col_mask = np.ones(mat.shape[1], dtype=bool)
         col_mask[cols] = False
         return mat[row_mask][:, col_mask]
+
+    # remove only rows from matrix
     elif len(rows) > 0:
         mask = np.ones(mat.shape[0], dtype=bool)
         mask[rows] = False
         return mat[mask]
+
+    # remove only columns from matrix
     elif len(cols) > 0:
         mask = np.ones(mat.shape[1], dtype=bool)
         mask[cols] = False
@@ -172,44 +163,54 @@ def delete_from_lil(mat: sparse.lil_matrix, row_indices=[], col_indices=[]):
 
 def calculate_rotation(coord1: np.ndarray, coord2: np.ndarray):
     """
-    Calculates rotation between 2 nodes in a 2d space
-    :param node1: first node
-    :param node2: second node
+    Calculates rotation between 2 coordinate arrays in a 2d space.
+    :param coord1: first coordinate array
+    :param coord2: second coordinate array
     :return:
     """
-    #todo make general, now it works for 2 nodes in a 2d space
-    rot = np.zeros(coord1.shape[0])
-    is_x_equal = np.isclose(coord2[:,0] - coord1[:,0], 0)
-    rot[is_x_equal] = np.pi/2 * np.sign((coord2[is_x_equal, 1] - coord1[is_x_equal, 1]))
-        # return np.pi/2 * np.sign((coord2[1] - coord1[1]))
-    rot[coord2[:,0] < coord1[:,0]] += np.pi
+    # todo make general, now it works for 2 nodes in a 2d space
 
-    rot[~is_x_equal] += np.arctan((coord2[:,1] - coord1[:,1])/ (coord2[:,0] - coord1[:,0]))
+    # initialise rotation
+    rot = np.zeros(coord1.shape[0])
+
+    # check if both x coordinates are equal
+    is_x_equal = np.isclose(coord2[:,0] - coord1[:,0], 0)
+
+    # apply a 90 degree rotation if x coordinates are equal
+    rot[is_x_equal] = np.pi/2 * np.sign((coord2[is_x_equal, 1] - coord1[is_x_equal, 1]))
+
+    # if second x coordinate is smaller than the first x coordinate, add pi to the rotation
+    rot[coord2[:, 0] < coord1[:, 0]] += np.pi
+
+    # calculate rotation between the coordinates if the x coordinates are not equal
+    rot[~is_x_equal] += np.arctan((coord2[:, 1] - coord1[:, 1])[~is_x_equal] /
+                                  (coord2[:, 0] - coord1[:, 0])[~is_x_equal])
+
     return rot
 
 
 def rotate_point_around_z_axis(rotation: np.ndarray, point_vector: np.ndarray):
     """
     Rotates a point around the z-axis
-    :param rotation: rotation in radians
-    :param point_vector: vector of global values [x-direction, y-direction, z-rotation]
+    :param rotation: rotation array in radians
+    :param point_vector: vector of global values [x-direction, y-direction, z-rotation] to be rotated
     :return:
     """
 
-    rot_matrix = np.zeros((len(rotation),3, 3))
+    # set rotation matrix
+    rot_matrix = np.zeros((len(rotation), 3, 3))
     rot_matrix[:, 0, 0] = np.cos(rotation)
     rot_matrix[:, 1, 1] = np.cos(rotation)
     rot_matrix[:, 0, 1] = np.sin(rotation)
-    rot_matrix[:,1, 0] = -rot_matrix[:,0, 1]
-    rot_matrix[:,2, 2] = 1
+    rot_matrix[:, 1, 0] = -rot_matrix[:, 0, 1]
+    rot_matrix[:, 2, 2] = 1
 
     rotated_point = np.zeros(point_vector.shape)
 
     # rotate each time step
-    for idx,(mat, point) in enumerate(zip(rot_matrix,point_vector)):
+    for idx, (mat, point) in enumerate(zip(rot_matrix,point_vector)):
         rotated_point[idx] = mat.dot(point)
     return rotated_point
-
 
 
 def rotate_force_vector(element: Element, contact_model_part, force_vector: np.array):

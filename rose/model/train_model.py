@@ -6,8 +6,8 @@ from rose.model import utils
 from rose.model.geometry import Node
 from rose.model.model_part import ElementModelPart
 from rose.model.global_system import GlobalSystem
-
-from rose.model.solver import NewmarkSolver, StaticSolver, ZhaiSolver
+from solvers.newmark_solver import NewmarkSolver
+from rose.model.solver import  StaticSolver, ZhaiSolver
 
 g = 9.81
 

@@ -366,7 +366,7 @@ def merge_data(res: Dict):
 
 def get_data_at_location(file_dir, location: str ="all", filetype: str ='csv') -> Dict:
     """
-    #todo add posibility to retrieve data from location, currently all data is retrieved
+    #todo add possibility to retrieve data from location, currently all data is retrieved
 
     :param file_dir: directory where all data files are located
     :param location: location of the data

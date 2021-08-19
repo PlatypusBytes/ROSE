@@ -387,7 +387,6 @@ class MovingPointLoad(LineLoadCondition):
         self.cum_distances_force = utils.calculate_cum_distance_from_velocity(self.time, self.velocities)
         self.cum_distances_force += self.start_distance
 
-
     def __distribute_normal_force(self, distance, force):
         """
         Distributes normal force on relevant nodes
@@ -405,7 +404,6 @@ class MovingPointLoad(LineLoadCondition):
         ])
 
         return force[0] * normal_interp_factors
-
 
     def __distribute_shear_force(self, distance, force):
         """

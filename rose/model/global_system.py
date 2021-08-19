@@ -3,7 +3,8 @@ from rose.model.boundary_conditions import LoadCondition
 from rose.model.geometry import Mesh
 from rose.model.exceptions import *
 
-from rose.model.solver import NewmarkSolver, StaticSolver, ZhaiSolver, Solver
+from solvers.newmark_solver import NewmarkSolver
+from rose.model.solver import StaticSolver, ZhaiSolver, Solver
 from rose.model import utils
 
 from scipy import sparse
