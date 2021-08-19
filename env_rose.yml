@@ -22,4 +22,5 @@ dependencies:
     - rst2pdf==0.98
     - releases==1.6.3
     - fiona==1.8.18
+    - "--editable=git+https://zuada@bitbucket.org/DeltaresGEO/solvers.git#egg=solvers"
 
