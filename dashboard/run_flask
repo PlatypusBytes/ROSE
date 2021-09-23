@@ -1,0 +1,4 @@
+in windows:
+> cd ./rose/dashboard
+> set FLASK_APP=application.py
+> flask run
