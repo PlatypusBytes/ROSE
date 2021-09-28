@@ -153,3 +153,33 @@ def set_cargo_train(time, velocities, start_coord):
             wheel.mass = 1.5e3
 
     return cargo_train
+
+
+def train_class_to_dict(train_class:TrainModel):
+
+    train_dict = {}
+    train_dict["wheel_distances"] = train_class.carts[0].bogies[0].wheel_distances   # wheel distances from the centre of the bogie [m]
+    train_dict["bogie_length"] = train_class.carts[0].bogies[0].length  # length of the bogie [m]
+
+    # set up cart configuration
+    train_dict["bogie_distances"] = train_class.carts[0].bogie_distances  # bogie distances from the centre of the cart [m]
+    train_dict["cart_length"] = train_class.carts[0].length  # length of the cart [m]
+
+    # set up train configuration
+    train_dict["cart_distances"] = train_class.cart_distances  # cart distances from the start of the track [m]
+
+    # set train parameters
+    train_dict["mass_wheel"] = train_class.carts[0].bogies[0].wheels[0].mass  # mass of one wheel [kg]
+    train_dict["mass_bogie"] = train_class.carts[0].bogies[0].mass  # mass of one bogie [kg]
+    train_dict["mass_cart"] = train_class.carts[0].mass  # mass of one cart  [kg]
+
+    train_dict["inertia_bogie"] = train_class.carts[0].bogies[0].inertia  # mass inertia of one bogie   [kg.m2]
+    train_dict["inertia_cart"] = train_class.carts[0].inertia  # mass inertia of one cart   [kg.m2]
+
+    train_dict["prim_stiffness"] = train_class.carts[0].bogies[0].stiffness  # primary suspension: stiffness between wheels and bogie  [N/m]
+    train_dict["sec_stiffness"] = train_class.carts[0].stiffness  # secondary suspension: stiffness between bogies and cart  [N/m]
+
+    train_dict["prim_damping"] = train_class.carts[0].bogies[0].damping  # primary suspension: damping between wheels and bogie  [N.s/m]
+    train_dict["sec_damping"] = train_class.carts[0].damping
+
+    return train_dict
