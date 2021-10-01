@@ -27,7 +27,11 @@ def train_model(time, velocity, start_coord):
     intercity = set_train(time, velocity, start_coord, TrainType.INTERCITY)
     cargo = set_train(time, velocity, start_coord, TrainType.CARGO)
 
-    return sprinter, intercity, cargo
+    trains = {"Sprinter": sprinter,
+              "Intercity": intercity,
+              "Cargo": cargo}
+
+    return trains
 
 
 def geometry(nb_sleeper, fact=1):
@@ -109,7 +113,7 @@ def create_dash_input_json():
     # set time integration and track information
     time_data = time_integration()
     track_materials = materials()
-    track_geometry = geometry([200],fact=1)
+    track_geometry = geometry([200],fact=10)
 
     track_info = {"geometry": track_geometry,
                   "materials": track_materials}
@@ -118,12 +122,13 @@ def create_dash_input_json():
     trains = train_model(np.nan, np.nan, 30)
 
     # convert default train class to dictionaries
-    train_dicts = [train_class_to_dict(train) for train in trains]
+    train_dicts = [train_class_to_dict(train) for train in trains.values()]
 
-    # add equal train velocity to each default train
+    # add equal train velocity and train type to each default train
     train_velocity = 100 / 3.6
-    for train in train_dicts:
+    for i, train in enumerate(train_dicts):
         train["velocity"] = train_velocity
+        train["type"] = list(trains.keys())[i]
 
     new_sos_dict = {}
     for k, v in sos_data.items():
