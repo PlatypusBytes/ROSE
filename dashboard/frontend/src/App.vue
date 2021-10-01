@@ -20,18 +20,38 @@
         </v-stepper-step>
       </v-stepper-header>
       
+      <v-app-bar clipped-left />
+      <v-navigation-drawer
+        clipped
+        permanent
+        width="400"
+      />
       <v-main>
         <v-stepper-items>
           <v-stepper-content step="1">
             <input-data-card @go-to-results="onShowResultsPage" />
-          </v-stepper-content>
+          </v-stepper-content> 
           <v-stepper-content step="2">
-            <v-card
-              class="pa-0 ml-0"
-              height="92vh"
-            >
-              <mapbox-map :access-token="accessToken" />
-            </v-card>
+            <!--  <v-container fluid> 
+              <v-row no-gutters pa-0>
+                <v-col cols="2">
+                  <v-card> 
+                    <v-card-title>
+                      Input Data
+                    </v-card-title>
+                  </v-card>
+                </v-col>
+                <v-col>
+                  <v-card elevation="0" height="600">
+                    <v-card-title>
+                      Input Data
+                    </v-card-title>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-container> -->
+
+            <mapbox-map :access-token="accessToken" />
           </v-stepper-content>
         </v-stepper-items>
       </v-main>
@@ -95,4 +115,9 @@
   .container {
     height: 800px;
   }
+
+  ::v-deep .v-application--wrap {
+    min-height: fit-content;
+  }
+  
 </style>
