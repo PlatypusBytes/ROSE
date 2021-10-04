@@ -1,16 +1,73 @@
 from flask import Flask, render_template, request
+import os
 import json
-
 import numpy as np
+# ROSE packages
+from dashboard import app_utils
+from dashboard import validate_input
+from dashboard import hashing
 
-import app_utils
-
+# app
 app = Flask(__name__)
+
+# poth for the local calculations
+CALCS_PATH = "../dash_calculations"
+if not os.path.isdir(CALCS_PATH):
+    os.makedirs(CALCS_PATH)
 
 
 @app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
+
+
+@app.route("/runner", methods=["POST"])
+def run():
+    import os
+    print(os.getcwd())
+
+    # parse input json from Front End
+    input_json = "../run_rose/example_rose_input.json"
+
+    # check input json
+    status = check_calculation(input_json)
+
+    return str(status)
+
+
+def check_calculation(input_json):
+    r"""
+    Reads and validates the input json file
+
+    @param input_json: input json file
+    @return: True / False
+    """
+
+    with open(input_json, "r") as fi:
+        input = json.load(fi)
+
+    # validates json input
+    status = validate_input.check_json(input)
+
+    if not status:
+        return render_template("message.html",  message="Input file not valid")
+
+    # check if file exists & has results
+    # hash the file
+    hash = hashing.Hash()
+    hash.hash_dict(input)
+
+    # load calculations:
+    with open(os.path.join(CALCS_PATH, "calculations.json"), "r") as f:
+        calcs = json.load(f)
+
+    if hash.hash_value in calcs.keys():
+        # todo load results
+        return render_template("message.html", message="Calculation exists")
+
+    # ToDo: go to run calculation
+    return render_template("message.html", message="Calculation will run")
+
 
 def write_geo_json():
     geo_json = {"type": "FeatureCollection",
@@ -27,6 +84,7 @@ def write_geo_json():
                          "cumulative_settlement_std":[np.nan]
                      }}
                 ]}
+
 
 def add_to_geo_json(coordinates, data: np.ndarray):
     mean = np.mean(data,axis=0)
@@ -74,11 +132,5 @@ def runner(json_input):
             add_to_geo_json(vertical_force_soil_segment)
 
 
-
-
-
-
-
 if __name__ == "__main__":
-    # app.run("127.0.0.1")
-    runner(r'D:\software_development\rose\run_rose\example_rose_input.json')
+    app.run("127.0.0.1")
