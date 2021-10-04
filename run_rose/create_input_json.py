@@ -8,7 +8,7 @@ def read_sos_data():
     Reads sos json file
     :return:
     """
-    path_sos_json = r"D:\software_development\rose\data_proc\SOS.json"
+    path_sos_json = r"..\data_proc\SOS.json"
     with open(path_sos_json,'r') as f:
         sos_data = json.load(f)
     return sos_data
