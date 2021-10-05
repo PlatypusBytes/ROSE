@@ -83,7 +83,7 @@
     },
     data: () => ({
       accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
-      page: 2,
+      page: 1,
     }),
     methods: {
       onShowResultsPage(event) {
