@@ -1,13 +1,23 @@
 import os
 import pickle
+from pyproj import Transformer
 # import ROSE packages
-from run_rose.read_wolf import read_wolf
 from rose.model.model_part import Material, Section
 from rose.model.train_model import *
 from rose.model.train_track_interaction import *
-# import rose.model.solver as solver_c
-
 from solvers.newmark_solver import NewmarkSolver
+
+
+def transform_rd_to_lat_lon(rd_x, rd_y):
+    """
+    Converts rd coordinates to lat lon coordinates
+    :param rd_x: rd x coordinates
+    :param rd_y: rd y coordinates
+    :return:
+    """
+    transformer = Transformer.from_crs("epsg:28992", "epsg:4326")
+    x, y = transformer.transform(rd_x, rd_y)
+    return x,y
 
 def assign_data_to_coupled_model(train_info, track_info, time_int, soil):
     # choose solver
@@ -152,6 +162,6 @@ def get_results_coupled_model(coupled_model, output_interval):
         [element.force[0::output_interval, 0] for element in coupled_model.track.model_parts[4].elements])
     mid_idx_force =  int(vertical_force_soil.shape[0]/2)
 
-    dynamic_stiffness_soil = vertical_force_soil/vertical_displacements_soil
+    time = coupled_model.time[0::output_interval]
 
-    return vertical_displacements_soil, vertical_force_soil[mid_idx_force,:], dynamic_stiffness_soil
+    return time, vertical_force_soil[mid_idx_force,:]
