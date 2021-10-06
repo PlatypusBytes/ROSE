@@ -27,9 +27,18 @@ def train_model(time, velocity, start_coord):
     intercity = set_train(time, velocity, start_coord, TrainType.INTERCITY)
     cargo = set_train(time, velocity, start_coord, TrainType.CARGO)
 
-    trains = {"Sprinter": sprinter,
-              "Intercity": intercity,
-              "Cargo": cargo}
+    trains = {"Sprinter": {"model":sprinter,
+                           "traffic":{"nb-per-hour": 4,
+                                       "nb-hours": 16,
+                                       "nb-axles": 16}},
+              "Intercity": {"model":intercity,
+                           "traffic":{"nb-per-hour": 4,
+                                       "nb-hours": 16,
+                                       "nb-axles": 16}},
+              "Cargo": {"model": cargo,
+                           "traffic": {"nb-per-hour": 27,
+                                       "nb-hours": 1,
+                                       "nb-axles": 10*4}}}
 
     return trains
 
@@ -122,13 +131,17 @@ def create_dash_input_json():
     trains = train_model(np.nan, np.nan, 30)
 
     # convert default train class to dictionaries
-    train_dicts = [train_class_to_dict(train) for train in trains.values()]
+    train_dicts = [train_class_to_dict(train["model"]) for train in trains.values()]
 
     # add equal train velocity and train type to each default train
     train_velocity = 100 / 3.6
     for i, train in enumerate(train_dicts):
         train["velocity"] = train_velocity
         train["type"] = list(trains.keys())[i]
+        train["traffic"] = list(trains.values())[i]["traffic"]
+
+    # convert train list to dict
+    train_dicts = {train_nbr: train_dicts[train_nbr] for train_nbr in range(len(train_dicts))}
 
     new_sos_dict = {}
     for k, v in sos_data.items():
@@ -152,8 +165,6 @@ def create_dash_input_json():
 
     with open('example_rose_input.json', 'w') as json_file:
         json.dump(input_dict, json_file, indent=2)
-
-
 
 if __name__ == '__main__':
     create_dash_input_json()
