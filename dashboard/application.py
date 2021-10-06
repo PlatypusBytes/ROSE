@@ -64,6 +64,19 @@ def add_feature_to_geo_json(coordinates, time, mean_dyn_stiffness,std_dyn_stiffn
 
     # create feature dict
     feature = {"type": "Feature",
+                     "geometry": {
+                         "type": "LineString",
+                         "coordinates": new_coordinates
+                     },
+                     "properties":{
+                         "mean_dyn_stiffness": np.around(mean_dyn_stiffness, decimals=2).tolist(),
+                         "std_dyn_stiffness": np.around(std_dyn_stiffness, decimals=2).tolist(),
+                         "train_names": train_names,
+                         "time": np.around(time,decimals=2).tolist(),
+                         "cumulative_settlement_mean": np.around(mean_cum_settlement,decimals=2).tolist(),
+                         "cumulative_settlement_std": np.around(std_cum_settlement,decimals=2).tolist()
+                     }}
+    return feature
 
 @app.route("/runner", methods=["POST"])
 def run():
@@ -115,25 +128,6 @@ def calculation(input_json):
     with open(os.path.join(CALCS_PATH, CALCS_JSON), "w") as fo:
         json.dump(calcs, fo, indent=2)
     return render_template("message.html", message="Calculation will run")
-
-
-def write_geo_json():
-    geo_json = {"type": "FeatureCollection",
-                "features": [
-                    {"type": "Feature",
-                     "geometry": {
-                         "type": "LineString",
-                         "coordinates": new_coordinates
-                     },
-                     "properties":{
-                         "mean_dyn_stiffness": np.around(mean_dyn_stiffness, decimals=2).tolist(),
-                         "std_dyn_stiffness": np.around(std_dyn_stiffness, decimals=2).tolist(),
-                         "train_names": train_names,
-                         "time": np.around(time,decimals=2).tolist(),
-                         "cumulative_settlement_mean": np.around(mean_cum_settlement,decimals=2).tolist(),
-                         "cumulative_settlement_std": np.around(std_cum_settlement,decimals=2).tolist()
-                     }}
-    return feature
 
 def runner(json_input):
 
@@ -238,8 +232,6 @@ def runner(json_input):
         break
 
     write_geo_json(features,"geojson_example.json")
-
-
 
 if __name__ == "__main__":
     app.run("127.0.0.1")
