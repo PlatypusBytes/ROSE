@@ -11,5 +11,5 @@ import './components/AppCore/index.scss'
 new Vue({
   store,
   vuetify,
-  render: h => h(App)
+  render: h => h(App),
 }).$mount('#app')

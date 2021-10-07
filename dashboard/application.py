@@ -1,4 +1,4 @@
-from flask import Flask, render_template, Response
+from flask import Flask, render_template, Response, request
 import os
 import json
 import numpy as np
@@ -107,11 +107,13 @@ def add_feature_to_geo_json(
 def run():
 
     # ToDo: parse input json from Front End
+    req = request.get_json()
+    print(f"input request: {req}")
     input_json = "../run_rose/example_rose_input.json"
 
     # check input json & runs calculation
     message = calculation(input_json)
-
+    print(f"message: {message}")
     return message
 
 
