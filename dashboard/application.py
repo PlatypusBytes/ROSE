@@ -1,4 +1,5 @@
-from flask import Flask, render_template, Response, request
+from flask import Flask, render_template, session, request
+from flask_session import Session
 import os
 import json
 import numpy as np
@@ -25,7 +26,7 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/runner", methods=["POST"])
+@app.route("/runner", methods=["GET", "POST"])
 def run():
 
     # ToDo: parse input json from Front End
@@ -47,6 +48,7 @@ def run():
     calc["data"] = dat
 
     return calc
+
 
 @app.route("/dynamic_stiffness")
 def dynamic_stiffness():
@@ -116,18 +118,26 @@ def calculation(input_json):
     with open(os.path.join(CALCS_PATH, CALCS_JSON), "r") as f:
         calcs = json.load(f)
 
-    # if hash exists visualise results
+    # if hash exists load results
     if hash.hash_value in calcs.keys():
-        #ToDo: load results
-        return True, {}  #geo_json  # needs to return input_json
+        # location output json
+        location = calcs[hash.hash_value]
+    else:
+        # run calculation
+        app_utils.runner(input_json, CALCS_PATH)
 
-    # ToDo: run calculation
-    app_utils.runner(input_json)
-    # add hash to calculations.json
-    calcs.update({str(hash.hash_value): "path_to_geojson"})
-    with open(os.path.join(CALCS_PATH, CALCS_JSON), "w") as fo:
-        json.dump(calcs, fo, indent=2)
-    return True, {}
+        # add hash to calculations.json
+        calcs.update({str(hash.hash_value): input["project_name"]})
+        # location of output json
+        location = input["project_name"]
+        with open(os.path.join(CALCS_PATH, CALCS_JSON), "w") as fo:
+            json.dump(calcs, fo, indent=2)
+
+    # open json results and return
+    with open(os.path.join(CALCS_PATH, location, "data.json")) as f:
+        data = json.load(f)
+
+    return True, data
 
 
 if __name__ == "__main__":

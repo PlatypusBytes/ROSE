@@ -265,12 +265,13 @@ def add_feature_to_geo_json(coordinates, time, mean_dyn_stiffness,std_dyn_stiffn
     return feature
 
 
-def runner(json_input, calculation_time=50):
+def runner(json_input, path_results, calculation_time=50):
     """
     Runs the complete ROSE calculation: Firstly stiffness and damping of the soil are determined with wolf; secondly
     the coupled dynamic train track interaction model is ran; lastly the cumulative settlement model is ran.
 
     :param json_input:
+    :param path_results:
     :param calculation_time: time of the cumulative settlement calculation [days]
     :return:
     """
@@ -279,6 +280,11 @@ def runner(json_input, calculation_time=50):
     # retrieve data from input file
     with open(json_input,'r') as f:
         input_data = json.load(f)
+
+    # check if path to save results exist
+    print(os.path.join(path_results, input_data["project_name"]))
+    if not os.path.isdir(os.path.join(path_results, input_data["project_name"])):
+        os.makedirs(os.path.join(path_results, input_data["project_name"]))
 
     sos_data = input_data["sos_data"]
     traffic_data =input_data["traffic_data"]
@@ -382,5 +388,4 @@ def runner(json_input, calculation_time=50):
         features.append(feature)
 
     # write geo_json
-    write_geo_json(features,"geojson_example.json")
-
+    write_geo_json(features, os.path.join(path_results, input_data["project_name"], "data.json"))
