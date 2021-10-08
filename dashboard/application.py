@@ -7,6 +7,7 @@ import numpy as np
 from dashboard import app_utils
 from dashboard import validate_json
 from dashboard import hashing
+from dashboard import io
 
 # app
 app = Flask(__name__)
@@ -35,7 +36,7 @@ def run():
     calc = {"valid": False,
             "exist": False,
             "sessionID": "",
-            "data": {},  # input json file Aron
+            "data": {},  # input json file Aron first call
             }
 
     # check input json
@@ -56,7 +57,7 @@ def dynamic_stiffness():
     train_type = request.args.get('train_type')
     value_type = request.args.get('value_type')  # mean or std
 
-    geojson = parse_dyn_data(geojson_template, train_type, value_type)
+    geojson = io.parse_dynamic_stiffness_data(train_type, value_type)
 
     return geojson
 
@@ -64,10 +65,10 @@ def dynamic_stiffness():
 @app.route("/settlement")
 def settlement():
 
-    time = request.args.get('time')
+    time = request.args.get('time_index')
     value_type = request.args.get('value_type')  # mean or std
 
-    geojson = parse_set_data(geojson_template,  time, value_type)
+    geojson = io.parse_cumulative_settlement_data(time, value_type)
 
     return geojson
 
@@ -76,7 +77,7 @@ def settlement():
 def graph_values():
     segment_id = request.args.get('segment_id')
 
-    geojson = parse_graph_data(geojson_template, segment_id)
+    geojson = io.parse_graph_data(segment_id)
 
     return geojson
 
