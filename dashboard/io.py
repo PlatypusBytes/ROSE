@@ -40,11 +40,13 @@ def parse_cumulative_settlement_data(time_index, value_type):
 
     return geojson
 
-def parse_graph_data(geojson_template, segment_id, value_type):
+def parse_graph_data(segment_id):
 
-    geojson_template["time"] = ALL_RESULTS[segment_id]["properties"]["time"]
-    geojson_template[value_type] = ALL_RESULTS[segment_id]["properties"]["value_type"]
-    return geojson_template
+    graph_json = {"time": ALL_RESULTS[segment_id]["properties"]["time"],
+                  "cumulative_settlement_mean": ALL_RESULTS[segment_id]["properties"]["cumulative_settlement_mean"],
+                  "cumulative_settlement_std": ALL_RESULTS[segment_id]["properties"]["cumulative_settlement_std"]}
+
+    return graph_json
 
 def write_all_results(features_dict, filename: str):
     """

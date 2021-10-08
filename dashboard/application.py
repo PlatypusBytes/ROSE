@@ -74,9 +74,8 @@ def settlement():
 @app.route("/graph_values")
 def graph_values():
     segment_id = request.args.get('segment_id')
-    value_type = request.args.get('value_type')
 
-    geojson = io.parse_graph_data(geojson_template, segment_id, value_type)
+    geojson = io.parse_graph_data(segment_id)
 
     return geojson
 
