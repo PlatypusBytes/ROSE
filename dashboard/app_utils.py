@@ -265,12 +265,13 @@ def add_feature_to_geo_json(coordinates, time, mean_dyn_stiffness,std_dyn_stiffn
     return feature
 
 
-def runner(json_input):
+def runner(json_input, calculation_time=50):
     """
     Runs the complete ROSE calculation: Firstly stiffness and damping of the soil are determined with wolf; secondly
-    the coupled dynamic train track itneraction model is ran; lastly the cumulative settlement model is ran.
+    the coupled dynamic train track interaction model is ran; lastly the cumulative settlement model is ran.
 
     :param json_input:
+    :param calculation_time: time of the cumulative settlement calculation [days]
     :return:
     """
     from run_rose.run_wolf import create_layering_for_wolf, run_wolf_on_layering
@@ -292,15 +293,13 @@ def runner(json_input):
     for k, v in sos_data.items():
         # loop over trains
         forces = []
-        std_forces = []
         mean_dynamic_stiffnesses = []
         std_dynamic_stiffnesses = []
-
         train_types = []
         train_dicts = {}
         scenario_probabilities = [scenario["probability"] for scenario in v["scenarios"].values()]
         # loop over train types
-        for train in traffic_data:
+        for train in traffic_data.values():
             train_types.append(train["type"])
             vertical_force_soil_segment = []
             dyn_stiffnesses = []
@@ -343,14 +342,17 @@ def runner(json_input):
             mean_dynamic_stiffnesses.append(list(mean_dynamic_stiffness))
             std_dynamic_stiffnesses.append(list(std_dynamic_stiffness))
 
+        # calculate cumulative settlements per scenario
         cumulative_settlements = []
         for i, scenario in enumerate(v["scenarios"].values()):
 
+            # get forces in soil all trains at current scenario
             for j, train in enumerate(train_dicts.values()):
                 train["forces"] = forces[j][i,:][None,:]
 
+            # calculate cumulative settlement
             sett = Varandas.AccumulationModel()
-            sett.read_traffic(train_dicts, 50)
+            sett.read_traffic(train_dicts, calculation_time)
             sett.settlement(idx=[0])
 
             # calculate output step size (1 outout value per day + last value
@@ -363,19 +365,23 @@ def runner(json_input):
             # add last index
             indices.append(n_steps-1)
 
+            # get cumulative settlement result
             cumulative_time = np.array(sett.results["time"])[indices]
             cumulative_settlements.append(np.array(sett.results["settlement"]['0'])[indices])
 
-        #calculate mean and std cumulative settlement in mm
+        # calculate mean and std cumulative settlement in mm
         m_to_mm = 1e3
         cumulative_settlement_mean,cumulative_settlement_std =  calculate_weighted_mean_and_std(
             np.array(cumulative_settlements)*m_to_mm, np.array(scenario_probabilities))
 
         # add feature to geo json
-        feature = add_feature_to_geo_json(v["coordinates"], cumulative_time, mean_dynamic_stiffnesses, std_dynamic_stiffnesses, train_types, cumulative_settlement_mean,
-                                cumulative_settlement_std)
+        feature = add_feature_to_geo_json(v["coordinates"], cumulative_time, mean_dynamic_stiffnesses,
+                                          std_dynamic_stiffnesses, train_types, cumulative_settlement_mean,
+                                          cumulative_settlement_std)
 
         features.append(feature)
 
+    # write geo_json
     write_geo_json(features,"geojson_example.json")
 
+runner(r"example_rose_input.json")
