@@ -10,7 +10,7 @@ from rose.model.train_model import *
 from rose.model.train_track_interaction import *
 from rose.model import Varandas
 from solvers.newmark_solver import NewmarkSolver
-from dashboard import io
+from dashboard import io_utils
 
 
 def transform_rd_to_lat_lon(rd_x, rd_y):
@@ -227,11 +227,12 @@ def add_feature_to_geo_json(coordinates, time, mean_dyn_stiffness,std_dyn_stiffn
     return feature
 
 
-def get_base_data(features):
+def get_base_data(features, output_file):
     """
     Gets base data of all features
 
     :param features:
+    :param output_file:
     :return:
     """
 
@@ -240,25 +241,30 @@ def get_base_data(features):
     min_sett, max_sett = 1e10, -1e10
     min_stiff, max_stiff = 1e10, -1e10
     for feature in features:
-        min_sett = min(min_sett, min(feature["properties"]["cumulative_settlement_mean"]))
-        max_sett = max(max_sett, max(feature["properties"]["cumulative_settlement_mean"]))
-        min_stiff = min(min_stiff, min(min(feature["properties"]["mean_dyn_stiffness"])))
-        max_stiff = max(max_stiff, max(max(feature["properties"]["mean_dyn_stiffness"])))
-        all_train_types.update(feature["properties"]["train_names"])
+        print(min(features[feature]["properties"]["cumulative_settlement_mean"]))
+        min_sett = min(min_sett, min(features[feature]["properties"]["cumulative_settlement_mean"]))
+        max_sett = max(max_sett, max(features[feature]["properties"]["cumulative_settlement_mean"]))
+        min_stiff = min(min_stiff, min(min(features[feature]["properties"]["mean_dyn_stiffness"])))
+        max_stiff = max(max_stiff, max(max(features[feature]["properties"]["mean_dyn_stiffness"])))
+        all_train_types.update(features[feature]["properties"]["train_names"])
 
     all_train_types = list(all_train_types)
 
     # set limit per colour code
     colours = ["#691aff", "#b81010", "#ffdb1a", "#6d1046", "#000066"]
-    cumulative_settlement_limits = np.linspace(min_sett,max_sett, len(colours))
-    dyn_stiffness_limits = np.linspace(min_stiff,max_stiff, len(colours))
+    cumulative_settlement_limits = np.linspace(min_sett, max_sett, len(colours))
+    dyn_stiffness_limits = np.linspace(min_stiff, max_stiff, len(colours))
 
     # generate base data dict
     base_data = {"colours": colours,
                 "cumulative_sett_limits": np.around(cumulative_settlement_limits, decimals=2).tolist(),
                 "dyn_stiff_limits": np.around(dyn_stiffness_limits, decimals=2).tolist(),
                 "all_train_types": all_train_types,
-                "time": np.around(features[0]["properties"]["time"], decimals=2).tolist()}
+                "time": np.around(features[feature]["properties"]["time"], decimals=2).tolist()}
+
+    # writes json
+    with open(output_file, "w") as f:
+        json.dump(base_data, f, indent=2)
 
     return base_data
 
@@ -385,6 +391,6 @@ def runner(json_input, path_results, calculation_time=50):
         features[k] = feature
 
     # write geo_json
-    io.write_all_results(features, os.path.join(path_results, input_data["project_name"], "data.json"))
+    io_utils.write_all_results(features, os.path.join(path_results, input_data["project_name"], "data.json"))
 
-    return True, get_base_data(features)
+    return True, get_base_data(features, os.path.join(path_results, input_data["project_name"], "settings.json"))

@@ -7,7 +7,7 @@ import numpy as np
 from dashboard import app_utils
 from dashboard import validate_json
 from dashboard import hashing
-from dashboard import io
+from dashboard import io_utils
 
 # app
 app = Flask(__name__)
@@ -57,7 +57,7 @@ def dynamic_stiffness():
     train_type = request.args.get('train_type')
     value_type = request.args.get('value_type')  # mean or std
 
-    geojson = io.parse_dynamic_stiffness_data(train_type, value_type)
+    geojson = io_utils.parse_dynamic_stiffness_data(train_type, value_type)
 
     return geojson
 
@@ -68,7 +68,7 @@ def settlement():
     time = request.args.get('time_index')
     value_type = request.args.get('value_type')  # mean or std
 
-    geojson = io.parse_cumulative_settlement_data(time, value_type)
+    geojson = io_utils.parse_cumulative_settlement_data(time, value_type)
 
     return geojson
 
@@ -77,7 +77,7 @@ def settlement():
 def graph_values():
     segment_id = request.args.get('segment_id')
 
-    geojson = io.parse_graph_data(segment_id)
+    geojson = io_utils.parse_graph_data(segment_id)
 
     return geojson
 
@@ -123,9 +123,14 @@ def calculation(input_json):
     if hash.hash_value in calcs.keys():
         # location output json
         location = calcs[hash.hash_value]
+        status = True
+        # open json results and return
+        with open(os.path.join(CALCS_PATH, location, "settings.json")) as f:
+            data = json.load(f)
+
     else:
         # run calculation
-        app_utils.runner(input_json, CALCS_PATH)
+        status, data = app_utils.runner(input_json, CALCS_PATH)
 
         # add hash to calculations.json
         calcs.update({str(hash.hash_value): input["project_name"]})
@@ -134,12 +139,9 @@ def calculation(input_json):
         with open(os.path.join(CALCS_PATH, CALCS_JSON), "w") as fo:
             json.dump(calcs, fo, indent=2)
 
-    # open json results and return
-    with open(os.path.join(CALCS_PATH, location, "data.json")) as f:
-        data = json.load(f)
-
     return True, data
 
 
 if __name__ == "__main__":
     app.run("127.0.0.1")
+    # calculation(input_json = "../run_rose/example_rose_input.json")
