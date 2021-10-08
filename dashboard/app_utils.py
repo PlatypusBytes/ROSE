@@ -10,6 +10,7 @@ from rose.model.train_model import *
 from rose.model.train_track_interaction import *
 from rose.model import Varandas
 from solvers.newmark_solver import NewmarkSolver
+from dashboard import io
 
 
 def transform_rd_to_lat_lon(rd_x, rd_y):
@@ -188,11 +189,49 @@ def get_results_coupled_model(coupled_model, output_interval):
     # return time and mid vertical soil force
     return time, vertical_force_soil[mid_idx_force,:]
 
-def write_geo_json(features, filename: str):
+
+def add_feature_to_geo_json(coordinates, time, mean_dyn_stiffness,std_dyn_stiffness,train_names,
+                            mean_cum_settlement, std_cum_settlement):
     """
-    Creates and writes geojson dict to json file
-    :param features: all features in the geojson
-    :param filename: output filename
+    Adds a feature of a single SOS segment to a geojson feature dict. The feature includes lat-lon coordinates;
+    mean and std dynamic stiffness; mean and std cumulative settlement; train types; time steps
+    :param coordinates:
+    :param time:
+    :param mean_dyn_stiffness:
+    :param std_dyn_stiffness:
+    :param train_names:
+    :param mean_cum_settlement:
+    :param std_cum_settlement:
+    :return:
+    """
+
+    # convert coordinates to lat lon coordinates
+    np_coords = np.array(coordinates)
+    lat, lon = transform_rd_to_lat_lon(np_coords[:,0], np_coords[:,1])
+    new_coordinates = np.array([lat, lon]).T.tolist()
+
+    # create feature dict
+    feature = {
+                 "geometry": {
+                     "type": "LineString",
+                     "coordinates": new_coordinates
+                 },
+                 "properties":{
+                     "mean_dyn_stiffness": np.around(mean_dyn_stiffness, decimals=2).tolist(),
+                     "std_dyn_stiffness": np.around(std_dyn_stiffness, decimals=2).tolist(),
+                     "train_names": train_names,
+                     "time": np.around(time,decimals=2).tolist(),
+                     "cumulative_settlement_mean": np.around(mean_cum_settlement,decimals=2).tolist(),
+                     "cumulative_settlement_std": np.around(std_cum_settlement,decimals=2).tolist()
+             }}
+    return feature
+
+
+def get_base_data(features):
+    """
+    Gets base data of all features
+
+    :param features:
     :return:
     """
 
@@ -214,56 +253,14 @@ def write_geo_json(features, filename: str):
     cumulative_settlement_limits = np.linspace(min_sett,max_sett, len(colours))
     dyn_stiffness_limits = np.linspace(min_stiff,max_stiff, len(colours))
 
-    # generate geojson dict
-    geo_json = {"colours": colours,
+    # generate base data dict
+    base_data = {"colours": colours,
                 "cumulative_sett_limits": np.around(cumulative_settlement_limits, decimals=2).tolist(),
                 "dyn_stiff_limits": np.around(dyn_stiffness_limits, decimals=2).tolist(),
                 "all_train_types": all_train_types,
-                "geojson": {"type": "FeatureCollection",
-                            "features": features}
-                }
+                "time": np.around(features[0]["properties"]["time"], decimals=2).tolist()}
 
-    # write geojson
-    with open(filename, "w") as json_file:
-        json.dump(geo_json, json_file, indent=2)
-
-
-def add_feature_to_geo_json(coordinates, time, mean_dyn_stiffness,std_dyn_stiffness,train_names, mean_cum_settlement,
-                            std_cum_settlement):
-    """
-    Adds a feature of a single SOS segment to a geojson feature dict. The feature includes lat-lon coordinates;
-    mean and std dynamic stiffness; mean and std cumulative settlement; train types; time steps
-    :param coordinates:
-    :param time:
-    :param mean_dyn_stiffness:
-    :param std_dyn_stiffness:
-    :param train_names:
-    :param mean_cum_settlement:
-    :param std_cum_settlement:
-    :return:
-    """
-
-    # convert coordinates to lat lon coordinates
-    np_coords = np.array(coordinates)
-    lat, lon = transform_rd_to_lat_lon(np_coords[:,0], np_coords[:,1])
-    new_coordinates = np.array([lat, lon]).T.tolist()
-
-    # create feature dict
-    feature = {"type": "Feature",
-                     "geometry": {
-                         "type": "LineString",
-                         "coordinates": new_coordinates
-                     },
-                     "properties":{
-                         "mean_dyn_stiffness": np.around(mean_dyn_stiffness, decimals=2).tolist(),
-                         "std_dyn_stiffness": np.around(std_dyn_stiffness, decimals=2).tolist(),
-                         "train_names": train_names,
-                         "time": np.around(time,decimals=2).tolist(),
-                         "cumulative_settlement_mean": np.around(mean_cum_settlement,decimals=2).tolist(),
-                         "cumulative_settlement_std": np.around(std_cum_settlement,decimals=2).tolist()
-                     }}
-    return feature
-
+    return base_data
 
 def runner(json_input, calculation_time=50):
     """
@@ -288,7 +285,7 @@ def runner(json_input, calculation_time=50):
     v = 0.2
     emb = ["embankment", E / (2 * (1 + v)), v, 2000, 0.05, 1]
 
-    features = []
+    features = {}
     # loop over segments
     for k, v in sos_data.items():
         # loop over trains
@@ -379,8 +376,10 @@ def runner(json_input, calculation_time=50):
                                           std_dynamic_stiffnesses, train_types, cumulative_settlement_mean,
                                           cumulative_settlement_std)
 
-        features.append(feature)
+        features[k] = feature
 
     # write geo_json
-    write_geo_json(features,"geojson_example.json")
+    io.write_all_results(features,"example.json")
+
+    return True, get_base_data(features)
 
