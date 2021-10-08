@@ -384,4 +384,3 @@ def runner(json_input, calculation_time=50):
     # write geo_json
     write_geo_json(features,"geojson_example.json")
 
-runner(r"example_rose_input.json")

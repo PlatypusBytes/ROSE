@@ -1,16 +1,16 @@
-from flask import Flask, render_template, Response
+from flask import Flask, render_template, Response, request
 import os
 import json
 import numpy as np
 # ROSE packages
 from dashboard import app_utils
-from dashboard import validate_input
+from dashboard import validate_json
 from dashboard import hashing
 
 # app
 app = Flask(__name__)
 
-# poth for the local calculations
+# path for the local calculations
 CALCS_PATH = "../dash_calculations"
 CALCS_JSON = "calculations.json"
 if not os.path.isdir(CALCS_PATH):
@@ -31,15 +31,58 @@ def run():
     # ToDo: parse input json from Front End
     input_json = "../run_rose/example_rose_input.json"
 
-    # check input json & runs calculation
-    message = calculation(input_json)
+    calc = {"valid": False,
+            "exist": False,
+            "sessionID": "",
+            "data": {},  # input json file Aron
+            }
 
-    return message
+    # check input json
+    status = validate_input(input_json)
+    calc["valid"] = status
+
+    # run calculation
+    status, dat = calculation(input_json)
+    calc["exist"] = status
+    calc["data"] = dat
+
+    return calc
+
+@app.route("/dynamic_stiffness")
+def dynamic_stiffness():
+
+    train_type = request.args.get('train_type')
+    value_type = request.args.get('value_type')  # mean or std
+
+    geojson = parse_dyn_data(geojson_template, train_type, value_type)
+
+    return geojson
 
 
-def calculation(input_json):
+@app.route("/settlement")
+def settlement():
+
+    time = request.args.get('time')
+    value_type = request.args.get('value_type')  # mean or std
+
+    geojson = parse_set_data(geojson_template,  time, value_type)
+
+    return geojson
+
+
+@app.route("/graph_values")
+def graph_values():
+    segment_id = request.args.get('segment_id')
+
+    geojson = parse_graph_data(geojson_template, segment_id)
+
+    return geojson
+
+
+
+def validate_input(input_json):
     r"""
-    Reads and validates the input json file
+    Validates the input json file
 
     @param input_json: input json file
     """
@@ -49,11 +92,21 @@ def calculation(input_json):
         input = json.load(fi)
 
     # validates json input
-    status = validate_input.check_json(input)
+    status = validate_json.check_json(input)
 
-    # ToDo: if file is not valid renders input not valid
-    if not status:
-        return render_template("message.html",  message="Input file not valid")
+    return status
+
+
+def calculation(input_json):
+    r"""
+    Runs the input json file
+
+    @param input_json: input json file
+    """
+
+    # read json file
+    with open(input_json, "r") as fi:
+        input = json.load(fi)
 
     # hash file, check if file exists & has results
     hash = hashing.Hash()
@@ -66,7 +119,7 @@ def calculation(input_json):
     # if hash exists visualise results
     if hash.hash_value in calcs.keys():
         #ToDo: load results
-        return render_template("message.html", message="Calculation exists. Load results")
+        return True, {}  #geo_json  # needs to return input_json
 
     # ToDo: run calculation
     app_utils.runner(input_json)
@@ -74,7 +127,7 @@ def calculation(input_json):
     calcs.update({str(hash.hash_value): "path_to_geojson"})
     with open(os.path.join(CALCS_PATH, CALCS_JSON), "w") as fo:
         json.dump(calcs, fo, indent=2)
-    return render_template("message.html", message="Calculation will run")
+    return True, {}
 
 
 if __name__ == "__main__":
