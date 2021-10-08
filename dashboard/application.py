@@ -12,6 +12,12 @@ from dashboard import io_utils
 # app
 app = Flask(__name__)
 
+# session
+app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_TYPE"] = "filesystem"
+Session(app)
+
+
 # path for the local calculations
 CALCS_PATH = "../dash_calculations"
 CALCS_JSON = "calculations.json"
@@ -24,6 +30,9 @@ if not os.path.isdir(CALCS_PATH):
 
 @app.route("/", methods=["GET"])
 def index():
+    # create session data
+    if "data" not in session:
+        session["data"] = []
     return render_template("index.html")
 
 
@@ -44,9 +53,13 @@ def run():
     calc["valid"] = status
 
     # run calculation
-    status, dat = calculation(input_json)
+    status, initial_json, loc = calculation(input_json)
     calc["exist"] = status
-    calc["data"] = dat
+    calc["data"] = initial_json
+
+    # assigns the json data to session
+    with open(os.path.join(CALCS_PATH, loc, "data.json"), "r") as f:
+        session["data"] = json.load(f)
 
     return calc
 
@@ -57,7 +70,7 @@ def dynamic_stiffness():
     train_type = request.args.get('train_type')
     value_type = request.args.get('value_type')  # mean or std
 
-    geojson = io_utils.parse_dynamic_stiffness_data(train_type, value_type)
+    geojson = io_utils.parse_dynamic_stiffness_data(session.get("data"), train_type, value_type)
 
     return geojson
 
@@ -68,7 +81,7 @@ def settlement():
     time = request.args.get('time_index')
     value_type = request.args.get('value_type')  # mean or std
 
-    geojson = io_utils.parse_cumulative_settlement_data(time, value_type)
+    geojson = io_utils.parse_cumulative_settlement_data(session.get("data"), time, value_type)
 
     return geojson
 
@@ -77,10 +90,9 @@ def settlement():
 def graph_values():
     segment_id = request.args.get('segment_id')
 
-    geojson = io_utils.parse_graph_data(segment_id)
+    geojson = io_utils.parse_graph_data(session.get("data"), segment_id)
 
     return geojson
-
 
 
 def validate_input(input_json):
@@ -139,9 +151,8 @@ def calculation(input_json):
         with open(os.path.join(CALCS_PATH, CALCS_JSON), "w") as fo:
             json.dump(calcs, fo, indent=2)
 
-    return True, data
+    return True, data, location
 
 
 if __name__ == "__main__":
     app.run("127.0.0.1")
-    # calculation(input_json = "../run_rose/example_rose_input.json")

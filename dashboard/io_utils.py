@@ -1,14 +1,14 @@
 import numpy as np
 import json
 
-ALL_RESULTS = {}
+# ALL_RESULTS = {}
 
 TEMPLATE_SETTLEMENT_FEATURE = {"geometry": {"type": "LineString",
                                             "coordinates": None},
                                "properties": {"segmentId": None,
                                               "value": None}}
 
-def parse_dynamic_stiffness_data(train_type, value_type):
+def parse_dynamic_stiffness_data(ALL_RESULTS, train_type, value_type):
     features = []
     for segment_id, segment_data in ALL_RESULTS.items():
 
@@ -25,7 +25,7 @@ def parse_dynamic_stiffness_data(train_type, value_type):
                "features": features}
     return geojson
 
-def parse_cumulative_settlement_data(time_index, value_type):
+def parse_cumulative_settlement_data(ALL_RESULTS, time_index, value_type):
     features = []
     for segment_id, segment_data in ALL_RESULTS.items():
         feature = {"geometry": {"type": "LineString",
@@ -40,7 +40,7 @@ def parse_cumulative_settlement_data(time_index, value_type):
 
     return geojson
 
-def parse_graph_data(segment_id):
+def parse_graph_data(ALL_RESULTS, segment_id):
 
     graph_json = {"time": ALL_RESULTS[segment_id]["properties"]["time"],
                   "cumulative_settlement_mean": ALL_RESULTS[segment_id]["properties"]["cumulative_settlement_mean"],
