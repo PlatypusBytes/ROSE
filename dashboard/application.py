@@ -1,4 +1,5 @@
 from flask import Flask, render_template, Response, request
+from flask_cors import CORS
 import os
 import json
 import numpy as np
@@ -8,12 +9,13 @@ from dashboard import app_utils
 from dashboard import validate_input
 from dashboard import hashing
 
-import app_utils
+# import app_utils
 from rose.model import Varandas
 
 app = Flask(
     __name__, static_url_path="", static_folder="templates", template_folder="templates"
 )
+CORS(app)
 
 # poth for the local calculations
 CALCS_PATH = "../dash_calculations"
@@ -106,14 +108,9 @@ def add_feature_to_geo_json(
 @app.route("/runner", methods=["POST"])
 def run():
 
-    # ToDo: parse input json from Front End
-    req = request.get_json()
-    print(f"input request: {req}")
-    input_json = "../run_rose/example_rose_input.json"
-
+    input_json = request.get_json()
     # check input json & runs calculation
     message = calculation(input_json)
-    print(f"message: {message}")
     return message
 
 
@@ -124,12 +121,8 @@ def calculation(input_json):
     @param input_json: input json file
     """
 
-    # read json file
-    with open(input_json, "r") as fi:
-        input = json.load(fi)
-
     # validates json input
-    status = validate_input.check_json(input)
+    status = validate_input.check_json(input_json)
 
     # ToDo: if file is not valid renders input not valid
     if not status:
