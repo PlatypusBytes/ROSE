@@ -267,21 +267,17 @@ def get_base_data(features, output_file):
 
     return base_data
 
-def runner(json_input, path_results, calculation_time=50):
+def runner(input_data, path_results, calculation_time=50):
     """
     Runs the complete ROSE calculation: Firstly stiffness and damping of the soil are determined with wolf; secondly
     the coupled dynamic train track interaction model is ran; lastly the cumulative settlement model is ran.
 
-    :param json_input:
+    :param input_data:
     :param path_results:
     :param calculation_time: time of the cumulative settlement calculation [days]
     :return:
     """
     from run_rose.run_wolf import create_layering_for_wolf, run_wolf_on_layering
-
-    # retrieve data from input file
-    with open(json_input, 'r') as f:
-        input_data = json.load(f)
 
     # check if path to save results exist
     if not os.path.isdir(os.path.join(path_results, input_data["project_name"])):

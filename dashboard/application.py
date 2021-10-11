@@ -12,9 +12,9 @@ from dashboard import validate_json
 from dashboard import hashing
 from dashboard import io_utils
 
-app = Flask(
-    __name__, static_url_path="", static_folder="templates", template_folder="templates"
-)
+app = Flask(__name__,
+            static_url_path="", static_folder="templates", template_folder="templates"
+            )
 CORS(app)
 
 # session
@@ -48,10 +48,16 @@ def run():
 
     # ToDo: parse input json from Front End
     input_json = request.get_json()
-    input_json = "../run_rose/example_rose_input.json"
+
+    # # structure of input json:
+    # {'SOS_Segment_Input': {},
+    #  'Sensar_Input': {},
+    #  'Rila_Input': {},
+    #  'InfraMon_Input': {},
+    # }
 
     # check if calculation running
-    status = is_running(input_json)
+    status = is_running(input_json["SOS_Segment_Input"])
     if status:
         return "Calculation is already running."
 
@@ -63,11 +69,11 @@ def run():
     }
 
     # check input json
-    status = validate_input(input_json)
+    status = validate_input(input_json["SOS_Segment_Input"])
     calc["valid"] = status
 
     # run calculation
-    status, initial_json, loc = calculation(input_json)
+    status, initial_json, loc = calculation(input_json["SOS_Segment_Input"])
     calc["exist"] = status
     calc["data"] = initial_json
 
@@ -121,10 +127,6 @@ def is_running(input_json):
     @return True or False
     """
 
-    # read json file
-    with open(input_json, "r") as fi:
-        input_json = json.load(fi)
-
     # hash file
     hash = hashing.Hash()
     hash.hash_dict(input_json)
@@ -152,26 +154,18 @@ def validate_input(input_json):
     @param input_json: input json file
     """
 
-    # read json file
-    with open(input_json, "r") as fi:
-        input_json = json.load(fi)
-
     # validates json input
     status = validate_json.check_json(input_json)
 
     return status
 
 
-def calculation(input_json_file):
+def calculation(input_json):
     r"""
     Runs the input json file
 
     @param input_json_file: input json file
     """
-
-    # read json file
-    with open(input_json_file, "r") as fi:
-        input_json = json.load(fi)
 
     # hash file, check if file exists & has results
     hash = hashing.Hash()
@@ -195,7 +189,7 @@ def calculation(input_json_file):
             data = json.load(fi)
     else:
         # run calculation
-        status, data = app_utils.runner(input_json_file, CALCS_PATH)
+        status, data = app_utils.runner(input_json, CALCS_PATH)
 
         # add hash to calculations.json
         calcs.update({str(hash.hash_value): input_json["project_name"]})

@@ -25,5 +25,6 @@ dependencies:
     - fiona==1.8.18
     - schema==0.7.4
     - Flask-Session==0.4.0
+    - flash-cors==3.0.10
     - "git+https://zuada@bitbucket.org/DeltaresGEO/solvers.git#egg=solvers"
 
