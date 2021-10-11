@@ -1,16 +1,21 @@
 from flask import Flask, render_template, session, request
+from flask_cors import CORS
+
 from flask_session import Session
 import os
 import json
 import numpy as np
+
 # ROSE packages
 from dashboard import app_utils
 from dashboard import validate_json
 from dashboard import hashing
 from dashboard import io_utils
 
-# app
-app = Flask(__name__)
+app = Flask(
+    __name__, static_url_path="", static_folder="templates", template_folder="templates"
+)
+CORS(app)
 
 # session
 app.config["SESSION_PERMANENT"] = False
@@ -42,6 +47,7 @@ def index():
 def run():
 
     # ToDo: parse input json from Front End
+    input_json = request.get_json()
     input_json = "../run_rose/example_rose_input.json"
 
     # check if calculation running
@@ -50,10 +56,11 @@ def run():
         return "Calculation is already running."
 
     # calculation dictionary
-    calc = {"valid": False,
-            "exist": False,
-            "data": {},  # input json file
-            }
+    calc = {
+        "valid": False,
+        "exist": False,
+        "data": {},  # input json file
+    }
 
     # check input json
     status = validate_input(input_json)
@@ -74,10 +81,12 @@ def run():
 @app.route("/dynamic_stiffness")
 def dynamic_stiffness():
 
-    train_type = request.args.get('train_type')
-    value_type = request.args.get('value_type')  # mean or std
+    train_type = request.args.get("train_type")
+    value_type = request.args.get("value_type")  # mean or std
 
-    geojson = io_utils.parse_dynamic_stiffness_data(session.get("data"), train_type, value_type)
+    geojson = io_utils.parse_dynamic_stiffness_data(
+        session.get("data"), train_type, value_type
+    )
 
     return geojson
 
@@ -85,17 +94,19 @@ def dynamic_stiffness():
 @app.route("/settlement")
 def settlement():
 
-    time = request.args.get('time_index')
-    value_type = request.args.get('value_type')  # mean or std
+    time = request.args.get("time_index")
+    value_type = request.args.get("value_type")  # mean or std
 
-    geojson = io_utils.parse_cumulative_settlement_data(session.get("data"), time, value_type)
+    geojson = io_utils.parse_cumulative_settlement_data(
+        session.get("data"), time, value_type
+    )
 
     return geojson
 
 
 @app.route("/graph_values")
 def graph_values():
-    segment_id = request.args.get('segment_id')
+    segment_id = request.args.get("segment_id")
 
     geojson = io_utils.parse_graph_data(session.get("data"), segment_id)
 

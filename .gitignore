@@ -1,5 +1,6 @@
 /dashboard/frontend/node_modules/
 /dashboard/frontend/.env
+/dashboard/flask_session
 
 ._*
 __pycache__

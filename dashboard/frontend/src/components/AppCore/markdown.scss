@@ -1,0 +1,51 @@
+@import '~vuetify/src/styles/settings/_variables.scss';
+@import '~vuetify/src/styles/elements/_typography.sass';
+
+// Extend Vuetify's typography styles, using Vuetify classes and variables.
+
+.markdown h1 {
+  @extend .display-4;
+}
+
+.markdown h2 {
+  @extend .display-3;
+}
+
+.markdown h3 {
+  @extend .display-2;
+}
+
+.markdown h4 {
+  @extend .display-1;
+}
+
+.markdown h5 {
+  @extend .headline;
+}
+
+.markdown h6 {
+  @extend .title;
+}
+
+.markdown p {
+  @extend .body-1;
+}
+
+.markdown h1 + p,
+.markdown h2 + p,
+.markdown h3 + p,
+.markdown h4 + p,
+.markdown h5 + p,
+.markdown h6 + p {
+  margin-top: $spacer;
+}
+
+.markdown ul + h1,
+.markdown ul + h2,
+.markdown ul + h3,
+.markdown ul + h4,
+.markdown ul + h5,
+.markdown ul + h6,
+.markdown ul + p {
+  margin-top: $spacer * 4;
+}
