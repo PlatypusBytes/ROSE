@@ -241,7 +241,6 @@ def get_base_data(features, output_file):
     min_sett, max_sett = 1e10, -1e10
     min_stiff, max_stiff = 1e10, -1e10
     for feature in features:
-        print(min(features[feature]["properties"]["cumulative_settlement_mean"]))
         min_sett = min(min_sett, min(features[feature]["properties"]["cumulative_settlement_mean"]))
         max_sett = max(max_sett, max(features[feature]["properties"]["cumulative_settlement_mean"]))
         min_stiff = min(min_stiff, min(min(features[feature]["properties"]["mean_dyn_stiffness"])))
@@ -281,11 +280,10 @@ def runner(json_input, path_results, calculation_time=50):
     from run_rose.run_wolf import create_layering_for_wolf, run_wolf_on_layering
 
     # retrieve data from input file
-    with open(json_input,'r') as f:
+    with open(json_input, 'r') as f:
         input_data = json.load(f)
 
     # check if path to save results exist
-    print(os.path.join(path_results, input_data["project_name"]))
     if not os.path.isdir(os.path.join(path_results, input_data["project_name"])):
         os.makedirs(os.path.join(path_results, input_data["project_name"]))
 

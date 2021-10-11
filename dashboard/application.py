@@ -21,6 +21,8 @@ Session(app)
 # path for the local calculations
 CALCS_PATH = "../dash_calculations"
 CALCS_JSON = "calculations.json"
+RUNNING_JSON = "tmp.json"
+
 if not os.path.isdir(CALCS_PATH):
     os.makedirs(CALCS_PATH)
     # create json
@@ -42,10 +44,15 @@ def run():
     # ToDo: parse input json from Front End
     input_json = "../run_rose/example_rose_input.json"
 
+    # check if calculation running
+    status = is_running(input_json)
+    if status:
+        return "Calculation is already running."
+
+    # calculation dictionary
     calc = {"valid": False,
             "exist": False,
-            "sessionID": "",
-            "data": {},  # input json file Aron first call
+            "data": {},  # input json file
             }
 
     # check input json
@@ -95,6 +102,38 @@ def graph_values():
     return geojson
 
 
+def is_running(input_json):
+    r"""
+    Checks if the calculation is running
+
+    @param input_json: input json file
+    @return True or False
+    """
+
+    # read json file
+    with open(input_json, "r") as fi:
+        input_json = json.load(fi)
+
+    # hash file
+    hash = hashing.Hash()
+    hash.hash_dict(input_json)
+
+    # if running (tmp) file exists
+    if os.path.isfile(os.path.join(CALCS_PATH, RUNNING_JSON)):
+        # open tmp file
+        with open(os.path.join(CALCS_PATH, RUNNING_JSON), "r") as fi:
+            running = json.load(fi)
+        # check if hash is in tmp file
+        if hash.hash_value in running.keys():
+            return True
+    else:
+        # create empty json file
+        with open(os.path.join(CALCS_PATH, RUNNING_JSON), "w") as fi:
+            json.dump({}, fi)
+
+    return False
+
+
 def validate_input(input_json):
     r"""
     Validates the input json file
@@ -104,32 +143,36 @@ def validate_input(input_json):
 
     # read json file
     with open(input_json, "r") as fi:
-        input = json.load(fi)
+        input_json = json.load(fi)
 
     # validates json input
-    status = validate_json.check_json(input)
+    status = validate_json.check_json(input_json)
 
     return status
 
 
-def calculation(input_json):
+def calculation(input_json_file):
     r"""
     Runs the input json file
 
-    @param input_json: input json file
+    @param input_json_file: input json file
     """
 
     # read json file
-    with open(input_json, "r") as fi:
-        input = json.load(fi)
+    with open(input_json_file, "r") as fi:
+        input_json = json.load(fi)
 
     # hash file, check if file exists & has results
     hash = hashing.Hash()
-    hash.hash_dict(input)
+    hash.hash_dict(input_json)
+
+    # add calculation to tmp file (as running)
+    with open(os.path.join(CALCS_PATH, RUNNING_JSON), "w") as fi:
+        json.dump({hash.hash_value: "Running"}, fi, indent=2)
 
     # load calculations.json
-    with open(os.path.join(CALCS_PATH, CALCS_JSON), "r") as f:
-        calcs = json.load(f)
+    with open(os.path.join(CALCS_PATH, CALCS_JSON), "r") as fi:
+        calcs = json.load(fi)
 
     # if hash exists load results
     if hash.hash_value in calcs.keys():
@@ -137,19 +180,30 @@ def calculation(input_json):
         location = calcs[hash.hash_value]
         status = True
         # open json results and return
-        with open(os.path.join(CALCS_PATH, location, "settings.json")) as f:
-            data = json.load(f)
-
+        with open(os.path.join(CALCS_PATH, location, "settings.json")) as fi:
+            data = json.load(fi)
     else:
         # run calculation
-        status, data = app_utils.runner(input_json, CALCS_PATH)
+        status, data = app_utils.runner(input_json_file, CALCS_PATH)
 
         # add hash to calculations.json
-        calcs.update({str(hash.hash_value): input["project_name"]})
+        calcs.update({str(hash.hash_value): input_json["project_name"]})
         # location of output json
-        location = input["project_name"]
+        location = input_json["project_name"]
         with open(os.path.join(CALCS_PATH, CALCS_JSON), "w") as fo:
             json.dump(calcs, fo, indent=2)
+
+    # clear hash from tmp file
+    with open(os.path.join(CALCS_PATH, RUNNING_JSON), "r") as fi:
+        running_tmp = json.load(fi)
+    running_tmp.pop(hash.hash_value, None)
+    # if after deleting has file is empty -> delete file
+    if not running_tmp:
+        os.remove(os.path.join(CALCS_PATH, RUNNING_JSON))
+    # if the file is not empty is still computing -> delete local entry
+    else:
+        with open(os.path.join(CALCS_PATH, RUNNING_JSON), "w") as fi:
+            json.dump(running_tmp, fi, indent=2)
 
     return True, data, location
 
