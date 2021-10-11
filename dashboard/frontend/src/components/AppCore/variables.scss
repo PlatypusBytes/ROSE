@@ -1,0 +1,13 @@
+@import '~vuetify/src/styles/settings/_variables.scss';
+
+$color-white: #ffffff;
+
+// Spacing (use Vuetify $spacer as base)
+$spacing-tiny: $spacer;
+$spacing-smaller: $spacer * 2;
+$spacing-small: $spacer * 3;
+$spacing-default: $spacer * 4;
+$spacing-medium: $spacer * 6;
+$spacing-large: $spacer * 8;
+$spacing-larger: $spacer * 16;
+$spacing-huge: $spacer * 25;
