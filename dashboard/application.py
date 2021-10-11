@@ -109,6 +109,7 @@ def add_feature_to_geo_json(
 def run():
 
     input_json = request.get_json()
+    print("input_json", input_json)
     # check input json & runs calculation
     message = calculation(input_json)
     return message
