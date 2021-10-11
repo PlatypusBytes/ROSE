@@ -1,4 +1,6 @@
 from flask import Flask, render_template, session, request
+from flask_cors import CORS
+
 from flask_session import Session
 import os
 import json
@@ -45,6 +47,7 @@ def index():
 def run():
 
     # ToDo: parse input json from Front End
+    input_json = request.get_json()
     input_json = "../run_rose/example_rose_input.json"
 
     # check if calculation running
