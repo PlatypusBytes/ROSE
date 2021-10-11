@@ -158,13 +158,15 @@ def create_dash_input_json():
         new_sos_dict[segment_name] = {"coordinates": coordinates,
                                       "scenarios": scenarios}
 
-    input_dict = {"sos_data": new_sos_dict,
+    input_dict = {"project_name": "proj1",
+                  "sos_data": new_sos_dict,
                   "traffic_data": train_dicts,
                   "track_info": track_info,
                   "time_integration": time_data}
 
     with open('example_rose_input.json', 'w') as json_file:
         json.dump(input_dict, json_file, indent=2)
+
 
 if __name__ == '__main__':
     create_dash_input_json()

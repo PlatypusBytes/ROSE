@@ -1,25 +1,31 @@
-from flask import Flask, render_template, Response, request
-from flask_cors import CORS
+from flask import Flask, render_template, session, request
+from flask_session import Session
 import os
 import json
 import numpy as np
 
 # ROSE packages
 from dashboard import app_utils
-from dashboard import validate_input
+from dashboard import validate_json
 from dashboard import hashing
-
-# import app_utils
-from rose.model import Varandas
+from dashboard import io_utils
 
 app = Flask(
     __name__, static_url_path="", static_folder="templates", template_folder="templates"
 )
 CORS(app)
 
-# poth for the local calculations
+# session
+app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_TYPE"] = "filesystem"
+Session(app)
+
+
+# path for the local calculations
 CALCS_PATH = "../dash_calculations"
 CALCS_JSON = "calculations.json"
+RUNNING_JSON = "tmp.json"
+
 if not os.path.isdir(CALCS_PATH):
     os.makedirs(CALCS_PATH)
     # create json
@@ -29,249 +35,185 @@ if not os.path.isdir(CALCS_PATH):
 
 @app.route("/", methods=["GET"])
 def index():
+    # create session data
+    if "data" not in session:
+        session["data"] = []
     return render_template("index.html")
 
 
-def write_geo_json(features, filename):
-
-    all_train_types = set()
-    min_sett, max_sett = 1e10, -1e10
-    min_stiff, max_stiff = 1e10, -1e10
-    for feature in features:
-        min_sett = min(
-            min_sett, min(feature["properties"]["cumulative_settlement_mean"])
-        )
-        max_sett = max(
-            max_sett, max(feature["properties"]["cumulative_settlement_mean"])
-        )
-        min_stiff = min(
-            min_stiff, min(min(feature["properties"]["mean_dyn_stiffness"]))
-        )
-        max_stiff = max(
-            max_stiff, max(max(feature["properties"]["mean_dyn_stiffness"]))
-        )
-        all_train_types.update(feature["properties"]["train_names"])
-
-    all_train_types = list(all_train_types)
-    cumulative_settlement_limits = np.linspace(min_sett, max_sett, 5)
-    dyn_stiffness_limits = np.linspace(min_stiff, max_stiff, 5)
-
-    geo_json = {
-        "colours": ["#691aff", "#b81010", "#ffdb1a", "#6d1046", "#000066"],
-        "cumulative_sett_limits": np.around(
-            cumulative_settlement_limits, decimals=2
-        ).tolist(),
-        "dyn_stiff_limits": np.around(dyn_stiffness_limits, decimals=2).tolist(),
-        "all_train_types": all_train_types,
-        "geojson": {"type": "FeatureCollection", "features": features},
-    }
-
-    with open(filename, "w") as json_file:
-        json.dump(geo_json, json_file, indent=2)
-
-
-def add_feature_to_geo_json(
-    coordinates,
-    time,
-    mean_dyn_stiffness,
-    std_dyn_stiffness,
-    train_names,
-    mean_cum_settlement,
-    std_cum_settlement,
-):
-
-    # convert coordinates to lat lon coordinates
-    np_coords = np.array(coordinates)
-    lat, lon = app_utils.transform_rd_to_lat_lon(np_coords[:, 0], np_coords[:, 1])
-    new_coordinates = np.array([lat, lon]).T.tolist()
-
-    # create feature dict
-    feature = {
-        "type": "Feature",
-        "geometry": {"type": "LineString", "coordinates": new_coordinates},
-        "properties": {
-            "mean_dyn_stiffness": np.around(mean_dyn_stiffness, decimals=2).tolist(),
-            "std_dyn_stiffness": np.around(std_dyn_stiffness, decimals=2).tolist(),
-            "train_names": train_names,
-            "time": np.around(time, decimals=2).tolist(),
-            "cumulative_settlement_mean": np.around(
-                mean_cum_settlement, decimals=2
-            ).tolist(),
-            "cumulative_settlement_std": np.around(
-                std_cum_settlement, decimals=2
-            ).tolist(),
-        },
-    }
-    return feature
-
-
-@app.route("/runner", methods=["POST"])
+@app.route("/runner", methods=["GET", "POST"])
 def run():
 
-    input_json = request.get_json()
-    print("input_json", input_json)
-    # check input json & runs calculation
-    message = calculation(input_json)
-    return message
+    # ToDo: parse input json from Front End
+    input_json = "../run_rose/example_rose_input.json"
+
+    # check if calculation running
+    status = is_running(input_json)
+    if status:
+        return "Calculation is already running."
+
+    # calculation dictionary
+    calc = {
+        "valid": False,
+        "exist": False,
+        "data": {},  # input json file
+    }
+
+    # check input json
+    status = validate_input(input_json)
+    calc["valid"] = status
+
+    # run calculation
+    status, initial_json, loc = calculation(input_json)
+    calc["exist"] = status
+    calc["data"] = initial_json
+
+    # assigns the json data to session
+    with open(os.path.join(CALCS_PATH, loc, "data.json"), "r") as f:
+        session["data"] = json.load(f)
+
+    return calc
 
 
-def calculation(input_json):
+@app.route("/dynamic_stiffness")
+def dynamic_stiffness():
+
+    train_type = request.args.get("train_type")
+    value_type = request.args.get("value_type")  # mean or std
+
+    geojson = io_utils.parse_dynamic_stiffness_data(
+        session.get("data"), train_type, value_type
+    )
+
+    return geojson
+
+
+@app.route("/settlement")
+def settlement():
+
+    time = request.args.get("time_index")
+    value_type = request.args.get("value_type")  # mean or std
+
+    geojson = io_utils.parse_cumulative_settlement_data(
+        session.get("data"), time, value_type
+    )
+
+    return geojson
+
+
+@app.route("/graph_values")
+def graph_values():
+    segment_id = request.args.get("segment_id")
+
+    geojson = io_utils.parse_graph_data(session.get("data"), segment_id)
+
+    return geojson
+
+
+def is_running(input_json):
     r"""
-    Reads and validates the input json file
+    Checks if the calculation is running
+
+    @param input_json: input json file
+    @return True or False
+    """
+
+    # read json file
+    with open(input_json, "r") as fi:
+        input_json = json.load(fi)
+
+    # hash file
+    hash = hashing.Hash()
+    hash.hash_dict(input_json)
+
+    # if running (tmp) file exists
+    if os.path.isfile(os.path.join(CALCS_PATH, RUNNING_JSON)):
+        # open tmp file
+        with open(os.path.join(CALCS_PATH, RUNNING_JSON), "r") as fi:
+            running = json.load(fi)
+        # check if hash is in tmp file
+        if hash.hash_value in running.keys():
+            return True
+    else:
+        # create empty json file
+        with open(os.path.join(CALCS_PATH, RUNNING_JSON), "w") as fi:
+            json.dump({}, fi)
+
+    return False
+
+
+def validate_input(input_json):
+    r"""
+    Validates the input json file
 
     @param input_json: input json file
     """
 
-    # validates json input
-    status = validate_input.check_json(input_json)
+    # read json file
+    with open(input_json, "r") as fi:
+        input_json = json.load(fi)
 
-    # ToDo: if file is not valid renders input not valid
-    if not status:
-        return render_template("message.html", message="Input file not valid")
+    # validates json input
+    status = validate_json.check_json(input_json)
+
+    return status
+
+
+def calculation(input_json_file):
+    r"""
+    Runs the input json file
+
+    @param input_json_file: input json file
+    """
+
+    # read json file
+    with open(input_json_file, "r") as fi:
+        input_json = json.load(fi)
 
     # hash file, check if file exists & has results
     hash = hashing.Hash()
-    hash.hash_dict(input)
+    hash.hash_dict(input_json)
+
+    # add calculation to tmp file (as running)
+    with open(os.path.join(CALCS_PATH, RUNNING_JSON), "w") as fi:
+        json.dump({hash.hash_value: "Running"}, fi, indent=2)
 
     # load calculations.json
-    with open(os.path.join(CALCS_PATH, CALCS_JSON), "r") as f:
-        calcs = json.load(f)
+    with open(os.path.join(CALCS_PATH, CALCS_JSON), "r") as fi:
+        calcs = json.load(fi)
 
-    # if hash exists visualise results
+    # if hash exists load results
     if hash.hash_value in calcs.keys():
-        # ToDo: load results
-        return render_template(
-            "message.html", message="Calculation exists. Load results"
-        )
+        # location output json
+        location = calcs[hash.hash_value]
+        status = True
+        # open json results and return
+        with open(os.path.join(CALCS_PATH, location, "settings.json")) as fi:
+            data = json.load(fi)
+    else:
+        # run calculation
+        status, data = app_utils.runner(input_json_file, CALCS_PATH)
 
-    # ToDo: run calculation
-    # runner(input_json)
-    # add hash to calculations.json
-    calcs.update({str(hash.hash_value): "path_to_geojson"})
-    with open(os.path.join(CALCS_PATH, CALCS_JSON), "w") as fo:
-        json.dump(calcs, fo, indent=2)
-    return render_template("message.html", message="Calculation will run")
+        # add hash to calculations.json
+        calcs.update({str(hash.hash_value): input_json["project_name"]})
+        # location of output json
+        location = input_json["project_name"]
+        with open(os.path.join(CALCS_PATH, CALCS_JSON), "w") as fo:
+            json.dump(calcs, fo, indent=2)
 
+    # clear hash from tmp file
+    with open(os.path.join(CALCS_PATH, RUNNING_JSON), "r") as fi:
+        running_tmp = json.load(fi)
+    running_tmp.pop(hash.hash_value, None)
+    # if after deleting has file is empty -> delete file
+    if not running_tmp:
+        os.remove(os.path.join(CALCS_PATH, RUNNING_JSON))
+    # if the file is not empty is still computing -> delete local entry
+    else:
+        with open(os.path.join(CALCS_PATH, RUNNING_JSON), "w") as fi:
+            json.dump(running_tmp, fi, indent=2)
 
-def runner(json_input):
-
-    from run_rose.run_wolf import create_layering_for_wolf, run_wolf_on_layering
-
-    # retrieve data from input file
-    with open(json_input, "r") as f:
-        input_data = json.load(f)
-
-    sos_data = input_data["sos_data"]
-    traffic_data = input_data["traffic_data"]
-
-    # set embankment data
-    E = 100e6
-    v = 0.2
-    emb = ["embankment", E / (2 * (1 + v)), v, 2000, 0.05, 1]
-
-    features = []
-    # loop over segments
-    for k, v in sos_data.items():
-        # loop over trains
-        mean_forces = []
-        std_forces = []
-        mean_dynamic_stiffnesses = []
-        std_dynamic_stiffnesses = []
-
-        train_types = []
-
-        train_dicts = {}
-        for train in traffic_data:
-            train_types.append(train["type"])
-            vertical_force_soil_segment = []
-            dyn_stiffnesses = []
-            # loop over scenarios
-            for k2, v2 in v["scenarios"].items():
-
-                # get wolf data
-                layering = create_layering_for_wolf(v2["soil_layers"], emb)
-                omega = 2 * np.pi * train["velocity"] / train["cart_length"]
-                wolf_data = run_wolf_on_layering(layering, np.array([omega]))
-
-                # determine dynamic soil stiffness and damping
-                sleeper_dist = input_data["track_info"]["geometry"]["sleeper_distance"]
-                dyn_stiffness = np.real(wolf_data.K_dyn) * sleeper_dist
-                damping = np.imag(wolf_data.K_dyn) / omega * sleeper_dist
-                soil = {"stiffness": dyn_stiffness, "damping": damping}
-
-                dyn_stiffnesses.append(dyn_stiffness)
-
-                # assign data to coupled model
-                coupled_model = app_utils.assign_data_to_coupled_model(
-                    train,
-                    input_data["track_info"],
-                    input_data["time_integration"],
-                    soil,
-                )
-
-                # run coupled model
-                coupled_model.main()
-
-                # get results from coupled model
-                (
-                    time,
-                    vertical_force_soil_scenario,
-                ) = app_utils.get_results_coupled_model(coupled_model, 10)
-                vertical_force_soil_segment.append(vertical_force_soil_scenario)
-
-            train_dicts[train["type"]] = train["traffic"]
-
-            # todo change with cumulative settlement
-
-            # calculate mean and std of force of current train
-            vertical_force_soil_segment = np.array(vertical_force_soil_segment)
-
-            mean_force = np.mean(vertical_force_soil_segment, axis=0)
-            std_force = np.std(vertical_force_soil_segment, axis=0)
-            mean_forces.append(mean_force)
-            std_forces.append(std_force)
-
-            train_dicts[train["type"]]["forces"] = mean_force[None, :]
-
-            mean_dynamic_stiffnesses.append(list(np.mean(dyn_stiffnesses, axis=0)))
-            std_dynamic_stiffnesses.append(list(np.std(dyn_stiffnesses, axis=0)))
-            break
-
-        sett = Varandas.AccumulationModel()
-        sett.read_traffic(train_dicts, 50)
-        sett.settlement(idx=[0])
-
-        # calculate output step size (1 outout value per day + last value
-        n_steps = len(sett.results["time"])
-        n_days = sett.results["time"][-1] - sett.results["time"][0]
-        step_size = n_steps / n_days
-
-        # get output indices
-        indices = [int(day * step_size) for day in range(int(n_days))]
-        # add last index
-        indices.append(n_steps - 1)
-
-        cumulative_time = np.array(sett.results["time"])[indices]
-        cumulative_settlement_mean = (
-            np.array(sett.results["settlement"]["0"])[indices] * 1000
-        )  # in mm
-        cumulative_settlement_std = cumulative_settlement_mean / 10
-
-        # add feature to geo json
-        feature = add_feature_to_geo_json(
-            v["coordinates"],
-            cumulative_time,
-            mean_dynamic_stiffnesses,
-            std_dynamic_stiffnesses,
-            train_types,
-            cumulative_settlement_mean,
-            cumulative_settlement_std,
-        )
-
-        features.append(feature)
-        break
-
-    write_geo_json(features, "geojson_example.json")
+    return True, data, location
 
 
 if __name__ == "__main__":

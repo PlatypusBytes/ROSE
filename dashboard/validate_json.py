@@ -35,7 +35,7 @@ def definitions():
     })
 
     # main scheme
-    conf_schema = Schema({
+    conf_schema = Schema({"project_name": str,
                           "sos_data": {And(str): conf_schema_sos},
                           "traffic_data": {And(str): {
                                                       "wheel_distances": Schema([float, int]),
@@ -53,7 +53,11 @@ def definitions():
                                                       "prim_damping": And(Use(float)),
                                                       "sec_damping": And(Use(float)),
                                                       "velocity": And(Use(float)),
-                                                      "type": And(Use(str))
+                                                      "type": And(Use(str)),
+                                                      "traffic": {"nb-per-hour": And(Use(int)),
+                                                                  "nb-hours": And(Use(int)),
+                                                                  "nb-axles": And(Use(int)),
+                                                                  }
                                                       },
                           },
         'track_info': {"geometry": {"n_segments": And(Use(int)),
