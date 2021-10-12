@@ -18,7 +18,7 @@ def get_coordinates(feature: Dict) -> np.ndarray:
     :param feature: Sensar geopackage feature
     :return:
     """
-    return np.array([list(coord) for coord in feature["geometry"]["coordinates"]])
+    return np.array(feature["geometry"]["coordinates"])
 
 
 def get_settlement(feature: Dict) -> (List, List):
@@ -32,7 +32,7 @@ def get_settlement(feature: Dict) -> (List, List):
     for k,v in feature["properties"].items():
         if k.startswith("v_"):
             # get date from string
-            date = datetime.strptime(k.strip("v_"),"%Y%m%d")
+            date = datetime(int(k[2:6]), int(k[6:8]), int(k[8:10]))
             settlement = v
 
             # append date and settlement if found
