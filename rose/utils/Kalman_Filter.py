@@ -30,15 +30,19 @@ class KalmanFilter:
 
         # A: prediction matrix: relation between equation of motion and velocity
         self.A = np.array([[1, self.time_step], [0, 1]])
+        self._A = np.copy(self.A)
 
         # B: control matrix: relation between equation of motion and acceleration
         self.B = np.array([1 / 2 * self.time_step ** 2, self.time_step])
+        self._B = np.copy(self.B)
 
         # H: matrix to change format
-        self.H = np.diag(np.diag(self.A))
+        self.H = self.A * np.identity(2)
+        self._H = np.copy(self.H)
 
         # C: matrix to change format for measurements
-        self.C = np.diag(np.diag(self.A))
+        self.C = self.A * np.identity(2)
+        self._C = np.copy(self.C)
 
         # define initial covariance matrix
         self.initial_cov_matrix(process_variance[0], process_variance[1])
@@ -48,25 +52,62 @@ class KalmanFilter:
 
         return
 
+    def initialise_control_matrices(self, timesteps: np.ndarray):
+        """
+        Initialise control matrices when timestep size is varying
+        :param timesteps:
+        :return:
+        """
+        self.A = np.ones((2,2,timesteps.size))
+        self.A[0, 1, :] = timesteps
+        self.A[1, 0, :] = 0
+
+        self.B = np.zeros((2, timesteps.size))
+
+        self.B[0, :] = 1 / 2 * timesteps ** 2
+        self.B[1, :] = timesteps
+
+        self.H = np.zeros((2,2,timesteps.size))
+        self.H[0, 0, :] = self.A[0, 0, :]
+        self.H[1, 1, :] = self.A[1, 1, :]
+
+        self.C = np.copy(self.H)
+
+    def update_control_matrices_by_index(self, t_idx):
+
+        # A: prediction matrix: relation between equation of motion and velocity
+        self._A = self.A[:,:,t_idx]
+
+        # B: control matrix: relation between equation of motion and acceleration
+        self._B = self.B[:,t_idx]
+
+        # H: matrix to change format
+        self._H = self.H[:,:,t_idx]
+
+        # C: matrix to change format for measurements
+        self._C = self.C[:,:,t_idx]
+
     def update_control_matrices(self, timestep):
 
         # A: prediction matrix: relation between equation of motion and velocity
-        self.A = np.array([[1, timestep], [0, 1]])
+        self._A = np.array([[1, timestep], [0, 1]])
 
         # B: control matrix: relation between equation of motion and acceleration
-        self.B = np.array([1 / 2 * timestep ** 2, timestep])
+        self._B = np.array([1 / 2 * timestep ** 2, timestep])
 
         # H: matrix to change format
-        self.H = np.diag(np.diag(self.A))
+        # self.H = np.diag(np.diag(self.A))
+        self._H = np.array([[1, 0], [0, 1]])
 
         # C: matrix to change format for measurements
-        self.C = np.diag(np.diag(self.A))
+        # self.C = np.diag(np.diag(self.A))
+        self._C = np.array([[1, 0], [0, 1]])
 
     def state_matrix(self):
 
-        self.x = np.dot(self.A, self.x) + np.dot(self.B, self.u) + self.w
+        self.x = np.dot(self._A, self.x) + np.dot(self._B, self.u) + self.w
 
-        print(self.x)
+        # print(self.x)
 
         return
 
@@ -86,10 +127,11 @@ class KalmanFilter:
     def predict_process_cov_matrix(self):
 
         # predicted process covariance matrix
-        self.P = np.dot(np.dot(self.A, self.P), self.A.T) + self.Qr
+        self.P = np.dot(np.dot(self._A, self.P), self._A.T) + self.Qr
 
         if self.independent:
-            self.P = np.diag(np.diag(self.P))
+            self.P = self.P * np.identity(2)
+            # self.P = np.diag(np.diag(self.P) )
         # print(self.P)
         return
 
@@ -108,7 +150,7 @@ class KalmanFilter:
 
     def kalman_gain(self):
         # kalman gain
-        self.K = np.dot(self.P, self.H.T) / (np.dot(np.dot(self.H, self.P), self.H.T) + self.R)
+        self.K = np.dot(self.P, self._H.T) / (np.dot(np.dot(self._H, self.P), self._H.T) + self.R)
         self.K[np.isnan(self.K)] = 0
         # print(f"Kalman gain: {self.K}")
         return
@@ -118,13 +160,13 @@ class KalmanFilter:
         # observation
         self.observation = y
         # new observation
-        self.Y = np.dot(self.C, y) + self.zk
+        self.Y = np.dot(self._C, y) + self.zk
         # print(f"new Y: {self.Y}")
         return
 
     def predicted_state(self):
 
-        self.x = self.x + np.dot(self.K, (self.Y - np.dot(self.H, self.x)))
+        self.x = self.x + np.dot(self.K, (self.Y - np.dot(self._H, self.x)))
 
         # update to results
         self.updated_x.append(self.x)
@@ -133,7 +175,7 @@ class KalmanFilter:
 
     def update_process_covariance_matrix(self):
 
-        self.P = np.dot((np.diag(np.ones(len(self.K))) - np.dot(self.K, self.H)), self.P)
+        self.P = np.dot((np.identity(len(self.K)) - np.dot(self.K, self._H)), self.P)
         # update to results
         self.updated_covariance.append(self.P)
         # print(f"new P: {self.P}")
