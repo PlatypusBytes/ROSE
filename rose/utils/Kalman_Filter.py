@@ -105,7 +105,8 @@ class KalmanFilter:
 
     def state_matrix(self):
 
-        self.x = np.dot(self._A, self.x) + np.dot(self._B, self.u) + self.w
+        # self.x = np.dot(self._A, self.x) + np.dot(self._B, self.u) + self.w
+        self.x = self._A.dot(self.x) + self._B.dot(self.u) + self.w
 
         # print(self.x)
 
@@ -126,8 +127,7 @@ class KalmanFilter:
 
     def predict_process_cov_matrix(self):
 
-        # predicted process covariance matrix
-        self.P = np.dot(np.dot(self._A, self.P), self._A.T) + self.Qr
+        self.P = self._A.dot(self.P).dot(self._A.T) + self.Qr
 
         if self.independent:
             self.P = self.P * np.identity(2)
@@ -150,7 +150,9 @@ class KalmanFilter:
 
     def kalman_gain(self):
         # kalman gain
-        self.K = np.dot(self.P, self._H.T) / (np.dot(np.dot(self._H, self.P), self._H.T) + self.R)
+
+        self.K = self.P.dot(self._H.T) / (self._H.dot(self.P).dot(self._H.T) + self.R)
+
         self.K[np.isnan(self.K)] = 0
         # print(f"Kalman gain: {self.K}")
         return
@@ -160,14 +162,15 @@ class KalmanFilter:
         # observation
         self.observation = y
         # new observation
-        self.Y = np.dot(self._C, y) + self.zk
+        # self.Y = self._C.dot(y) np.dot(self._C, y) + self.zk
+        self.Y = self._C.dot(y) + self.zk
         # print(f"new Y: {self.Y}")
         return
 
     def predicted_state(self):
 
-        self.x = self.x + np.dot(self.K, (self.Y - np.dot(self._H, self.x)))
-
+        # self.x = self.x + np.dot(self.K, (self.Y - np.dot(self._H, self.x)))
+        self.x = self.x + self.K.dot((self.Y - self._H.dot( self.x)))
         # update to results
         self.updated_x.append(self.x)
         # print(f"new x: {self.x}")
@@ -175,7 +178,8 @@ class KalmanFilter:
 
     def update_process_covariance_matrix(self):
 
-        self.P = np.dot((np.identity(len(self.K)) - np.dot(self.K, self._H)), self.P)
+        # self.P = np.dot((np.identity(len(self.K)) - np.dot(self.K, self._H)), self.P)
+        self.P = (np.identity(len(self.K)) - self.K.dot(self._H)).dot(self.P)
         # update to results
         self.updated_covariance.append(self.P)
         # print(f"new P: {self.P}")
@@ -196,13 +200,17 @@ if __name__ == "__main__":
                              [4860, 286],
                              [5110, 290],
                              ])
+    timesteps =np.ones(len(observations))
 
     # initialise Kalman
     kf = KalmanFilter(observations[0], control_vector, P0, delta_t, independent=True)
 
+    kf.initialise_control_matrices(timesteps)
+
     for i in range(1, len(observations)):
         print(f"######################\n{i}\n######################")
-        kf.update_control_matrices(delta_t)
+        # kf.update_control_matrices(delta_t)
+        kf.update_control_matrices_by_index(i-1)
         kf.state_matrix()
         # kf.process_cov_matrix(P0[0], P0[1])
         kf.predict_process_cov_matrix()
