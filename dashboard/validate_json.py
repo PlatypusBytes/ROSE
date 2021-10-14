@@ -17,17 +17,17 @@ def definitions():
                                                  "shear_modulus": And([float, int]),
                                                  "formation": And([str]),
                                                  "gamma_dry": And([float, int]),
-                                                 "Su": And([float, int]),
+                                                 "Su": And([float, int, str]),
                                                  "Young_modulus": And([float, int]),
                                                  "poisson": And([float, int]),
                                                  "c": And([float, int]),
                                                  "damping": And([float, int]),
-                                                 "m": And([float, int]),
+                                                 "m": And([float, int, str]),
                                                  "gamma_wet": And([float, int]),
                                                  "a": And([float, int]),
                                                  "friction_angle": And([float, int]),
                                                  "b": And([float, int]),
-                                                 "POP": And([float, int]),
+                                                 "POP": And([float, int, str]),
                                                  "cohesion": And([float, int]),
                                                  }
                                  },
@@ -105,12 +105,3 @@ def check_json(input_json):
         return True
     except SchemaError:
         return False
-
-
-if __name__ == "__main__":
-    # Example run
-    import json
-    with open("../run_rose/example_rose_input.json", "r") as fi:
-        input = json.load(fi)
-
-    print(check_json(input))
