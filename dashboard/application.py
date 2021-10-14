@@ -83,21 +83,27 @@ def run():
     status, initial_json, loc = calculation_exist(input_json["SOS_Segment_Input"])
     if status:
         calc["message"] = "Calculation already exists"
+        calc["exist"] = status
+        calc["data"] = initial_json
+
+        # assigns the json data to session
+        with open(os.path.join(CALCS_PATH, loc, "data.json"), "r") as fi:
+            session["data"] = json.load(fi)
         return calc
-    calc["exist"] = status
 
     # run calculation
     status, initial_json, loc = calculation_basic(input_json["SOS_Segment_Input"])
     calc["running"] = status
     calc["data"] = initial_json
 
-    print(calc)
     if not calc["running"]:
         # assigns the json data to session
         with open(os.path.join(CALCS_PATH, loc, "data.json"), "r") as fi:
             session["data"] = json.load(fi)
-
-    return calc
+        return calc
+    else:
+        calc["message"] = "Calculation running"
+        return calc
 
 
 @app.route("/dynamic_stiffness")
