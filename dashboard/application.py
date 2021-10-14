@@ -4,7 +4,7 @@ from flask_cors import CORS
 from flask_session import Session
 import os
 import json
-import numpy as np
+from threading import Thread
 
 # ROSE packages
 from dashboard import app_utils
@@ -46,7 +46,7 @@ def index():
 @app.route("/runner", methods=["GET", "POST"])
 def run():
 
-    # ToDo: parse input json from Front End
+    # input json from Front End
     input_json = request.get_json()
 
     # # structure of input json:
@@ -56,30 +56,46 @@ def run():
     #  'InfraMon_Input': {},
     # }
 
-    # check if calculation running
-    status = is_running(input_json["SOS_Segment_Input"])
-    if status:
-        return "Calculation is already running."
-
     # calculation dictionary
     calc = {
         "valid": False,
         "exist": False,
+        "running": False,
         "data": {},  # input json file
+        "message": ""
     }
+
+    # check if calculation running
+    status = is_running(input_json["SOS_Segment_Input"])
+    if status:
+        calc["running"] = True
+        calc["message"] = "Calculation running"
+        return calc
 
     # check input json
     status = validate_input(input_json["SOS_Segment_Input"])
+    if not status:
+        calc["message"] = "Input file not valid"
+        return calc
     calc["valid"] = status
 
-    # run calculation
-    status, initial_json, loc = calculation(input_json["SOS_Segment_Input"])
+    # check if calculation exists
+    status, initial_json, loc = calculation_exist(input_json["SOS_Segment_Input"])
+    if status:
+        calc["message"] = "Calculation already exists"
+        return calc
     calc["exist"] = status
+
+    # run calculation
+    status, initial_json, loc = calculation_basic(input_json["SOS_Segment_Input"])
+    calc["running"] = status
     calc["data"] = initial_json
 
-    # assigns the json data to session
-    with open(os.path.join(CALCS_PATH, loc, "data.json"), "r") as f:
-        session["data"] = json.load(f)
+    print(calc)
+    if not calc["running"]:
+        # assigns the json data to session
+        with open(os.path.join(CALCS_PATH, loc, "data.json"), "r") as fi:
+            session["data"] = json.load(fi)
 
     return calc
 
@@ -160,20 +176,16 @@ def validate_input(input_json):
     return status
 
 
-def calculation(input_json):
+def calculation_exist(input_json):
     r"""
-    Runs the input json file
+    Checks if the input json file has previously been calculated
 
-    @param input_json_file: input json file
+    @param input_json: input json file
     """
 
     # hash file, check if file exists & has results
     hash = hashing.Hash()
     hash.hash_dict(input_json)
-
-    # add calculation to tmp file (as running)
-    with open(os.path.join(CALCS_PATH, RUNNING_JSON), "w") as fi:
-        json.dump({hash.hash_value: "Running"}, fi, indent=2)
 
     # load calculations.json
     with open(os.path.join(CALCS_PATH, CALCS_JSON), "r") as fi:
@@ -188,15 +200,52 @@ def calculation(input_json):
         with open(os.path.join(CALCS_PATH, location, "settings.json")) as fi:
             data = json.load(fi)
     else:
-        # run calculation
-        status, data = app_utils.runner(input_json, CALCS_PATH)
+        status = False
+        data = {}
+        location = []
 
-        # add hash to calculations.json
-        calcs.update({str(hash.hash_value): input_json["project_name"]})
-        # location of output json
-        location = input_json["project_name"]
-        with open(os.path.join(CALCS_PATH, CALCS_JSON), "w") as fo:
-            json.dump(calcs, fo, indent=2)
+    return status, data, location
+
+
+def calculation_basic(input_json):
+    r"""
+
+    @param input_json:
+    @return:
+    """
+    Thread(target=calculation, args=(input_json,)).start()
+    return True, {}, ""
+
+
+def calculation(input_json):
+    r"""
+    Runs the input json file
+
+    @param input_json: input json file
+    @param location: location of the settings file
+    """
+
+    # hash file, check if file exists & has results
+    hash = hashing.Hash()
+    hash.hash_dict(input_json)
+
+    # add calculation to tmp file (as running)
+    with open(os.path.join(CALCS_PATH, RUNNING_JSON), "w") as fi:
+        json.dump({hash.hash_value: "Running"}, fi, indent=2)
+
+    # load calculations.json
+    with open(os.path.join(CALCS_PATH, CALCS_JSON), "r") as fi:
+        calcs = json.load(fi)
+
+    # run calculation
+    status, data = app_utils.runner(input_json, CALCS_PATH)
+
+    # add hash to calculations.json
+    calcs.update({str(hash.hash_value): input_json["project_name"]})
+    # location of output json
+    location = input_json["project_name"]
+    with open(os.path.join(CALCS_PATH, CALCS_JSON), "w") as fo:
+        json.dump(calcs, fo, indent=2)
 
     # clear hash from tmp file
     with open(os.path.join(CALCS_PATH, RUNNING_JSON), "r") as fi:
