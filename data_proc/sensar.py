@@ -128,11 +128,14 @@ def filter_signal(feature, is_flip=False):
     # initialise kalman filter
     kf = KF.KalmanFilter([0, 0], 2, [disp_std, velocity_std], dt[0], independent=True)
 
+    kf.initialise_control_matrices(dt)
+    kf.error_covariance_measures(disp_std, velocity_std)
+
     # loop over each observation and perform iterative kalman filter operations
     for i in range(1, len(settlements)):
-        kf.update_control_matrices(dt[i - 1])
+        # kf.update_control_matrices(dt[i - 1])
+        kf.update_control_matrices_by_index(i-1)
         kf.predict_process_cov_matrix()
-        kf.error_covariance_measures(disp_std, velocity_std)
         kf.kalman_gain()
         kf.new_observation(observations[i])
         kf.predicted_state()
