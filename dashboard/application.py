@@ -209,9 +209,10 @@ def calculation_exist(input_json):
 
 def calculation_basic(input_json):
     r"""
+    Caller for the calculation threading
 
-    @param input_json:
-    @return:
+    @param input_json: input json file
+    @return: calculation running, data, location
     """
     Thread(target=calculation, args=(input_json,)).start()
     return True, {}, ""
@@ -223,6 +224,7 @@ def calculation(input_json):
 
     @param input_json: input json file
     @param location: location of the settings file
+    @return: calculation running, data, location
     """
 
     # hash file, check if file exists & has results
