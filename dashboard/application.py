@@ -73,11 +73,30 @@ def run():
         return calc
 
     # check input json
-    status = validate_input(input_json["SOS_Segment_Input"])
-    if not status:
+    status_sos_segment_input = validate_input(input_json["SOS_Segment_Input"])
+    if not status_sos_segment_input:
         calc["message"] = "Input file not valid"
+
+    # validate inframon input if it is given
+    if input_json["InfraMon_Input"] is not None:
+        status_inframon = validate_input(input_json["InfraMon_Input"])
+        if not status_inframon:
+            message = "InfraMon input is not valid"
+
+            # add message to calc message
+            if calc["message"] == "":
+                calc["message"] = message
+            else:
+                calc["message"] = calc["message"] + "; " + message
+    else:
+        status_inframon = True
+
+    #todo add validation of rila and sensar
+    status = all([status_sos_segment_input, status_inframon])
+
+    if not status:
+        calc["valid"] = status
         return calc
-    calc["valid"] = status
 
     # check if calculation exists
     status, initial_json, loc = calculation_exist(input_json["SOS_Segment_Input"])

@@ -335,8 +335,6 @@ def runner(input_data, path_results, calculation_time=50):
 
             train_dicts[train["type"]] = train["traffic"]
 
-            #todo change with cumulative settlement
-
             # calculate mean and std of force of current train
             vertical_force_soil_segment = np.array(vertical_force_soil_segment)
             forces.append(vertical_force_soil_segment)
