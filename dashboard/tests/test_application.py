@@ -110,6 +110,12 @@ def test_valid_calculation_ricardo():
 
 
 def test_get_settlement():
+    """
+    Tests get settlement response
+    :return:
+    """
+
+    # open all data
     with open("test_data/test_proj/data.json", "r") as file:
         all_data = json.load(file)
 
@@ -137,6 +143,52 @@ def test_get_settlement():
                                                       "type": "Feature"}
                                                      ],
                                         "type": "FeatureCollection"}
+
+        # assert segment id and value of each feature in feature collection
+        for i in range(len(output["features"])):
+
+            assert output["features"][i]["properties"]["segmentId"] == \
+                   expected_output_except_coord["features"][i]["properties"]["segmentId"]
+
+            assert pytest.approx(output["features"][i]["properties"]["value"]) == \
+                   expected_output_except_coord["features"][i]["properties"]["value"]
+
+
+def test_get_dynamic_stiffness():
+    """
+    Tests get dynamic stiffness response
+    :return:
+    """
+
+    # open all data
+    with open("test_data/test_proj/data.json", "r") as file:
+        all_data = json.load(file)
+
+    # start test client
+    with app.test_client() as c:
+
+        # set session data
+        with c.session_transaction() as sess:
+            sess['data'] = all_data
+
+        # run get dynamic stiffness and get output json
+        rv = c.get("/dynamic_stiffness?train_type=Sprinter&value_type=mean_dyn_stiffness")
+        output = rv.get_json()
+
+        # set expected result
+        expected_output_except_coord = {"features": [{"geometry": {"coordinates": [],
+                                                                   "type": "LineString"},
+                                                      "properties": {"segmentId": "Segment 1001",
+                                                                     "value": 1446216745.56},
+                                                      "type": "Feature"},
+                                                     {"geometry": {"coordinates": [],
+                                                                   "type": "LineString"},
+                                                      "properties": {"segmentId": "Segment 1002",
+                                                                     "value": 1594513263.14},
+                                                      "type": "Feature"}
+                                                     ],
+                                        "type": "FeatureCollection"}
+
 
         # assert segment id and value of each feature in feature collection
         for i in range(len(output["features"])):

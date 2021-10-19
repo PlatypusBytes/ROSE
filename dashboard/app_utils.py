@@ -93,8 +93,8 @@ def assign_data_to_coupled_model(train_info, track_info, time_int, soil):
     sleeper_model_part.mass = track_info["materials"]["mass_sleeper"]
 
     for idx, soil_model_part in enumerate(soil_model_parts):
-        soil_model_part.stiffness = soil["stiffness"][idx]
-        soil_model_part.damping = soil["damping"][idx]
+        soil_model_part.stiffness = soil["stiffness"]
+        soil_model_part.damping = soil["damping"]
 
     # set velocity of train
     velocities = np.ones(len(time)) * train_info["velocity"]
@@ -243,8 +243,8 @@ def get_base_data(features, output_file):
     for feature in features:
         min_sett = min(min_sett, min(features[feature]["properties"]["cumulative_settlement_mean"]))
         max_sett = max(max_sett, max(features[feature]["properties"]["cumulative_settlement_mean"]))
-        min_stiff = min(min_stiff, min(min(features[feature]["properties"]["mean_dyn_stiffness"])))
-        max_stiff = max(max_stiff, max(max(features[feature]["properties"]["mean_dyn_stiffness"])))
+        min_stiff = min(min_stiff, min(features[feature]["properties"]["mean_dyn_stiffness"]))
+        max_stiff = max(max_stiff, max(features[feature]["properties"]["mean_dyn_stiffness"]))
         all_train_types.update(features[feature]["properties"]["train_names"])
 
     all_train_types = list(all_train_types)
@@ -316,8 +316,8 @@ def runner(input_data, path_results, calculation_time=50):
 
                 # determine dynamic soil stiffness and damping
                 sleeper_dist = input_data["track_info"]["geometry"]["sleeper_distance"]
-                dyn_stiffness = np.real(wolf_data.K_dyn) * sleeper_dist
-                damping = np.imag(wolf_data.K_dyn) / omega * sleeper_dist
+                dyn_stiffness = np.real(wolf_data.K_dyn)[0] * sleeper_dist
+                damping = np.imag(wolf_data.K_dyn)[0] / omega * sleeper_dist
                 soil = {"stiffness": dyn_stiffness,
                         "damping": damping}
 
@@ -340,8 +340,8 @@ def runner(input_data, path_results, calculation_time=50):
             forces.append(vertical_force_soil_segment)
 
             mean_dynamic_stiffness, std_dynamic_stiffness = calculate_weighted_mean_and_std(np.array(dyn_stiffnesses), np.array(scenario_probabilities))
-            mean_dynamic_stiffnesses.append(list(mean_dynamic_stiffness))
-            std_dynamic_stiffnesses.append(list(std_dynamic_stiffness))
+            mean_dynamic_stiffnesses.append(mean_dynamic_stiffness)
+            std_dynamic_stiffnesses.append(std_dynamic_stiffness)
 
         # calculate cumulative settlements per scenario
         cumulative_settlements = []
