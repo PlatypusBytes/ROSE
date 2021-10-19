@@ -141,7 +141,7 @@ def dynamic_stiffness():
 @app.route("/settlement")
 def settlement():
 
-    time = request.args.get("time_index")
+    time = int(request.args.get("time_index"))
     value_type = request.args.get("value_type")  # mean or std
 
     geojson = io_utils.parse_cumulative_settlement_data(

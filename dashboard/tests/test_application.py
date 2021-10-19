@@ -1,4 +1,4 @@
-import threading
+import pytest
 
 from dashboard.application import app
 from dashboard.tests.utils import TestUtils
@@ -84,10 +84,9 @@ def test_valid_calculation_ricardo():
             'Rila_Input': None,
             'InfraMon_Input': ricardo_input,
             }
+
     with app.test_client() as c:
         # run runner
-
-
         rv = c.post("/runner", json=data)
 
         # get results
@@ -110,3 +109,40 @@ def test_valid_calculation_ricardo():
         TestUtils.delete_calculation_data('proj1')
 
 
+def test_get_settlement():
+    with open("test_data/test_proj/data.json", "r") as file:
+        all_data = json.load(file)
+
+    # start test client
+    with app.test_client() as c:
+
+        # set session data
+        with c.session_transaction() as sess:
+            sess['data'] = all_data
+
+        # run get settlement and get output json
+        rv = c.get("/settlement?time_index=50&value_type=cumulative_settlement_mean")
+        output = rv.get_json()
+
+        # set expected result
+        expected_output_except_coord = {"features": [{"geometry": {"coordinates": [],
+                                                                   "type": "LineString"},
+                                                      "properties": {"segmentId": "Segment 1001",
+                                                                     "value": 120.09},
+                                                      "type": "Feature"},
+                                                     {"geometry": {"coordinates": [],
+                                                                   "type": "LineString"},
+                                                      "properties": {"segmentId": "Segment 1002",
+                                                                     "value": 124.42},
+                                                      "type": "Feature"}
+                                                     ],
+                                        "type": "FeatureCollection"}
+
+        # assert segment id and value of each feature in feature collection
+        for i in range(len(output["features"])):
+
+            assert output["features"][i]["properties"]["segmentId"] == \
+                   expected_output_except_coord["features"][i]["properties"]["segmentId"]
+
+            assert pytest.approx(output["features"][i]["properties"]["value"]) == \
+                   expected_output_except_coord["features"][i]["properties"]["value"]
