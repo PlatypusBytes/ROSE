@@ -208,7 +208,7 @@ def add_feature_to_geo_json(coordinates, time, mean_dyn_stiffness,std_dyn_stiffn
     # convert coordinates to lat lon coordinates
     np_coords = np.array(coordinates)
     lat, lon = transform_rd_to_lat_lon(np_coords[:,0], np_coords[:,1])
-    new_coordinates = np.array([lat, lon]).T.tolist()
+    new_coordinates = np.array([lon, lat]).T.tolist()
 
     # create feature dict
     feature = {
