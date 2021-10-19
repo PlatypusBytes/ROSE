@@ -8,7 +8,7 @@ from threading import Thread
 
 # ROSE packages
 from dashboard import app_utils
-from dashboard import validate_json
+from dashboard import validate_json, validate_ricardo_json
 from dashboard import hashing
 from dashboard import io_utils
 
@@ -79,7 +79,7 @@ def run():
 
     # validate inframon input if it is given
     if input_json["InfraMon_Input"] is not None:
-        status_inframon = validate_input(input_json["InfraMon_Input"])
+        status_inframon = validate_inframon(input_json["InfraMon_Input"])
         if not status_inframon:
             message = "InfraMon input is not valid"
 
@@ -200,6 +200,15 @@ def validate_input(input_json):
 
     return status
 
+def validate_inframon(inframon_json):
+    r"""
+    Validates the inframon input json file
+
+    @param inframon_json: inframon input json file
+    """
+    status = validate_ricardo_json.check_json(inframon_json)
+    return status
+
 
 def calculation_exist(input_json):
     r"""
@@ -290,4 +299,5 @@ def calculation(input_json):
 
 
 if __name__ == "__main__":
-    app.run("127.0.0.1")
+    app.run("127.0.0.1", port=8080)
+    # app.run("0.0.0.0")
