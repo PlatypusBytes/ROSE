@@ -1,14 +1,11 @@
-/* 
-Select train type commponent
- */
 <template>
   <div class="pa-4">
     <div class="text-body-1 pb-3">
       Train type:
     </div>
     <v-select
+      v-model="selectedType"
       :items="trainTypes"
-      :value="selectedType"
       outlined
       desnse
     />
@@ -16,12 +13,35 @@ Select train type commponent
 </template>
 
 <script>
-  export default {
+  export default {   
+    props: {
+      trainTypes: {
+        type: Array,
+        required: true,
+        default: () => [],
+      },
+      
+    },
     data() { 
       return { 
-        trainTypes: [ 'typeA', 'typeB' ],
-        selectedTyp: null,
+        selectedType: null,
       }
+    },
+    watch: {
+      selectedType() {
+        this.setTrainType()
+      },
+    },
+    mounted() { 
+      this.selectedType = this.trainTypes[0]
+    },
+    destroyed() {
+      this.setTrainType(null)
+    },
+    methods: {
+      setTrainType() {
+        this.$emit('set-train-type', this.selectedType)
+      },
     },
   }
 </script>

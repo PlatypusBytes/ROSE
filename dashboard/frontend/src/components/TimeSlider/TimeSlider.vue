@@ -4,9 +4,41 @@
       Time:
     </div>
     <v-slider 
+      v-model="selectedIndex"
       :thumb-label="true"
-      min="1"
-      max="1000"
+      :min="timeIndexes[0]"
+      :max="timeIndexes[timeIndexes.length -1]"
     />
   </div>
 </template>
+
+<script>
+ 
+  export default {
+    props: {
+      timeIndexes: {
+        type: Array,
+        required: true,
+        default: () => [],
+      },
+    },
+    data() { 
+      return { 
+        selectedIndex: null,
+      }
+    },
+    watch: { 
+      selectedIndex(){
+        this.setTimeIndex()
+      },
+    },
+    mounted() { 
+      this.selectedIndex = this.timeIndexes[0]
+    },
+    methods: { 
+      setTimeIndex() {
+        this.$emit('set-time-index', this.selectedIndex)
+      },
+    },
+  }
+</script>
