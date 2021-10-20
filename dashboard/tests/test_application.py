@@ -198,3 +198,27 @@ def test_get_dynamic_stiffness():
 
             assert pytest.approx(output["features"][i]["properties"]["value"]) == \
                    expected_output_except_coord["features"][i]["properties"]["value"]
+
+
+def test_graph():
+    """
+    Tests get graph response
+    :return:
+    """
+    # open all data
+    with open("test_data/test_proj/data.json", "r") as file:
+        all_data = json.load(file)
+
+    # start test client
+    with app.test_client() as c:
+        # set session data
+        with c.session_transaction() as sess:
+            sess['data'] = all_data
+
+        # run get dynamic stiffness and get output json
+        rv = c.get("/graph_values?segment_id=Segment 1001")
+        output = rv.get_json()
+
+        assert len(output["cumulative_settlement_mean"]) == 51
+        assert len(output["cumulative_settlement_std"]) == 51
+        assert len(output["time"]) == 51
