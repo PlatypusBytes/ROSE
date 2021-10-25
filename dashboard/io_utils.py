@@ -14,7 +14,8 @@ def parse_dynamic_stiffness_data(ALL_RESULTS, train_type, value_type):
 
         train_index = segment_data["properties"]["train_names"].index(train_type)
 
-        feature = {"geometry": {"type": "LineString",
+        feature = {"type": "Feature",
+                   "geometry": {"type": "LineString",
                                 "coordinates": segment_data["geometry"]["coordinates"]},
                    "properties": {"segmentId": segment_id,
                                   "value": segment_data["properties"][value_type][train_index]}}
@@ -28,7 +29,8 @@ def parse_dynamic_stiffness_data(ALL_RESULTS, train_type, value_type):
 def parse_cumulative_settlement_data(ALL_RESULTS, time_index, value_type):
     features = []
     for segment_id, segment_data in ALL_RESULTS.items():
-        feature = {"geometry": {"type": "LineString",
+        feature = {"type": "Feature",
+                   "geometry": {"type": "LineString",
                                 "coordinates": segment_data["geometry"]["coordinates"]},
                    "properties": {"segmentId": segment_id,
                                   "value": segment_data["properties"][value_type][time_index]}}

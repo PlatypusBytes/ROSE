@@ -8,7 +8,7 @@ from threading import Thread
 
 # ROSE packages
 from dashboard import app_utils
-from dashboard import validate_json
+from dashboard import validate_json, validate_ricardo_json
 from dashboard import hashing
 from dashboard import io_utils
 
@@ -73,11 +73,30 @@ def run():
         return calc
 
     # check input json
-    status = validate_input(input_json["SOS_Segment_Input"])
-    if not status:
+    status_sos_segment_input = validate_input(input_json["SOS_Segment_Input"])
+    if not status_sos_segment_input:
         calc["message"] = "Input file not valid"
+
+    # validate inframon input if it is given
+    if input_json["InfraMon_Input"] is not None:
+        status_inframon = validate_inframon(input_json["InfraMon_Input"])
+        if not status_inframon:
+            message = "InfraMon input is not valid"
+
+            # add message to calc message
+            if calc["message"] == "":
+                calc["message"] = message
+            else:
+                calc["message"] = calc["message"] + "; " + message
+    else:
+        status_inframon = True
+
+    #todo add validation of rila and sensar
+    status = all([status_sos_segment_input, status_inframon])
+
+    if not status:
+        calc["valid"] = status
         return calc
-    calc["valid"] = status
 
     # check if calculation exists
     status, initial_json, loc = calculation_exist(input_json["SOS_Segment_Input"])
@@ -122,7 +141,7 @@ def dynamic_stiffness():
 @app.route("/settlement")
 def settlement():
 
-    time = request.args.get("time_index")
+    time = int(request.args.get("time_index"))
     value_type = request.args.get("value_type")  # mean or std
 
     geojson = io_utils.parse_cumulative_settlement_data(
@@ -179,6 +198,15 @@ def validate_input(input_json):
     # validates json input
     status = validate_json.check_json(input_json)
 
+    return status
+
+def validate_inframon(inframon_json):
+    r"""
+    Validates the inframon input json file
+
+    @param inframon_json: inframon input json file
+    """
+    status = validate_ricardo_json.check_json(inframon_json)
     return status
 
 
@@ -271,4 +299,5 @@ def calculation(input_json):
 
 
 if __name__ == "__main__":
-    app.run("127.0.0.1")
+    app.run("127.0.0.1", port=8080)
+    # app.run("0.0.0.0")
