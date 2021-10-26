@@ -4,7 +4,8 @@ import getDynamicStiffness from '@/lib/requests/get-dynamic-stiffness'
 import buildMapboxLayer from '@/lib/mapbox/build-mapbox-layer'
 import buildRequestParams from '@/lib/requests/build-request-params'
 import buildLayerId from '@/lib/mapbox/build-layer-id'
-import sample from '~/data/sample.json'
+import mean_stiffness_intercity from '~/data/mean_stiffness_intercity.json'
+import mean_settlement_25 from '~/data/mean_settlement_25.json'
 
 export default {
   namespaced: true,
@@ -88,12 +89,15 @@ export default {
       if (selectedLayerType && selectedLayerType === 'settlement') {
         const featuresCollection =  await getSettlement(params)
         const { layerId } = context.getters
-        context.commit('SET_MAP_LAYER', buildMapboxLayer(layerId, featuresCollection, colors, cummulativeSetLimits ))
+
+        const feat = mean_settlement_25 //TODO remove the sample test
+        context.commit('SET_MAP_LAYER', buildMapboxLayer(layerId, feat, colors, cummulativeSetLimits ))
+
       }else{
         const featuresCollection =  await getDynamicStiffness(params)
         const { layerId } = context.getters
-        const feat = sample
         
+        const feat = mean_stiffness_intercity //TODO remove the sample test
         context.commit('SET_MAP_LAYER', buildMapboxLayer(layerId, feat, colors, dynamicStiffnessLimits ))
       }
     },  
