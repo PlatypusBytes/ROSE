@@ -56,7 +56,14 @@
               class="pa-0"
               height="92vh"
             >
-              <mapbox-map :access-token="accessToken" />
+              <mapbox-map :access-token="accessToken"> 
+                <v-mapbox-layer
+                  v-for="layer in layers"
+                  :key="layer.id"
+                  :options="layer"
+                />
+                <map-controls v-if="mapLayer" :layer="mapLayer" />
+              </mapbox-map>
             </v-card>
           </v-stepper-content>
         </v-stepper-items>
@@ -69,9 +76,10 @@
 <script>
 
   import { MapboxMap } from '@deltares/vue-components'
-  import InputDataCard from '~/components/InputDataCard/InputDataCard'
-  import AppSideBar from '~/components/AppSideBar/AppSideBar'
-
+  import InputDataCard from '~/components/InputDataCard'
+  import AppSideBar from '~/components/AppSideBar'
+  import MapControls from '~/components/MapControls'
+  import { mapState } from 'vuex'
 
 
   export default {
@@ -79,12 +87,25 @@
       MapboxMap,
       InputDataCard,
       AppSideBar,
+      MapControls,
    
     },
     data: () => ({
       accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
-      page: 1,
+      page: 1, 
+      layers: [],//Array in case more layers will be added simultanuesly on the map
     }),
+    computed: {
+      ...mapState('layers', [ 'mapLayer' ]),
+    },
+    watch: {
+      mapLayer() {
+        this.layers = []
+        if (this.mapLayer) {
+          this.layers.push(this.mapLayer)
+        }
+      },
+    },
     methods: {
       onShowResultsPage(event) {
         this.page = event
