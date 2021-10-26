@@ -37,7 +37,7 @@
       this.removeEventsFromMap()
     },
     methods: {
-      ...mapActions('charts', [ 'getChartData' ]),
+      ...mapActions('charts', [ 'setChartData' ]),
       deferredMountedTo(map) {
         if (this.layer) {
           this.map = map
@@ -45,9 +45,8 @@
       },
       onClick(e) {
         const { segmentId } = e.features[0].properties
-        console.log('segmentId', segmentId)
-        //this.getChartData({ id: segmendId })
-        //this.getChartData()
+        console.log('segmentId on click', segmentId)
+        this.setChartData(segmentId)
       },
       onMouseEnter() {
         this.map.getCanvas().style.cursor = 'pointer'

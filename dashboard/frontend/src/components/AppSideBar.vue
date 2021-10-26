@@ -33,10 +33,10 @@
 </template>
 
 <script>
-  import ContentPanels from '~/components/ContentPanels/ContentPanels'
-  import ValueTypeSelection from '~/components/ValueTypeSelection/ValueTypeSelection'
-  import TrainTypeList from '~/components/TrainTypeList/TrainTypeList'
-  import TimeSlider from '~/components/TimeSlider/TimeSlider'
+  import ContentPanels from '~/components/ContentPanels'
+  import ValueTypeSelection from '~/components/ValueTypeSelection'
+  import TrainTypeList from '~/components/TrainTypeList'
+  import TimeSlider from '~/components/TimeSlider'
   import { mapState, mapGetters, mapActions } from 'vuex'
 
   export default {

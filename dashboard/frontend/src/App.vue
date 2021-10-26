@@ -76,9 +76,9 @@
 <script>
 
   import { MapboxMap } from '@deltares/vue-components'
-  import InputDataCard from '~/components/InputDataCard/InputDataCard'
-  import AppSideBar from '~/components/AppSideBar/AppSideBar'
-  import MapControls from '~/components/MapControls/MapControls'
+  import InputDataCard from '~/components/InputDataCard'
+  import AppSideBar from '~/components/AppSideBar'
+  import MapControls from '~/components/MapControls'
   import { mapState } from 'vuex'
 
 
