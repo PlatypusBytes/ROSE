@@ -9,8 +9,8 @@ export default function(params) {
     method: 'get',
     url: `${ process.env.VUE_APP_API_ENDPOINT }/settlement`,
     params,
-  }).then((response) => {
-    console.log('response', response)
-  })
-
+  }).then(({ data }) => {
+    console.log('data get-settlement', JSON.stringify(data))
+		return typeof data === 'object' ? data : JSON.parse(data)
+	})
 }
