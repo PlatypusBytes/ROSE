@@ -11,6 +11,18 @@ clone:
 pipelines:
   default:
     - step:
+        name: Clear cache if environments updated
+        condition:
+             changesets:
+                 includePaths:
+                   - "env_rose.yml"  
+        script:
+          - pipe: atlassian/bitbucket-clear-cache:3.1.1
+            variables:
+                 BITBUCKET_USERNAME: $BITBUCKET_USERNAME
+                 BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
+                 CACHES: ["condacache"]
+    - step:
         name: Install requirements.
         caches:
           - conda
@@ -52,3 +64,8 @@ pipelines:
                       BITBUCKET_USERNAME: $BITBUCKET_USERNAME
                       BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
                       FILENAME: "src_doc.zip"
+
+definitions:
+   caches:
+     conda: ~/.conda/envs/rose
+     codatarballs: /opt/conda/pkgs
