@@ -52,8 +52,3 @@ pipelines:
                       BITBUCKET_USERNAME: $BITBUCKET_USERNAME
                       BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
                       FILENAME: "src_doc.zip"
-        
-definitions:
-   caches:
-     conda: ~/.conda/envs/rose
-     codatarballs: /opt/conda/pkgs
