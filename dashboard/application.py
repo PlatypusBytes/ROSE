@@ -97,6 +97,8 @@ def run():
     if not status:
         calc["valid"] = status
         return calc
+    else:
+        calc["valid"] = True
 
     # check if calculation exists
     status, initial_json, loc = calculation_exist(input_json["SOS_Segment_Input"])
