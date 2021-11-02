@@ -19,6 +19,7 @@ dependencies:
   - pyshp=2.1.2
   - pyproj=2.6.1
   - flask=1.1.2
+  - pypardiso=0.4.0
   - pip:
     - sphinx-rtd-theme==0.5.1
     - rst2pdf==0.98
