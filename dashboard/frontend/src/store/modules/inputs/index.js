@@ -38,8 +38,7 @@ export default {
       if (!runnerOutput) {
         return null
       }
-      //return runnerOutput.valid  
-      return true
+      return runnerOutput.valid  
     },
     message(state) {
      const { runnerOutput } = state

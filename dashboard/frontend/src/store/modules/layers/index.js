@@ -90,15 +90,15 @@ export default {
         const featuresCollection =  await getSettlement(params)
         const { layerId } = context.getters
 
-        const feat = mean_settlement_25 //TODO remove the sample test
-        context.commit('SET_MAP_LAYER', buildMapboxLayer(layerId, feat, colors, cummulativeSetLimits ))
+        //const feat = mean_settlement_25 //TODO remove the sample test
+        context.commit('SET_MAP_LAYER', buildMapboxLayer(layerId, featuresCollection, colors, cummulativeSetLimits ))
 
       }else{
         const featuresCollection =  await getDynamicStiffness(params)
         const { layerId } = context.getters
         
-        const feat = mean_stiffness_intercity //TODO remove the sample test
-        context.commit('SET_MAP_LAYER', buildMapboxLayer(layerId, feat, colors, dynamicStiffnessLimits ))
+        //const feat = mean_stiffness_intercity //TODO remove the sample test
+        context.commit('SET_MAP_LAYER', buildMapboxLayer(layerId, featuresCollection, colors, dynamicStiffnessLimits ))
       }
     },  
   },
