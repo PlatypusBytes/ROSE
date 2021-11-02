@@ -64,6 +64,7 @@
                 />
                 <map-controls v-if="mapLayer" :layer="mapLayer" />
               </mapbox-map>
+              <chart-dialog />
             </v-card>
           </v-stepper-content>
         </v-stepper-items>
@@ -79,6 +80,7 @@
   import InputDataCard from '~/components/InputDataCard'
   import AppSideBar from '~/components/AppSideBar'
   import MapControls from '~/components/MapControls'
+  import ChartDialog from '~/components/ChartDialog'
   import { mapState } from 'vuex'
 
 
@@ -88,6 +90,7 @@
       InputDataCard,
       AppSideBar,
       MapControls,
+      ChartDialog,
    
     },
     data: () => ({
