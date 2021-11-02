@@ -240,24 +240,43 @@ def get_base_data(features, output_file):
     all_train_types = set()
     min_sett, max_sett = 1e10, -1e10
     min_stiff, max_stiff = 1e10, -1e10
+    min_std_stiff, max_std_stiff = 1e10, -1e10
+
+    cumulative_settlements_means = []
+    cumulative_settlements_stds = []
+
     for feature in features:
-        min_sett = min(min_sett, min(features[feature]["properties"]["cumulative_settlement_mean"]))
-        max_sett = max(max_sett, max(features[feature]["properties"]["cumulative_settlement_mean"]))
+        cumulative_settlements_means.append(features[feature]["properties"]["cumulative_settlement_mean"])
+        cumulative_settlements_stds.append(features[feature]["properties"]["cumulative_settlement_std"])
         min_stiff = min(min_stiff, min(features[feature]["properties"]["mean_dyn_stiffness"]))
         max_stiff = max(max_stiff, max(features[feature]["properties"]["mean_dyn_stiffness"]))
+        min_std_stiff = min(min_std_stiff, min(features[feature]["properties"]["std_dyn_stiffness"]))
+        max_std_stiff = max(max_std_stiff, max(features[feature]["properties"]["std_dyn_stiffness"]))
         all_train_types.update(features[feature]["properties"]["train_names"])
+
+    cumulative_settlements_means = np.array(cumulative_settlements_means)
+    cumulative_settlements_stds = np.array(cumulative_settlements_stds)
+
+    min_sett = np.min(np.array(cumulative_settlements_means),axis=0)
+    max_sett = np.max(np.array(cumulative_settlements_means), axis=0)
+
+    min_sett_std = np.min(np.array(cumulative_settlements_stds), axis=0)
+    max_sett_std = np.max(np.array(cumulative_settlements_stds), axis=0)
 
     all_train_types = list(all_train_types)
 
     # set limit per colour code
     colours = ["#691aff", "#b81010", "#ffdb1a", "#6d1046", "#000066"]
     cumulative_settlement_limits = np.linspace(min_sett, max_sett, len(colours))
+    cumulative_settlement_std_limits = np.linspace(min_sett_std, max_sett_std, len(colours))
     dyn_stiffness_limits = np.linspace(min_stiff, max_stiff, len(colours))
-
+    dyn_stiffness_std_limits = np.linspace(min_std_stiff, max_std_stiff, len(colours))
     # generate base data dict
     base_data = {"colours": colours,
-                "cumulative_sett_limits": np.around(cumulative_settlement_limits, decimals=2).tolist(),
+                "cumulative_sett_limits": np.around(cumulative_settlement_limits, decimals=2).T.tolist(),
+                "cumulative_sett_std_limits": np.around(cumulative_settlement_std_limits, decimals=2).T.tolist(),
                 "dyn_stiff_limits": np.around(dyn_stiffness_limits, decimals=2).tolist(),
+                "dyn_stiff_std_limits": np.around(dyn_stiffness_std_limits, decimals=2).tolist(),
                 "all_train_types": all_train_types,
                 "time": np.around(features[feature]["properties"]["time"], decimals=2).tolist()}
 

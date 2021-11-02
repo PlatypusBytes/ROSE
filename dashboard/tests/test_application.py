@@ -58,7 +58,7 @@ def test_valid_calculation():
                              'exist': False,
                              'message': "Calculation running",
                              'running': True,
-                             "valid": False}
+                             "valid": True}
 
         # assert dictionary
         assert res_dict == expected_res_dict
