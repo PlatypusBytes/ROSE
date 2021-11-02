@@ -39,6 +39,7 @@
     },
     watch: {
       panelRef() {
+        console.log('this.panelRef i watcher', this.panelRef)
         const isActive = this.panelRef.isActive
         if (isActive) {
           this.setLayerType(this.id)
@@ -47,6 +48,7 @@
     },
     mounted() {
       this.panelRef = this.$refs[`layerType-${ this.id }`]
+      console.log('this.panelRef i mounted', this.panelRef)
     },
     methods: { 
       ...mapActions('layers', [ 'setLayerType' ]),
