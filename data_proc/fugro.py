@@ -18,6 +18,64 @@ from typing import List, Dict
 from rose.utils import signal_proc
 
 
+def __filter_without_boundary_effects(data, fs, Fpass_high, Fpass_low):
+    """
+    Filters signal while preventing boundary effects.
+    Filters signal twice. Once from front to back, then from back to front. The final filtered signal is half the filtered
+    reversed signal and half the filtered original signal
+
+    :param data:
+    :param fs:
+    :param Fpass_high:
+    :param Fpass_low:
+    :return:
+    """
+
+    filtered_sig = signal_proc.filter_sig(data, fs, Fpass_high, 4, type="highpass")
+    filtered_sig = signal_proc.filter_sig(filtered_sig, fs, Fpass_low, 2, type="lowpass")
+    filtered_sig_flipped = signal_proc.filter_sig(np.flip(data), fs, Fpass_high, 4, type="highpass")
+    filtered_sig_flipped = signal_proc.filter_sig(filtered_sig_flipped, fs, Fpass_low, 2, type="lowpass")
+
+    filtered_sig = np.hstack([np.flip(filtered_sig_flipped)[:int(len(filtered_sig) / 2)],
+                    filtered_sig[int(len(filtered_sig) / 2):]])
+
+    return filtered_sig
+
+def calculate_d_values(heights, coordinates):
+
+    # calculate all distances between follow up measurements in array and return sorted array
+    distances = np.linalg.norm(coordinates[1:, :] - coordinates[:-1, :], axis=1)
+
+    # find indices where there is a transition in train track measurement
+    transition_indices = np.where(distances > 1.5)[0]
+    transition_indices = np.hstack([0,transition_indices, len(distances)-1])
+
+    # Remove last 10 measurements, such that the returned distances are likely to be on the same train track direction
+    if len(distances)>10:
+        distances.sort()
+        distances = distances[:-10]
+
+    # calculate Fs
+    fs = 1/np.mean(distances)
+
+    # calculate the d1,d2 and d3 while preventing boundary effects
+    d1 = np.array([])
+    d2 = np.array([])
+    d3 = np.array([])
+    for i in range(len(transition_indices)-1):
+        heights_zone = heights[transition_indices[i] + 1:transition_indices[i+1] + 1]
+
+        d1_part = __filter_without_boundary_effects(heights_zone, fs, 1 / 25, 1/3)
+        d1 = np.hstack([d1, d1_part])
+
+        d2_part = __filter_without_boundary_effects(heights_zone, fs, 1 / 70, 1 / 2)
+        d2 = np.hstack([d2, d2_part])
+
+        d3_part = __filter_without_boundary_effects(heights_zone, fs, 1 / 150, 1 / 70)
+        d3 = np.hstack([d3, d3_part])
+
+    return d1,d2,d3
+
 def plot_settlement_in_range_vs_date(res: Dict, xlim: List, ylim: List,date_lim=None, fig=None,position = 111):
     """
     Plots the track settlement within a segment for each time step
