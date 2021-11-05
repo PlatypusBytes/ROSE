@@ -1,6 +1,5 @@
 import buildPaintObject from './build-paint-object'
 export default ( id, data, colors, limits ) => {
- 
   return {
     id,
     type: 'line',

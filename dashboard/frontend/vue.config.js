@@ -8,7 +8,7 @@ module.exports = {
       },
     },
   },
-  outputDir: path.resolve(__dirname, "../templates/"),
+  outputDir: path.resolve(__dirname, '../templates/'),
   configureWebpack: {
     module: {
       rules: [
