@@ -4,15 +4,15 @@ import getDynamicStiffness from '@/lib/requests/get-dynamic-stiffness'
 import buildMapboxLayer from '@/lib/mapbox/build-mapbox-layer'
 import buildRequestParams from '@/lib/requests/build-request-params'
 import buildLayerId from '@/lib/mapbox/build-layer-id'
-import mean_stiffness_intercity from '~/data/mean_stiffness_intercity.json'
-import mean_settlement_25 from '~/data/mean_settlement_25.json'
+import settings from '~/data/settings.json'
+
 
 export default {
   namespaced: true,
 
   state: () =>( {
     selectedTrainType: null,
-    selectedTimeIndex: null, 
+    selectedTimeIndex: 0, 
     selectedValueType: null, 
     availableValueTypes: [ { 
                               title: 'Mean',
@@ -45,7 +45,18 @@ export default {
       if (!runnerOutput) {
         return []
       }
-      return runnerOutput.data.cumulative_sett_limits
+      const { selectedTimeIndex } = state
+
+      return runnerOutput.data.cumulative_sett_limits[selectedTimeIndex]
+    },
+    cummulativeSetStdLimits(state, getters, rootState) {
+      const { runnerOutput } = rootState.inputs
+      if (!runnerOutput) {
+        return []
+      }
+      const { selectedTimeIndex } = state
+   
+      return runnerOutput.data.cumulative_sett_std_limits[selectedTimeIndex]
     },
     dynamicStiffnessLimits(state, getters, rootState) {
       const { runnerOutput } = rootState.inputs
@@ -53,6 +64,41 @@ export default {
         return []
       }
       return runnerOutput.data.dyn_stiff_limits
+    },
+    dynamicStiffnessStdLimits(state, getters, rootState) {
+      const { runnerOutput } = rootState.inputs
+      if (!runnerOutput) {
+        return []
+      }
+      return runnerOutput.data.dyn_stiff_std_limits
+    },
+    legend(state, getters) {
+      const { selectedLayerType, selectedValueType } = state
+      
+      const { cummulativeSetLimits, cummulativeSetStdLimits,
+         dynamicStiffnessLimits, dynamicStiffnessStdLimits, colors } = getters
+      let legend = []
+      let limits = []
+      if (selectedLayerType === 'settlement') {
+      limits = selectedValueType === 'mean' ? cummulativeSetLimits : cummulativeSetStdLimits
+      }else{
+        limits = selectedValueType === 'mean' ? dynamicStiffnessLimits : dynamicStiffnessStdLimits
+      }
+      colors.forEach((color, index) => {
+              legend.push({ color: color, label : limits[index].toString() }) 
+        })
+    return legend
+    },
+    legendTitle(state) {
+      const { selectedLayerType, selectedValueType } = state
+      let title = ''
+      if (selectedLayerType === 'settlement') {
+        title = selectedValueType === 'mean' ? 'Settlement (mean)' : 'Settlement (std)'
+      }else{
+        title = selectedValueType === 'mean' ? 'Dynamic Stiffness (mean)' : 'Dynamic Stiffness (std) '
+      }
+
+      return title
     },
     timeIndexes(state, getters, rootState) {
       const { runnerOutput } = rootState.inputs
@@ -84,21 +130,30 @@ export default {
       context.commit('SET_LAYER_TYPE', payload)
     },
     async getFeaturesCollection(context) {
-      const { selectedLayerType } = context.state
-      const { params, colors,  cummulativeSetLimits, dynamicStiffnessLimits } = context.getters
+      const { selectedLayerType, selectedValueType } = context.state
+      
+      const { params, colors,  cummulativeSetLimits, 
+              dynamicStiffnessLimits, cummulativeSetStdLimits, dynamicStiffnessStdLimits } = context.getters
+      const emptyParams = Object.values(params).some(param => param === null )
+      if (emptyParams) {
+        return 
+      }
       if (selectedLayerType && selectedLayerType === 'settlement') {
         const featuresCollection =  await getSettlement(params)
         const { layerId } = context.getters
 
-        //const feat = mean_settlement_25 //TODO remove the sample test
-        context.commit('SET_MAP_LAYER', buildMapboxLayer(layerId, featuresCollection, colors, cummulativeSetLimits ))
+        const mapLayer = selectedValueType === 'mean' ? buildMapboxLayer(layerId, featuresCollection, colors, cummulativeSetLimits ) 
+                                                      : buildMapboxLayer(layerId, featuresCollection, colors, cummulativeSetStdLimits ) 
+        context.commit('SET_MAP_LAYER', mapLayer)
 
       }else{
+
         const featuresCollection =  await getDynamicStiffness(params)
         const { layerId } = context.getters
         
-        //const feat = mean_stiffness_intercity //TODO remove the sample test
-        context.commit('SET_MAP_LAYER', buildMapboxLayer(layerId, featuresCollection, colors, dynamicStiffnessLimits ))
+        const mapLayer = selectedValueType === 'mean' ? buildMapboxLayer(layerId, featuresCollection, colors, dynamicStiffnessLimits ) 
+                                                      : buildMapboxLayer(layerId, featuresCollection, colors, dynamicStiffnessStdLimits ) 
+        context.commit('SET_MAP_LAYER', mapLayer)
       }
     },  
   },
