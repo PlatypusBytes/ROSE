@@ -4,7 +4,7 @@ import getDynamicStiffness from '@/lib/requests/get-dynamic-stiffness'
 import buildMapboxLayer from '@/lib/mapbox/build-mapbox-layer'
 import buildRequestParams from '@/lib/requests/build-request-params'
 import buildLayerId from '@/lib/mapbox/build-layer-id'
-import settings from '~/data/settings.json'
+
 
 
 export default {
