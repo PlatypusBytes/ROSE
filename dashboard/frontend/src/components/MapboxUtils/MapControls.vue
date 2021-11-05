@@ -45,7 +45,6 @@
       },
       onClick(e) {
         const { segmentId } = e.features[0].properties
-        console.log('segmentId on click', segmentId)
         this.setChartData(segmentId)
       },
       onMouseEnter() {
