@@ -41,6 +41,7 @@ def __filter_without_boundary_effects(data, fs, Fpass_high, Fpass_low):
 
     return filtered_sig
 
+
 def calculate_d_values(heights, coordinates):
 
     # calculate all distances between follow up measurements in array and return sorted array
@@ -48,10 +49,10 @@ def calculate_d_values(heights, coordinates):
 
     # find indices where there is a transition in train track measurement
     transition_indices = np.where(distances > 1.5)[0]
-    transition_indices = np.hstack([0,transition_indices, len(distances)-1])
+    transition_indices = np.hstack([-1, transition_indices, len(heights)-1])
 
     # Remove last 10 measurements, such that the returned distances are likely to be on the same train track direction
-    if len(distances)>10:
+    if len(distances) > 10:
         distances.sort()
         distances = distances[:-10]
 
@@ -74,7 +75,8 @@ def calculate_d_values(heights, coordinates):
         d3_part = __filter_without_boundary_effects(heights_zone, fs, 1 / 150, 1 / 70)
         d3 = np.hstack([d3, d3_part])
 
-    return d1,d2,d3
+    return d1, d2, d3
+
 
 def plot_settlement_in_range_vs_date(res: Dict, xlim: List, ylim: List,date_lim=None, fig=None,position = 111):
     """
