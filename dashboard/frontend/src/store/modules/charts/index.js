@@ -2,8 +2,6 @@ import getChartData from '@/lib/requests/get-chart-data'
 import getMinValues from '@/lib/get-min-values'
 import getMaxValues from '@/lib/get-max-values'
 
-//SAMPLE DATA
-import graph_Segment1001 from '~/data/graph_Segment1001.json'
  
 
 export default {
@@ -45,12 +43,9 @@ export default {
   },
   actions: {
     async setChartData(context, payload){
-      // only when settlement is selected or if data of segment are in state
-      console.log('segmentId payload', payload)
-      const data = await getChartData(payload) //TODO cannot test with back-end so far
-      // if error 
-      //const sample = graph_Segment1001
-      //console.log('sample', sample)
+     
+      const data = await getChartData(payload) 
+
       context.commit('SET_CHART_DATA', data)
       context.commit('SET_OPEN_CHART_DIALOG', true)
     },

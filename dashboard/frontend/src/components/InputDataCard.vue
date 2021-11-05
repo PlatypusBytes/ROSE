@@ -47,10 +47,10 @@
               RUN
             </v-btn>
           </v-row>
-          <v-row v-if="errorMessage">
+          <v-row v-if="warningMessage">
             <v-col cols="12">
               <v-alert type="error">
-                {{ errorMessage }}
+                {{ warningMessage }}
               </v-alert>
             </v-col>
           </v-row>
@@ -65,11 +65,11 @@
   export default {
     data() {
       return {
-        errorMessage: null,
+        warningMessage: null,
       }
     },
     computed: {
-      ...mapGetters('inputs', [ 'runnerInput', 'inputValid', 'message' ]),
+      ...mapGetters('inputs', [ 'runnerInput', 'inputValid', 'message', 'running' ]),
 
       disableRun() {
         if (!this.runnerInput) {
@@ -81,6 +81,9 @@
       inputValid() {
         this.showErrorMessage()
         this.goToResultsPage()
+      },
+      running() {
+        this.showRunningMessage() 
       },
     },
 
@@ -103,14 +106,20 @@
       },
       goToResultsPage() {
         const valid = this.inputValid
+        const running = this.running
+      
         if (valid) {
-          valid === true ? this.$emit('go-to-results', 2) : null
+          (valid === true && running === false) ? this.$emit('go-to-results', 2) : null
         }
       },
       showErrorMessage() {
         const valid = this.inputValid
-        valid === false ? this.errorMessage = this.message : null
+        valid === false ? this.warningMessage = this.message : null
         
+      },
+      showRunningMessage() { 
+        const running = this.running
+        running === true ? this.warningMessage = this.message : null
       },
     },
 

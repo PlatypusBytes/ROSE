@@ -57,12 +57,21 @@
               height="92vh"
             >
               <mapbox-map :access-token="accessToken"> 
-                <v-mapbox-layer
-                  v-for="layer in layers"
-                  :key="layer.id"
-                  :options="layer"
-                />
-                <map-controls v-if="mapLayer" :layer="mapLayer" />
+                <div v-if="mapLayer" :key="mapLayer.id">
+                  <map-layer
+                    :options="mapLayer"
+                  />
+                  <map-controls
+                    v-if="selectedLayerType==='settlement'"
+                    :layer="mapLayer"
+                  />
+                
+                  <map-legend
+                    v-if="showLegend"
+                    :items="legend"
+                    :title="legendTitle"
+                  />
+                </div>
               </mapbox-map>
               <chart-dialog />
             </v-card>
@@ -79,9 +88,11 @@
   import { MapboxMap } from '@deltares/vue-components'
   import InputDataCard from '~/components/InputDataCard'
   import AppSideBar from '~/components/AppSideBar'
-  import MapControls from '~/components/MapControls'
+  import MapControls from '~/components/MapboxUtils/MapControls'
   import ChartDialog from '~/components/ChartDialog'
-  import { mapState } from 'vuex'
+  import MapLegend from '~/components/MapboxUtils/MapLegend'
+  import MapLayer from '~/components/MapboxUtils/MapLayer'
+  import { mapState, mapGetters } from 'vuex'
 
 
   export default {
@@ -91,6 +102,8 @@
       AppSideBar,
       MapControls,
       ChartDialog,
+      MapLegend,
+      MapLayer,
    
     },
     data: () => ({
@@ -99,16 +112,13 @@
       layers: [],//Array in case more layers will be added simultanuesly on the map
     }),
     computed: {
-      ...mapState('layers', [ 'mapLayer' ]),
-    },
-    watch: {
-      mapLayer() {
-        this.layers = []
-        if (this.mapLayer) {
-          this.layers.push(this.mapLayer)
-        }
+      ...mapState('layers', [ 'mapLayer', 'selectedLayerType' ]),
+      ...mapGetters('layers', [ 'legend', 'legendTitle' ]),
+      showLegend() {
+        return this.legend.length
       },
     },
+
     methods: {
       onShowResultsPage(event) {
         this.page = event

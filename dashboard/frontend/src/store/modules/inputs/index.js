@@ -40,11 +40,30 @@ export default {
       }
       return runnerOutput.valid  
     },
+    exist(state) {
+    const { runnerOutput } = state
+      if (!runnerOutput) {
+        return null
+      }
+      return runnerOutput.exist  
+    },
+    running(state) {
+    const { runnerOutput } = state
+      if (!runnerOutput) {
+        return null
+      }
+      return runnerOutput.running 
+    },
     message(state) {
      const { runnerOutput } = state
       if (!runnerOutput) {
         return null
       }
+      const { inputValid,  exist } = state
+      if (inputValid === true && exist === false) {
+        return 'Started running'
+      }
+
       return runnerOutput.message 
     },
   },
@@ -52,6 +71,7 @@ export default {
     async startRunner(context) {
       const  input  = context.getters.runnerInput
       const response = await runner(input)
+      
       context.commit('SET_RUNNER_OUTPUT', response) 
     },
     async setSosSegmentInput(context, payload) {

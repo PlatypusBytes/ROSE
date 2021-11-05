@@ -8,6 +8,7 @@
       :thumb-label="true"
       :min="timeIndexes[0]"
       :max="timeIndexes[timeIndexes.length -1]"
+      @end="setTimeIndex"
     />
   </div>
 </template>
@@ -26,11 +27,6 @@
       return { 
         selectedIndex: null,
       }
-    },
-    watch: { 
-      selectedIndex(){
-        this.setTimeIndex()
-      },
     },
     mounted() { 
       this.selectedIndex = this.timeIndexes[0]
