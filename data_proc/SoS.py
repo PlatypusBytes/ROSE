@@ -70,21 +70,31 @@ class ReadSosScenarios:
         props = [d.split(";") for d in data[2:]]
 
         for p in props:
-            self.materials.update({p[0]: {"formation": p[1],
-                                          "gamma_dry": float(p[3]),
-                                          "gamma_wet": float(p[4]),
-                                          "cohesion": float(p[5]),
-                                          "friction_angle": float(p[6]),
-                                          "Su": float(p[7]),
-                                          "m": float(p[9]),
-                                          "POP": float(p[10]),
-                                          "shear_modulus": float(p[12]),
-                                          "Young_modulus": float(p[13]),
-                                          "poisson": float(p[14]),
-                                          "a": float(p[15]),
-                                          "b": float(p[16]),
-                                          "c": float(p[17]),
-                                          "damping": float(p[19]),
+
+            new_p = []
+            for x in p:
+                try:
+                    new_p.append(float(x))
+                except ValueError:
+                    new_p.append(x)
+                if x == "NaN":
+                    new_p[-1] = "NaN"
+
+            self.materials.update({p[0]: {"formation": new_p[1],
+                                          "gamma_dry": new_p[3],
+                                          "gamma_wet": new_p[4],
+                                          "cohesion": new_p[5],
+                                          "friction_angle": new_p[6],
+                                          "Su": new_p[7],
+                                          "m": new_p[9],
+                                          "POP": new_p[10],
+                                          "shear_modulus": new_p[12],
+                                          "Young_modulus": new_p[13],
+                                          "poisson": new_p[14],
+                                          "a": new_p[15],
+                                          "b": new_p[16],
+                                          "c": new_p[17],
+                                          "damping": new_p[19],
                                           }})
         return
 
@@ -190,7 +200,7 @@ class ReadSosScenarios:
             nb_sce = len(self.SOS[seg])
 
             # create figure
-            fig, ax = plt.subplots(1, 2, figsize=(10, 6))
+            fig, ax = plt.subplots(1, 2, figsize=(8, 6))
             plt.rcParams.update({'font.size': 10})
             ax[0].set_position([0.1, 0.22, 0.5, 0.7])
             ax[1].set_position([0.65, 0.14, 0.3, 0.8])
