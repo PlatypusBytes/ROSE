@@ -86,7 +86,7 @@
         return {
           splitLine: { show: false },
           type: 'value',
-          name: 'Vertical displacement [m]',
+          name: 'Vertical displacement [mm]',
           nameLocation: 'middle',
           nameGap: 30,
           splitNumber: 8,
