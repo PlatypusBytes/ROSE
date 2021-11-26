@@ -122,7 +122,7 @@ def create_dash_input_json():
     # set time integration and track information
     time_data = time_integration()
     track_materials = materials()
-    track_geometry = geometry([200],fact=10)
+    track_geometry = geometry([200],fact=1)
 
     track_info = {"geometry": track_geometry,
                   "materials": track_materials}
