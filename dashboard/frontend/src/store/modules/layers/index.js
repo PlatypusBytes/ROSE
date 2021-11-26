@@ -93,9 +93,9 @@ export default {
       const { selectedLayerType, selectedValueType } = state
       let title = ''
       if (selectedLayerType === 'settlement') {
-        title = selectedValueType === 'mean' ? 'Settlement (mean)' : 'Settlement (std)'
+        title = selectedValueType === 'mean' ? 'Mean settlement [mm]' : 'Std settlement [mm]'
       }else{
-        title = selectedValueType === 'mean' ? 'Dynamic Stiffness (mean)' : 'Dynamic Stiffness (std) '
+        title = selectedValueType === 'mean' ? 'Mean dynamic stiffness [kN/m]' : 'Std dynamic stiffness [kN/m]'
       }
 
       return title
