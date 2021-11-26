@@ -190,6 +190,30 @@ def get_results_coupled_model(coupled_model, output_interval):
     return time, vertical_force_soil[mid_idx_force,:]
 
 
+def get_dynamic_stiffness_track(coupled_model):
+    """
+    Calculates dynamic stiffness model
+
+    :param coupled_model:
+    :return:
+    """
+
+    # get index of middle node of train track
+    middle_node_idx = int(len(coupled_model.track.model_parts[0].nodes)/2)
+
+    # get middle node of train track
+    middle_node = coupled_model.track.model_parts[0].nodes[middle_node_idx]
+
+    # get vertical force and displacement at middle node of the track
+    y_idx = middle_node.index_dof[1]
+    force_vector = coupled_model.track.global_force_vector[y_idx, :].toarray()
+    vert_displacement = middle_node.displacements[:, 1]
+
+    # calculate dynamic stiffness
+    dyn_stiffness = force_vector[0, :] / vert_displacement
+
+    return dyn_stiffness
+
 def add_feature_to_geo_json(coordinates, time, mean_dyn_stiffness,std_dyn_stiffness,train_names,
                             mean_cum_settlement, std_cum_settlement):
     """
@@ -298,6 +322,9 @@ def runner(input_data, path_results, calculation_time=50):
     """
     from run_rose.run_wolf import create_layering_for_wolf, run_wolf_on_layering
 
+    m_to_mm = 1e3   # meter to mm
+    Nm_to_kNmm = 1e-6 # N/m to kN/mm
+
     # check if path to save results exist
     if not os.path.isdir(os.path.join(path_results, input_data["project_name"])):
         os.makedirs(os.path.join(path_results, input_data["project_name"]))
@@ -331,7 +358,7 @@ def runner(input_data, path_results, calculation_time=50):
                 # get wolf data
                 layering = create_layering_for_wolf(v2["soil_layers"], emb)
                 omega = 2*np.pi * train["velocity"]/ train["cart_length"]
-                wolf_data = run_wolf_on_layering(layering,np.array([omega]))
+                wolf_data = run_wolf_on_layering(layering, np.array([omega]))
 
                 # determine dynamic soil stiffness and damping
                 sleeper_dist = input_data["track_info"]["geometry"]["sleeper_distance"]
@@ -340,8 +367,6 @@ def runner(input_data, path_results, calculation_time=50):
                 soil = {"stiffness": dyn_stiffness,
                         "damping": damping}
 
-                dyn_stiffnesses.append(dyn_stiffness)
-
                 # assign data to coupled model
                 coupled_model = assign_data_to_coupled_model(train,input_data["track_info"], input_data["time_integration"], soil)
 
@@ -349,7 +374,13 @@ def runner(input_data, path_results, calculation_time=50):
                 coupled_model.main()
 
                 # get results from coupled model
-                time,vertical_force_soil_scenario = get_results_coupled_model(coupled_model, 10)
+                output_interval = 10
+                time,vertical_force_soil_scenario = get_results_coupled_model(coupled_model, output_interval)
+
+                # calculate dynamic stiffness track
+                dyn_stiffness_track = get_dynamic_stiffness_track(coupled_model)
+                dyn_stiffnesses.append(np.max(dyn_stiffness_track))
+
                 vertical_force_soil_segment.append(vertical_force_soil_scenario)
 
             train_dicts[train["type"]] = train["traffic"]
@@ -358,7 +389,7 @@ def runner(input_data, path_results, calculation_time=50):
             vertical_force_soil_segment = np.array(vertical_force_soil_segment)
             forces.append(vertical_force_soil_segment)
 
-            mean_dynamic_stiffness, std_dynamic_stiffness = calculate_weighted_mean_and_std(np.array(dyn_stiffnesses), np.array(scenario_probabilities))
+            mean_dynamic_stiffness, std_dynamic_stiffness = calculate_weighted_mean_and_std(np.array(dyn_stiffnesses)* Nm_to_kNmm, np.array(scenario_probabilities))
             mean_dynamic_stiffnesses.append(mean_dynamic_stiffness)
             std_dynamic_stiffnesses.append(std_dynamic_stiffness)
 
@@ -390,8 +421,7 @@ def runner(input_data, path_results, calculation_time=50):
             cumulative_settlements.append(np.array(sett.results["settlement"]['0'])[indices])
 
         # calculate mean and std cumulative settlement in mm
-        m_to_mm = 1e3
-        cumulative_settlement_mean,cumulative_settlement_std =  calculate_weighted_mean_and_std(
+        cumulative_settlement_mean,cumulative_settlement_std = calculate_weighted_mean_and_std(
             np.array(cumulative_settlements)*m_to_mm, np.array(scenario_probabilities))
 
         # add feature to geo json
