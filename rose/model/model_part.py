@@ -737,12 +737,13 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         l = self.length_element
         phi = self.__timoshenko_factor
         constant = 1 / (1 + phi)
+        x_l = x/l
 
         self._y_shape_functions[0] = constant * (
             1
-            + 2 * (x / l) ** 3
-            - 3 * (x / l) ** 2
-            + phi * (1 - x / l)
+            + 2 * x_l ** 3
+            - 3 * x_l ** 2
+            + phi * (1 - x_l)
         )
         self._y_shape_functions[1] = constant * (
             x
@@ -750,19 +751,19 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
             - 2 * (x ** 2 / l)
             + phi
             / 2
-            * (x / l - (x / l) ** 2)
+            * (x_l - x_l ** 2)
         )
         self._y_shape_functions[2] = constant * (
-            -2 * (x / l) ** 3
-            + 3 * (x / l) ** 2
-            + phi * (x / l)
+            -2 * x_l ** 3
+            + 3 * x_l ** 2
+            + phi * x_l
         )
         self._y_shape_functions[3] = constant * (
             (x ** 3 / l ** 2)
             - ((x ** 2) / l)
             + phi
             / 2
-            * ((x / l) ** 2 - (x / l))
+            * (x_l ** 2 - x_l)
         )
 
     def set_z_rot_shape_functions(self, x):

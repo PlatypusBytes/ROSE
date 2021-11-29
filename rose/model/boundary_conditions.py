@@ -505,6 +505,7 @@ class MovingPointLoad(LineLoadCondition):
 
         # get contact elements
         np_elements = np.array(self.elements)
+        unique_contact_elements = np_elements[list((dict.fromkeys(element_idxs)))]
         contact_elements = np_elements[element_idxs]
 
         # calculate distances between first element coord and moving load at time t
@@ -519,10 +520,22 @@ class MovingPointLoad(LineLoadCondition):
         # find indices of element nodes in node list
         if first_idx < last_idx:
             node_indices = np.array([np.array([self.nodes.index(node, first_idx, last_idx+1)
-                                               for node in element.nodes]) for element in contact_elements])
+                                               for node in element.nodes]) for element in unique_contact_elements])
+
         else:
-            node_indices = np.array([np.array([self.nodes.index(node, last_idx, first_idx+1)
-                                               for node in element.nodes]) for element in contact_elements])
+            node_indices = np.array([np.array([self.nodes.index(node, first_idx, last_idx + 1)
+                                               for node in element.nodes]) for element in unique_contact_elements])
+
+
+        # get node indices of contact element at every time step
+        i = 0
+        new_node_indices = []
+        for element in contact_elements:
+            if i < len(unique_contact_elements):
+                if element == unique_contact_elements[i]:
+                    i += 1
+            new_node_indices.append(node_indices[i-1])
+        node_indices = np.array(new_node_indices)
 
         # get all nodal coordinates
         np_nodes = np.array(self.nodes)
@@ -534,6 +547,11 @@ class MovingPointLoad(LineLoadCondition):
 
         # calculate rotated force vector at each time step
         rotated_force = utils.rotate_point_around_z_axis(element_rots, self.moving_force_vector[:,:].T)
+
+        # transform matrices to nd arrays for efficiency
+        self.x_force_matrix = self.x_force_matrix.toarray()
+        self.y_force_matrix = self.y_force_matrix.toarray()
+        self.z_moment_matrix = self.z_moment_matrix.toarray()
 
         # distribute rotated forces on nodes, vectorizing this method might result in an overflow error
         for time_idx in range(len(self.time)):
