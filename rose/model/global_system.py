@@ -183,7 +183,7 @@ class GlobalSystem:
         :param condition: Load condition
         :return:
         """
-
+        self.global_force_vector = self.global_force_vector.toarray()
         for i, node in enumerate(condition.nodes):
             # add load condition on normal displacement dof
             if condition.x_disp_dof:
@@ -202,6 +202,7 @@ class GlobalSystem:
                 self.global_force_vector[node.index_dof[2], :] += condition.z_moment_matrix[
                     i, :
                 ]
+        self.global_force_vector = sparse.lil_matrix(self.global_force_vector)
 
     def trim_global_matrices_on_indices(self, row_indices: List, col_indices: List):
         """

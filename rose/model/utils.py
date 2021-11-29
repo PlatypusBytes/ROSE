@@ -260,6 +260,8 @@ def add_aux_matrix_to_global(
     nodes: List[Node] = None,
 ):
 
+    global_matrix = global_matrix.toarray()
+
     if elements:
         original_aux_matrix = copy.copy(aux_matrix)
         for element in elements:
@@ -298,6 +300,8 @@ def add_aux_matrix_to_global(
                     row_index = len(element.nodes[-1].index_dof) * (len(element.nodes) - 1) + j
                     col_index = len(element.nodes[-1].index_dof) * (len(element.nodes) - 1) + k
                     global_matrix[id_1, id_2] += aux_matrix[row_index, col_index]
+
+        global_matrix = sparse.lil_matrix(global_matrix)
         return global_matrix
 
     # add single nodes to the global matrix (for model parts without elements)
@@ -307,6 +311,7 @@ def add_aux_matrix_to_global(
                 for k, id_2 in enumerate(node.index_dof):
                     global_matrix[id_1, id_2] += aux_matrix[j, k]
 
+        global_matrix = sparse.lil_matrix(global_matrix)
         return global_matrix
 
 
