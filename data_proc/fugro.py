@@ -16,6 +16,57 @@ import re
 from typing import List, Dict
 
 from rose.utils import signal_proc
+import data_proc.SoS as SoS
+
+def plot_data_summary_on_sos(fugro_dict, sos_dict, dir):
+
+    # loop over sos segments
+    Path(dir).mkdir(parents=True, exist_ok=True)
+    for name, segment in sos_dict.items():
+
+        # if name == "Segment 1057":
+            # initialise figure
+            fig = plt.figure(figsize=(20,10))
+            plt.tight_layout()
+
+            # get coordinates of current segments
+            coordinates = np.array(list(segment.values())[0]['coordinates'])
+
+            # get coordinate limits
+            xlim = [min(coordinates[:,0]), max(coordinates[:,0])]
+            ylim = [min(coordinates[:,1]), max(coordinates[:,1])]
+
+            # add plot of highlighted sos segments
+            _, _ = SoS.ReadSosScenarios.plot_highlighted_sos(sos_dict, name, fig=fig, position=325)
+            plt.grid()
+
+            # add plot of settlement within the current segment measured by the fugro rila system
+            _, _ = plot_settlement_in_range_vs_date(fugro_dict, xlim, ylim, fig=fig, position=321)
+            plt.grid()
+
+            all_d1, all_d2, all_d3, succeeded_dates = [], [], [], []
+            for date, res_at_t in zip(fugro_dict["dates"], fugro_dict["data"]):
+
+                # get only the data within limits at time t
+                try:
+                    coordinates_in_range, heights_in_range = get_data_within_bounds(xlim, ylim, res_at_t)
+                    d1,d2,d3 = calculate_d_values(heights_in_range, coordinates_in_range)
+                    all_d1.append(d1)
+                    all_d2.append(d2)
+                    all_d3.append(d3)
+                    succeeded_dates.append(date)
+                except:
+                    print(f"d1, d2, d3 calculation has failed for date {date}")
+
+            _, _  = plot_d_values_vs_date(all_d1, succeeded_dates, "D1", fig=fig, position=322)
+            plt.grid()
+            _, _ = plot_d_values_vs_date(all_d2, succeeded_dates, "D2", fig=fig, position=324)
+            plt.grid()
+            _, _ = plot_d_values_vs_date(all_d3, succeeded_dates, "D3", fig=fig, position=326)
+            plt.grid()
+
+            fig.suptitle(name)
+            fig.savefig(Path(dir, f"{name}"))
 
 
 def __filter_without_boundary_effects(data, fs, Fpass_high, Fpass_low):
@@ -76,6 +127,39 @@ def calculate_d_values(heights, coordinates):
         d3 = np.hstack([d3, d3_part])
 
     return d1, d2, d3
+
+def plot_d_values_vs_date(d_values,dates, d_type, date_lim=None, fig=None,position = 111):
+    m_to_mm = 1000
+
+    # initialise figure if it is not an input
+    if fig is None:
+        fig = plt.figure()
+    ax = fig.add_subplot(position)
+
+    # calculate mean heights and std per date
+    mean_d_values, std_d_values = [], []
+    for d_ in d_values:
+        mean_d_values.append(np.nanmean(d_))
+        std_d_values.append(np.nanstd(d_))
+
+    mean_d_values, std_d_values = np.array(mean_d_values), np.array(std_d_values)
+
+    # plot settlement and mean settlement vs dates
+    for date, d_ in zip(dates, d_values):
+        date_array = np.empty(len(d_)).astype(datetime)
+        date_array.fill(date)
+        ax.plot(date_array, d_*m_to_mm, 'o', color='blue', markersize=0.5)
+    # ax.plot(dates, d_values, 'o', color='blue', markersize=0.5)
+    ax.plot(dates, mean_d_values*m_to_mm, 'o', color='orange')
+    ax.plot(dates, mean_d_values*m_to_mm + std_d_values*m_to_mm, '_', color='red', markersize=10)
+    ax.plot(dates, mean_d_values*m_to_mm - std_d_values*m_to_mm, '_', color='red', markersize=10)
+    ax.set_xlabel("Date [y]")
+    ax.set_ylabel(f"{d_type} [mm]")
+
+    if date_lim is not None:
+        ax.set_xlim(date_lim)
+
+    return fig, ax
 
 
 def plot_settlement_in_range_vs_date(res: Dict, xlim: List, ylim: List,date_lim=None, fig=None,position = 111):
@@ -161,7 +245,7 @@ def plot_average_height_in_range_vs_date(xlim, ylim, res, fig=None,position = 11
 
     return fig, ax
 
-def plot_height_vs_coords_in_range(xlim, ylim, res, fig=None, projection="3d"):
+def plot_height_vs_coords_in_range(xlim, ylim, res, fig=None, projection="3d", position=111):
     """
     Plots height versus coordinates
 
@@ -182,7 +266,7 @@ def plot_height_vs_coords_in_range(xlim, ylim, res, fig=None, projection="3d"):
     if projection == "3d":
         ax = plt.axes(projection='3d')
     else:
-        ax = plt.axes()
+        ax = fig.add_subplot(position)
 
     # loop over each date
     for res_at_t in res["data"]:
