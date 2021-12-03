@@ -12,11 +12,124 @@ from pathlib import Path
 from datetime import datetime
 import csv
 import pickle
+import xlrd
 import re
 from typing import List, Dict
 
 from rose.utils import signal_proc
 import data_proc.SoS as SoS
+
+
+def plot_data_colormesh(dates: np.ndarray, chainage: np.ndarray, data: np.ndarray, data_type: str, fig=None,position=111):
+    """
+    Plots data on a colormesh
+
+    :param dates: nd array of datetime dates
+    :param chainage: chainage values in km
+    :param data: nd array of data with size [chainage, dates]
+    :param data_type: type of data
+    :param fig: current figure, default is None
+    :param position: position of subplot in figure, default is 111
+    :return:
+    """
+    # initialise figure if it is not an input
+    if fig is None:
+        fig = plt.figure()
+    ax = fig.add_subplot(position)
+
+    ax.pcolormesh(chainage, dates, data,
+                        cmap='seismic', shading='auto')
+
+    ax.set_title(data_type)
+    ax.set_ylabel("Measurement date")
+    ax.set_xlabel("Prorail chainage [km]")
+    ax.invert_yaxis()
+    ax.grid()
+
+    return fig, ax
+
+def read_rtg_sheet(sheet: xlrd.sheet.Sheet):
+    """
+    Reads one sheet of the rtg excel.
+
+    :param sheet: one sheet of an rtg excel file
+    :return:
+    """
+
+    # read prorail and rila chainage and convert to nd array
+    prorail_chainage = np.array(sheet.col_values(0))[1:].astype(float)
+    rila_chainage = np.array(sheet.col_values(1))[1:].astype(float)
+
+    # reads dates and convert to nd array
+    dates = np.array([datetime.strptime(date, '%Y-%m') for date in np.array(sheet.row_values(0))[2:]])
+
+    # read all data values in current excel sheet
+    n_cols = len(dates)
+    all_data = []
+    for col in range(2,n_cols+2):
+        data = np.array(sheet.col_values(col))[1:].astype(float)
+        all_data.append(data)
+    all_data = np.array(all_data)
+
+    return prorail_chainage, rila_chainage, dates, all_data
+
+
+def read_rtg(rtg_fn,filetype):
+    """
+    Reads rtg data from excel file or pickle file
+
+    :param rtg_fn: rtg filename
+    :param filetype: type of the file: xls or pickle
+    :return:
+    """
+
+    # reads rtg excel file and dumps data to pickle
+    if filetype == "xls":
+        wb = xlrd.open_workbook(rtg_fn)
+        cant_sheet = wb.sheet_by_index(0)
+        h1l_sheet = wb.sheet_by_index(1)
+        h1r_sheet = wb.sheet_by_index(2)
+        h2l_sheet = wb.sheet_by_index(3)
+        h2r_sheet = wb.sheet_by_index(4)
+
+        prorail_chainage, rila_chainage, dates, cant_data = read_rtg_sheet(cant_sheet)
+        _, _, _, h1l_data = read_rtg_sheet(h1l_sheet)
+        _, _, _, h1r_data = read_rtg_sheet(h1r_sheet)
+        _, _, _, h2l_data = read_rtg_sheet(h2l_sheet)
+        _, _, _, h2r_data = read_rtg_sheet(h2r_sheet)
+
+        rtg_data = {"prorail_chainage": prorail_chainage,
+                    "rila_chainage": rila_chainage,
+                    "dates": dates,
+                    "cant_data": cant_data,
+                    "h1l_data": h1l_data,
+                    "h1r_data": h1r_data,
+                    "h2l_data": h2l_data,
+                    "h2r_data": h2r_data}
+
+        dump_path = (Path(rtg_fn).parents[0]/(Path(rtg_fn).stem + ".pickle"))
+        with open(dump_path, "wb") as f:
+            pickle.dump(rtg_data, f)
+
+    #loads pickle data
+    elif filetype == "pickle":
+        with open(rtg_fn, "rb") as f:
+            rtg_data = pickle.load(f)
+
+    return rtg_data
+
+
+def convert_prorail_chainage_to_RD(chainage_fn):
+    with open(chainage_fn) as f:
+
+        csv_reader = csv.reader(f, delimiter=';')
+
+        # read header
+        headers = next(csv_reader)
+
+        # read all data and convert to float
+        chainage_data = np.array([[float(value) for value in row] for row in csv_reader])
+
 
 def plot_data_summary_on_sos(fugro_dict, sos_dict, dir):
 
