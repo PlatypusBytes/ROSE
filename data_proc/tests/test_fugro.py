@@ -33,10 +33,6 @@ class TestFugro:
         fugro.plot_data_summary_on_sos(all_rila_data, sos_data, "output")
 
 
-    def test_convert_prorail_chainage_to_RD(self):
-
-        chainage_fn = r"D:\software_development\rose\data\Fugro\Cul_Tricht_Deltares.csv"
-        fugro.convert_prorail_chainage_to_RD(chainage_fn)
 
     def test_read_rtg(self):
 
