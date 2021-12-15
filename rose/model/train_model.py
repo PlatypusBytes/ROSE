@@ -585,7 +585,7 @@ class TrainModel(GlobalSystem):
         self.time: np.ndarray = None
 
         self.irregularities_at_wheels: np.ndarray = None
-        self.use_irregularities = True
+        self.use_irregularities = False
         self.total_static_load: float = None
 
         self.contact_dofs: List = None
