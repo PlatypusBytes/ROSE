@@ -8,6 +8,7 @@ from rose.model.model_part import ElementModelPart
 from rose.model.global_system import GlobalSystem
 from solvers.newmark_solver import NewmarkSolver
 from rose.model.solver import  StaticSolver, ZhaiSolver
+from rose.model.irregularities import RailIrregularities
 
 g = 9.81
 
@@ -584,6 +585,7 @@ class TrainModel(GlobalSystem):
         self.time: np.ndarray = None
 
         self.irregularities_at_wheels: np.ndarray = None
+        self.use_irregularities = True
         self.total_static_load: float = None
 
         self.contact_dofs: List = None
@@ -766,8 +768,13 @@ class TrainModel(GlobalSystem):
         irregularities at the wheels are set at 0.
         :return:
         """
+
         if self.irregularities_at_wheels is None:
             self.irregularities_at_wheels = np.zeros((len(self.wheels), len(self.time)))
+            if self.use_irregularities is True:
+                for idx, wheel in enumerate(self.wheels):
+                    irregularities = RailIrregularities(wheel.distances)
+                    self.irregularities_at_wheels[idx,:] = irregularities.irregularities
 
     def get_contact_dofs(self):
         """

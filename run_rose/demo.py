@@ -5,7 +5,9 @@ from run_rose.read_wolf import read_wolf
 from rose.model.model_part import Material, Section
 from rose.model.train_model import *
 from rose.model.train_track_interaction import *
-import rose.model.solver as solver_c
+
+import solvers.newmark_solver as solver_c
+# import rose.model.solver as solver_c
 
 
 def train_model():
@@ -179,6 +181,7 @@ def create_model(tr, geometry, mat, time_int, soil, velocity):
 
     # set up train
     train = TrainModel()
+    train.use_irregularities = True
     train.time = time
     train.velocities = velocities
 
@@ -333,4 +336,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import cProfile
+
+    cProfile.run('main()','profiler')
+    # main()
