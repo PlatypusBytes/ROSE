@@ -1,3 +1,4 @@
+import pathlib
 import pickle
 import json
 import pytest
@@ -30,5 +31,39 @@ class TestFugro:
             sos_data = json.load(f)
 
         fugro.plot_data_summary_on_sos(all_rila_data, sos_data, "output")
+
+
+
+    def test_read_rtg(self):
+
+        xls_fn = r"test_data\RTG_test_data.xlsx"
+        pickle_fn = r"test_data\RTG_test_data.pickle"
+        rtg_data1 = fugro.read_rtg(xls_fn, "xls")
+        rtg_data2 = fugro.read_rtg(pickle_fn, "pickle")
+
+        np.testing.assert_array_almost_equal(rtg_data1["h1l_data"], rtg_data2["h1l_data"])
+
+        pathlib.Path(pickle_fn).unlink()
+
+    def test_plot_data_colormesh(self):
+
+        pickle_fn = r"test_data\rtg_data.pickle"
+        rtg_data = fugro.read_rtg(pickle_fn, "pickle")
+
+        fig = plt.figure(figsize=(20, 10))
+        # fig, ax = plt.subplots(2,2,figsize=(6, 5))
+
+        data_sets= [rtg_data["h1l_data"], rtg_data["h1r_data"] , rtg_data["h2l_data"], rtg_data["h2r_data"]]
+        titles = ["D1 left", "D1 right", "D2 left", "D2 right"]
+        k = 0
+        position = 221
+        for i in range(2):
+            for j in range(2):
+
+                fugro.plot_data_colormesh(rtg_data["dates"], rtg_data["prorail_chainage"], data_sets[k], titles[k], fig=fig, position=position)
+                k += 1
+                position += 1
+
+        plt.show()
 
 
