@@ -465,6 +465,8 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         self._z_rot_shape_functions = np.zeros(4)
 
         self.__timoshenko_factor = 0
+        self.spring_stiffness1 = 0
+        self.spring_stiffness2 = 0
 
     @property
     def normal_dof(self):
@@ -665,6 +667,30 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
             self.aux_mass_matrix += self.__set_rotational_aux_mass_matrix()
 
 
+    def __set_rigid_part_stiffness_matrix(self):
+        """
+        sets part of the stiffness matrix which sets bending rigidity
+        :return:
+        """
+        l = self.length_element
+        EI = self.material.youngs_modulus * self.section.sec_moment_of_inertia
+        s1 = self.spring_stiffness1  # springstiffness 1
+        s2 = self.spring_stiffness2  # springstiffness 2
+        # set fixity factor
+        alpha1 = 1/(1+3*EI/s1*l)
+        alpha2 = 1/(1+3*EI/s2*l)
+
+        rigid_mat = np.zeros((6, 6))
+        rigid_mat[[0, 3], [0, 3]] = 1
+        rigid_mat[[3, 0], [0, 3]] = 1
+        rigid_mat[[1, 4, 1, 4], [1, 4, 4, 1]] = (alpha1+alpha2 + alpha1*alpha2)/(4-alpha1*alpha2)
+        rigid_mat[[1, 2, 2, 4], [2, 1, 4, 2]] = (2 * alpha1 + alpha1*alpha2)/(4-alpha1*alpha2)
+        rigid_mat[[1, 5, 4, 5], [5, 1, 5, 4]] = (2 * alpha2 + alpha1 * alpha2) / (4 - alpha1 * alpha2)
+        rigid_mat[2, 2] = 3 * alpha1 / (4 - alpha1*alpha2)
+        rigid_mat[5, 5] = 3 * alpha2 / (4 - alpha1 * alpha2)
+        rigid_mat[[2, 5], [5, 2]] = 3*alpha1*alpha2/(4-alpha1*alpha2)
+        return rigid_mat
+
     def set_aux_stiffness_matrix(self):
         """
         Timoshenko straight beam auxiliary stiffness matrix
@@ -692,6 +718,10 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
 
         self.aux_stiffness_matrix[[2, 5], [2, 5]] = (4 + phi) * l ** 2
         self.aux_stiffness_matrix[[2, 5], [5, 2]] = (2 - phi) * l ** 2
+
+        # add rigidity if spring stiffness is applied
+        if self.spring_stiffness1 + self.spring_stiffness2 > 1e-10:
+            self.aux_stiffness_matrix = self.aux_stiffness_matrix * self.__set_rigid_part_stiffness_matrix()
 
         self.aux_stiffness_matrix = self.aux_stiffness_matrix.dot(constant)
         self.aux_stiffness_matrix = utils.reshape_aux_matrix(
@@ -738,32 +768,31 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         phi = self.__timoshenko_factor
         constant = 1 / (1 + phi)
         x_l = x/l
+        x_l2 = x_l**2
+
+        x2 = x**2
+        x3 = x**3
 
         self._y_shape_functions[0] = constant * (
             1
             + 2 * x_l ** 3
-            - 3 * x_l ** 2
+            - 3 * x_l2
             + phi * (1 - x_l)
         )
         self._y_shape_functions[1] = constant * (
             x
-            + (x ** 3 / l ** 2)
-            - 2 * (x ** 2 / l)
+            + (x3 / l ** 2)
+            - 2 * (x2 / l)
             + phi
             / 2
-            * (x_l - x_l ** 2)
+            * (x_l - x_l2)
         )
         self._y_shape_functions[2] = constant * (
             -2 * x_l ** 3
-            + 3 * x_l ** 2
+            + 3 * x_l2
             + phi * x_l
         )
-        self._y_shape_functions[3] = constant * (
-            (x ** 3 / l ** 2)
-            - ((x ** 2) / l)
-            + phi
-            / 2
-            * (x_l ** 2 - x_l)
+        self._y_shape_functions[3] = constant * ((x3 / l ** 2)- (x2 / l)+ phi/ 2* (x_l2 - x_l)
         )
 
     def set_z_rot_shape_functions(self, x):
