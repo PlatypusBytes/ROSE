@@ -465,8 +465,8 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         self._z_rot_shape_functions = np.zeros(4)
 
         self.__timoshenko_factor = 0
-        self.spring_stiffness1 = 0
-        self.spring_stiffness2 = 0
+        self.spring_stiffness1 = np.inf
+        self.spring_stiffness2 = np.inf
 
     @property
     def normal_dof(self):
@@ -674,17 +674,18 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         """
         l = self.length_element
         EI = self.material.youngs_modulus * self.section.sec_moment_of_inertia
-        s1 = self.spring_stiffness1  # springstiffness 1
-        s2 = self.spring_stiffness2  # springstiffness 2
+        s1 = self.spring_stiffness1  # spring stiffness 1
+        s2 = self.spring_stiffness2  # spring stiffness 2
         # set fixity factor
-        alpha1 = 1/(1+3*EI/s1*l)
-        alpha2 = 1/(1+3*EI/s2*l)
+
+        alpha1 = 1 / (1 + 3 * EI / s1 * l) if s1 > 0 else 0
+        alpha2 = 1 / (1 + 3 * EI / s2 * l) if s2 > 0 else 0
 
         rigid_mat = np.zeros((6, 6))
         rigid_mat[[0, 3], [0, 3]] = 1
         rigid_mat[[3, 0], [0, 3]] = 1
-        rigid_mat[[1, 4, 1, 4], [1, 4, 4, 1]] = (alpha1+alpha2 + alpha1*alpha2)/(4-alpha1*alpha2)
-        rigid_mat[[1, 2, 2, 4], [2, 1, 4, 2]] = (2 * alpha1 + alpha1*alpha2)/(4-alpha1*alpha2)
+        rigid_mat[[1, 4, 1, 4], [1, 4, 4, 1]] = (alpha1 + alpha2 + alpha1 * alpha2)/(4-alpha1*alpha2)
+        rigid_mat[[1, 2, 2, 4], [2, 1, 4, 2]] = (2 * alpha1 + alpha1 * alpha2)/(4-alpha1*alpha2)
         rigid_mat[[1, 5, 4, 5], [5, 1, 5, 4]] = (2 * alpha2 + alpha1 * alpha2) / (4 - alpha1 * alpha2)
         rigid_mat[2, 2] = 3 * alpha1 / (4 - alpha1*alpha2)
         rigid_mat[5, 5] = 3 * alpha2 / (4 - alpha1 * alpha2)
@@ -720,8 +721,7 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         self.aux_stiffness_matrix[[2, 5], [5, 2]] = (2 - phi) * l ** 2
 
         # add rigidity if spring stiffness is applied
-        if self.spring_stiffness1 + self.spring_stiffness2 > 1e-10:
-            self.aux_stiffness_matrix = self.aux_stiffness_matrix * self.__set_rigid_part_stiffness_matrix()
+        self.aux_stiffness_matrix = self.aux_stiffness_matrix * self.__set_rigid_part_stiffness_matrix()
 
         self.aux_stiffness_matrix = self.aux_stiffness_matrix.dot(constant)
         self.aux_stiffness_matrix = utils.reshape_aux_matrix(

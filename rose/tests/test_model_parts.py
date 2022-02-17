@@ -139,6 +139,58 @@ class TestTimoshenkoBeamElementModelPart:
 
         assert rail.timoshenko_factor == pytest.approx(0.0096)
 
+    def test_timoshenko_beam_semi_rigid(self, set_up_euler_beam, expected_euler_beam_stiffness_matrix):
+        """
+        Tests stiffness matrix of semi rigid beam. Checks full rigid, semi rigid and no rigid
+
+        :param set_up_euler_beam:
+        :param expected_euler_beam_stiffness_matrix:
+        :return:
+        """
+
+        beam = set_up_euler_beam
+
+        # test fully rigid beam
+        beam.spring_stiffness1 = np.inf
+        beam.spring_stiffness2 = np.inf
+        beam.set_aux_stiffness_matrix()
+        beam_stiffness_matrix = beam.aux_stiffness_matrix
+
+        np.testing.assert_array_almost_equal(beam_stiffness_matrix, expected_euler_beam_stiffness_matrix)
+
+        # test semi rigid beam
+        # alpha 1 and 2 is 2/3
+        beam.spring_stiffness1 = 6*beam.material.youngs_modulus * beam.section.sec_moment_of_inertia * beam.length_element
+        beam.spring_stiffness2 = 6*beam.material.youngs_modulus * beam.section.sec_moment_of_inertia * beam.length_element
+        beam.set_aux_stiffness_matrix()
+
+        # set expected matrix
+        expected_semi_rigid_factors = np.array([[1,0,0,1,0,0],
+                                       [0,0.5,0.5,0,0.5,0.5],
+                                       [0,0.5,9/16,0,0.5,3/8],
+                                       [1,0,0,1,0,0],
+                                       [0,0.5,0.5,0,0.5,0.5],
+                                       [0,0.5,3/8,0,0.5,9/16]])
+        expected_semi_rigid_matrix = expected_euler_beam_stiffness_matrix * expected_semi_rigid_factors
+        beam_stiffness_matrix = beam.aux_stiffness_matrix
+
+        # assert
+        np.testing.assert_array_almost_equal(beam_stiffness_matrix, expected_semi_rigid_matrix)
+
+        # test no rigid beam
+        beam.spring_stiffness1 = 0
+        beam.spring_stiffness2 = 0
+        beam.set_aux_stiffness_matrix()
+        beam_stiffness_matrix = beam.aux_stiffness_matrix
+
+        # set expected matrix
+        expected_stiffness_factors = np.zeros((6,6))
+        expected_stiffness_factors[[0,0,3,3],[0,3,0,3]] = 1
+        expected_no_rigid_matrix = expected_euler_beam_stiffness_matrix * expected_stiffness_factors
+
+        # assert
+        np.testing.assert_array_almost_equal(beam_stiffness_matrix, expected_no_rigid_matrix)
+
 
 @pytest.fixture
 def set_up_material():
