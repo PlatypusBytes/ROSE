@@ -380,6 +380,7 @@ class CoupledTrainTrack(GlobalSystem):
             load.y_force = wheel.total_static_load
 
             # add track properties to the moving load
+            load.contact_model_parts  = [model_part for model_part in self.track.model_parts if isinstance(model_part,Rail)]
             load.contact_model_part = self.rail
             load.nodes = self.rail.nodes
             load.elements = self.rail.elements

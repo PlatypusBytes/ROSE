@@ -7,7 +7,7 @@ from scipy import sparse
 
 # typing
 from scipy.sparse.base import spmatrix
-
+from typing import List
 INTERSECTION_TOLERANCE = 1e-6
 
 
@@ -142,6 +142,7 @@ class LineLoadCondition(LoadCondition):
 
         self.active_elements: np.ndarray = None
         self.contact_model_part: ElementModelPart = None
+        self.contact_model_parts: List[ElementModelPart] = None
 
     def validate(self):
         """
@@ -234,6 +235,8 @@ class MovingPointLoad(LineLoadCondition):
         # calculate the moving coordinates of the load
         self.calculate_moving_coords()
 
+        self.set_contact_model_part_as_function_of_time()
+
         # set the moving load
         self.set_moving_point_load()
 
@@ -251,6 +254,16 @@ class MovingPointLoad(LineLoadCondition):
             self.moving_y_force = np.zeros(len(self.time))
         if self.moving_z_moment is None:
             self.moving_z_moment = np.zeros(len(self.time))
+
+    def set_contact_model_part_as_function_of_time(self):
+        #todo set contact model part as function of time
+
+        if self.contact_model_parts is not None:
+            for model_part in self.contact_model_parts:
+
+                # get numpy array of nodal coordinates
+                nodal_coordinates = np.array([node.coordinates for node in model_part.nodes])
+                tmp = mu.calculate_cum_distances_coordinate_array(nodal_coordinates)
 
     def set_load_vectors_as_function_of_time(self):
         """

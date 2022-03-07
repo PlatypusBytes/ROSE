@@ -75,6 +75,65 @@ def add_no_displacement_boundary_to_bottom(bottom_model_part: ElementModelPart):
     return {"bottom_boundary": no_disp_boundary_condition}
 
 
+def add_semi_rigid_hinge_at_x(rail_model_part, x_coordinate_hinge, hinge_stiffness):
+
+    # find node which is located at the x coord.
+    hinge_node = None
+    for node in rail_model_part.nodes:
+        if np.isclose(node.coordinates[0], x_coordinate_hinge):
+            hinge_node = node
+            rail_model_part.nodes.remove(node)
+            break
+    if hinge_node is None:
+        # print(f"node at x-coord {x_coordinate_hinge} is not found")
+        return None
+        # raise Exception(f"node at x-coord {x_coordinate_hinge} is not found")
+
+    # find elements which use the hinge_node
+
+    # reverse iterate such that removing elements is done correctly
+    hinge_elements = []
+    hinge_rail_model_parts = []
+    for element in reversed(rail_model_part.elements):
+        if hinge_node in element.nodes:
+            hinge_elements.append(element)
+            rail_model_part.elements.remove(element)
+            hinge_rail_model_part = Rail()
+            hinge_rail_model_part.elements = [element]
+            hinge_rail_model_part.nodes = element.nodes
+            hinge_rail_model_part.length_rail = rail_model_part.length_rail
+
+            if hinge_node ==  element.nodes[0]:
+                hinge_rail_model_part.spring_stiffness1 = hinge_stiffness
+            if hinge_node == element.nodes[1]:
+                hinge_rail_model_part.spring_stiffness2 = hinge_stiffness
+            hinge_rail_model_parts.append(hinge_rail_model_part)
+
+    # reverse list such that the elements are in order of x-coordinate
+    hinge_rail_model_parts.reverse()
+
+
+    #todo split rail model part at hinge
+
+    return hinge_rail_model_parts
+
+
+
+# def create_horizontal_track_with_semi_rigid_end(n_sleepers, sleeper_distance, soil_depth,location_semi_rigid):
+#     """
+#     Creates mesh of an horizontal track with a semi rigid ending. Where the top of the track lies at z=0
+#
+#     :param n_sleepers: number of sleepers [-]
+#     :param sleeper_distance: distance between sleepers [m]
+#     :param soil_depth: depth of the soil [m]
+#     :param location_semi_rigid: location of the semi rigid end, "left" or "right"
+#     :return: Dictionary with: rail model part, rail pad model part, sleeper model part, soil model part. Mesh
+#     """
+#     element_model_parts, mesh = create_horizontal_track(n_sleepers, sleeper_distance, soil_depth)
+#     a=1+1
+
+
+
 def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     """
     Creates mesh of an horizontal track. Where the top of the track lies at z=0; the sleeper thickness is 1.0m.
