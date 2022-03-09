@@ -1,6 +1,8 @@
 import os
 import pickle
 # import ROSE packages
+import numpy as np
+
 from run_rose.read_wolf import read_wolf
 from rose.model.model_part import Material, Section
 from rose.model.train_model import *
@@ -8,6 +10,8 @@ from rose.model.train_track_interaction import *
 
 import solvers.newmark_solver as solver_c
 # import rose.model.solver as solver_c
+
+import itertools
 
 
 def train_model():
@@ -76,7 +80,7 @@ def materials():
     material["mass_sleeper"] = 140  # [kg]
 
     # set up contact parameters
-    material["hertzian_contact_coef"] = 9.1e-7  # Hertzian contact coefficient
+    material["hertzian_contact_coef"] = 9.1e-6  # Hertzian contact coefficient
     material["hertzian_power"] = 3 / 2  # Hertzian power
 
     return material
@@ -88,8 +92,8 @@ def time_integration():
     time["tot_ini_time"] = 0.5  # total initalisation time  [s]
     time["n_t_ini"] = 5000  # number of time steps initialisation time  [-]
 
-    time["tot_calc_time"] = 1.2  # total time during calculation phase   [s]
-    time["n_t_calc"] = 8000  # number of time steps during calculation phase [-]
+    time["tot_calc_time"] = 1.8  # total time during calculation phase   [s]
+    time["n_t_calc"] = 24000  # number of time steps during calculation phase [-]
 
     return time
 
@@ -123,7 +127,8 @@ def create_model(tr, geometry, mat, time_int, soil, velocity):
     rail_model_part, sleeper_model_part, rail_pad_model_part, soil_model_parts, all_mesh = \
         combine_horizontal_tracks(all_element_model_parts, all_meshes)
 
-    hinge_rail_model_parts = add_semi_rigid_hinge_at_x(rail_model_part, 18.6, 2 / 3)
+    # rail_model_parts, all_mesh = add_semi_rigid_hinge_at_x(rail_model_part, 69.6, 2 / 3, all_mesh)
+    rail_model_parts, all_mesh = add_semi_rigid_hinge_at_x(rail_model_part, 69.6, 2000000, all_mesh)
 
     # Fixate the bottom boundary
     bottom_boundaries = [add_no_displacement_boundary_to_bottom(soil_model_part)["bottom_boundary"] for soil_model_part
@@ -148,13 +153,9 @@ def create_model(tr, geometry, mat, time_int, soil, velocity):
     section.sec_moment_of_inertia = mat["inertia_beam"]
     section.shear_factor = mat["shear_factor_rail"]
 
-    rail_model_part.section = section
-    rail_model_part.material = material
-
-    for hinge_model_part in hinge_rail_model_parts:
-        hinge_model_part.section = section
-        hinge_model_part.material = material
-
+    for part in rail_model_parts:
+        part.section = section
+        part.material = material
 
     rail_pad_model_part.mass = mat["mass_rail_pad"]
     rail_pad_model_part.stiffness = mat["stiffness_rail_pad"]
@@ -174,7 +175,7 @@ def create_model(tr, geometry, mat, time_int, soil, velocity):
 
     # constraint rotation at the side boundaries
     side_boundaries = ConstraintModelPart(x_disp_dof=False, y_disp_dof=True, z_rot_dof=True)
-    side_boundaries.nodes = [rail_model_part.nodes[0], rail_model_part.nodes[-1]]
+    side_boundaries.nodes = [rail_model_parts[0].nodes[0], rail_model_parts[-1].nodes[-1]]
 
     # populate global system
     track = GlobalSystem()
@@ -182,8 +183,8 @@ def create_model(tr, geometry, mat, time_int, soil, velocity):
     track.time = time
 
     # collect all model parts track
-    model_parts = [rail_model_part, rail_pad_model_part, sleeper_model_part, side_boundaries] \
-                  + soil_model_parts + bottom_boundaries + hinge_rail_model_parts
+    model_parts = rail_model_parts + [rail_pad_model_part, sleeper_model_part, side_boundaries] \
+                  + soil_model_parts + bottom_boundaries
     track.model_parts = model_parts
 
     # set up train
@@ -202,7 +203,6 @@ def create_model(tr, geometry, mat, time_int, soil, velocity):
         cart.stiffness = tr["sec_stiffness"]
         cart.damping = tr["sec_damping"]
         cart.length = tr["cart_length"]
-        # cart.calculate_total_n_dof()
 
         # setup bogies per cart
         cart.bogies = [Bogie() for idx in range(len(tr["bogie_distances"]))]
@@ -213,7 +213,6 @@ def create_model(tr, geometry, mat, time_int, soil, velocity):
             bogie.stiffness = tr["prim_stiffness"]
             bogie.damping = tr["prim_damping"]
             bogie.length = tr["bogie_length"]
-            # bogie.calculate_total_n_dof()
 
             # setup wheels per bogie
             bogie.wheels = [Wheel() for idx in range(len(tr["wheel_distances"]))]
@@ -225,7 +224,7 @@ def create_model(tr, geometry, mat, time_int, soil, velocity):
 
     coupled_model.train = train
     coupled_model.track = track
-    coupled_model.rail = rail_model_part
+    coupled_model.rail = rail_model_parts
     coupled_model.time = time
     coupled_model.initialisation_time = initialisation_time
 
@@ -259,29 +258,39 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
         os.makedirs(output_dir)
 
     # collect results
+
+    rail_nodes = []
+    rail_elements = []
+    for i in range(4):
+        rail_nodes.append(coupled_model.track.model_parts[i].nodes)
+        rail_elements.append(coupled_model.track.model_parts[i].elements)
+    rail_nodes = list(itertools.chain.from_iterable(rail_nodes))
+    rail_elements = list(itertools.chain.from_iterable(rail_elements))
+
     vertical_displacements_rail = np.array(
-        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[0].nodes])
+        [node.displacements[0::output_interval, 1] for node in rail_nodes])
     vertical_force_rail = np.array(
-        [element.force[0::output_interval, 1] for element in coupled_model.track.model_parts[0].elements])
-    coords_rail = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[0].nodes])
+        [element.force[0::output_interval, 1] for element in rail_elements])
+    coords_rail = np.array([node.coordinates[0] for node in rail_nodes])
+
 
     vertical_displacements_rail_pad = np.array(
-        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[1].nodes])
+        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[4].nodes])
     vertical_force_rail_pad = np.array(
-        [element.force[0::output_interval, 1] for element in coupled_model.track.model_parts[1].elements])
-    coords_rail_pad = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[1].nodes])
+        [element.force[0::output_interval, 1] for element in coupled_model.track.model_parts[4].elements])
+    coords_rail_pad = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[4].nodes])
 
     vertical_displacements_sleeper = np.array(
-        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
+        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[5].nodes])
     # vertical_force_sleeper = np.array(
     #     [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
     # coords_sleeper = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[2].nodes])
 
     vertical_displacements_soil = np.array(
-        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[4].nodes])
+        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[7].nodes])
     vertical_force_soil = np.array(
-        [element.force[0::output_interval, 0] for element in coupled_model.track.model_parts[4].elements])
-    coords_soil = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[4].nodes])
+        [element.force[0::output_interval, 0] for element in coupled_model.track.model_parts[7].elements])
+    coords_soil = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[7].nodes])
 
     vertical_displacements_train = np.array(
         [node.displacements[0::output_interval, 1] for node in coupled_model.train.nodes])
@@ -320,6 +329,11 @@ def main():
     nb_sleepers = [100, 100]
     stiffness = [158e6, 180e6]
     damping = [30e3, 20e3]
+
+    nb_sleepers = [200]
+    stiffness = [158e6]
+    damping = [30e3]
+
     speed = 100 / 3.6
     output_dir = "./res"
 
