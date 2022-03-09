@@ -76,7 +76,7 @@ def add_no_displacement_boundary_to_bottom(bottom_model_part: ElementModelPart):
     return {"bottom_boundary": no_disp_boundary_condition}
 
 
-def add_semi_rigid_hinge_at_x(rail_model_part, x_coordinate_hinge, hinge_stiffness):
+def add_semi_rigid_hinge_at_x(rail_model_part, x_coordinate_hinge, hinge_stiffness, mesh):
     """
     Adds a semi rigid hinge to the rail at a certain x coordinate. As a result, the rail model part is split in 4 parts.
     The elements before the hinge, the two elements connected to the hinge, and the elements after the hinge.
@@ -84,8 +84,15 @@ def add_semi_rigid_hinge_at_x(rail_model_part, x_coordinate_hinge, hinge_stiffne
     :param rail_model_part: original rail model part
     :param x_coordinate_hinge: x coordinate of the hinge
     :param hinge_stiffness: stiffness of the hinge
+    :param mesh: sorted mesh of system
     :return:
     """
+
+    # check if mesh is valid. Node and Element index should be equal to the index is the respective list
+    for idx, element in enumerate(mesh.elements):
+        assert element.index == idx
+    for idx, node in enumerate(mesh.nodes):
+        assert node.index == idx
 
     # find node which is located at the x coord.
     hinge_node = None
@@ -136,14 +143,23 @@ def add_semi_rigid_hinge_at_x(rail_model_part, x_coordinate_hinge, hinge_stiffne
     rail_part_1 = deepcopy(rail_model_part)
     rail_part_2 = deepcopy(rail_model_part)
 
-    rail_part_1.elements = [rail_part_1.elements[i] for i in range(removed_el_idx)]
-    rail_part_1.nodes = [rail_part_1.nodes[i] for i in range(removed_node_idx)]
+    rail_part_1.elements = [rail_model_part.elements[i] for i in range(removed_el_idx)]
+    rail_part_1.nodes = [rail_model_part.nodes[i] for i in range(removed_node_idx)]
 
-    rail_part_2.elements = [rail_part_2.elements[i] for i in range(removed_el_idx,len(rail_model_part.elements))]
-    rail_part_2.nodes = [rail_part_2.nodes[i] for i in range(removed_node_idx,len(rail_model_part.nodes))]
+    rail_part_2.elements = [rail_model_part.elements[i] for i in range(removed_el_idx,len(rail_model_part.elements))]
+    rail_part_2.nodes = [rail_model_part.nodes[i] for i in range(removed_node_idx,len(rail_model_part.nodes))]
 
-    # return sorted rail model parts
-    return [rail_part_1] + hinge_rail_model_parts + [rail_part_2]
+    # all_rail_model_parts = [rail_part_1] + hinge_rail_model_parts + [rail_part_2]
+    #
+    # # # correct pointers within mesh
+    # # for model_part in all_rail_model_parts:
+    # #     for element in model_part.elements:
+    # #         mesh.elements[element.index] = element
+    # #     for node in model_part.nodes:
+    # #         mesh.nodes[node.index] = node
+
+    # return list of spatially sorted rail model parts and updated mesh
+    return [rail_part_1] + hinge_rail_model_parts + [rail_part_2], mesh
 
 def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     """

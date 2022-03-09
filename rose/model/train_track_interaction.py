@@ -6,6 +6,7 @@ from rose.model.utils import *
 from rose.pre_process.mesh_utils import *
 
 import numpy as np
+import itertools
 
 
 class CoupledTrainTrack(GlobalSystem):
@@ -365,14 +366,26 @@ class CoupledTrainTrack(GlobalSystem):
         Initialises wheel loads on track
         :return:
         """
+
+        # get all nodes and elements from all rail model parts,
+        rail_model_parts = [model_part for model_part in self.track.model_parts if isinstance(model_part,Rail)]
+        rail_nodes = [part.nodes for part in rail_model_parts]
+        rail_nodes = list(itertools.chain.from_iterable(rail_nodes))
+        rail_node_idxs = [node.index for node in rail_nodes]
+        _, unique_idxs = np.unique(rail_node_idxs, return_index=True)
+        rail_nodes = list(np.array(rail_nodes)[unique_idxs])
+
+        rail_elements = [part.elements for part in rail_model_parts]
+        rail_elements = list(itertools.chain.from_iterable(rail_elements))
+
         self.wheel_loads = []
         # loop over the wheels
         for wheel in self.train.wheels:
             # todo set y and z start coords, currently wheels are placed at y = z = 0
 
             # initialise wheel load as a moving point load
-            load = MovingPointLoad(x_disp_dof=self.rail.normal_dof, y_disp_dof=self.rail.y_disp_dof,
-                                   z_rot_dof=self.rail.z_rot_dof, start_distance=wheel.distances[0])
+            load = MovingPointLoad(x_disp_dof=rail_model_parts[0].normal_dof, y_disp_dof=rail_model_parts[0].y_disp_dof,
+                                   z_rot_dof=rail_model_parts[0].z_rot_dof, start_distance=wheel.distances[0])
             load.time = self.time
 
             # add wheel properties to the moving load
@@ -380,10 +393,10 @@ class CoupledTrainTrack(GlobalSystem):
             load.y_force = wheel.total_static_load
 
             # add track properties to the moving load
-            load.contact_model_parts  = [model_part for model_part in self.track.model_parts if isinstance(model_part,Rail)]
+            load.contact_model_parts  = rail_model_parts
             load.contact_model_part = self.rail
-            load.nodes = self.rail.nodes
-            load.elements = self.rail.elements
+            load.nodes = rail_nodes
+            load.elements = rail_elements
 
             # add moving load to the wheel loads list
             self.wheel_loads.append(load)

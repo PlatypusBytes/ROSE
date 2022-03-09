@@ -199,6 +199,7 @@ class MovingPointLoad(LineLoadCondition):
         self.moving_y_force = None
         self.moving_z_moment = None
 
+        self.model_part_at_t = None
     @property
     def moving_force_vector(self):
         """
@@ -256,14 +257,35 @@ class MovingPointLoad(LineLoadCondition):
             self.moving_z_moment = np.zeros(len(self.time))
 
     def set_contact_model_part_as_function_of_time(self):
-        #todo set contact model part as function of time
+        """
+        Sets the contact model part as a function of time. It is assumed that the contact model parts are spatially
+        ordered.
+        :return:
+        """
 
-        if self.contact_model_parts is not None:
-            for model_part in self.contact_model_parts:
 
-                # get numpy array of nodal coordinates
-                nodal_coordinates = np.array([node.coordinates for node in model_part.nodes])
-                tmp = mu.calculate_cum_distances_coordinate_array(nodal_coordinates)
+        self.model_part_at_t = []
+
+        # get first contact model part
+        mp_idx = 0
+        current_model_part = self.contact_model_parts[mp_idx]
+        current_max_idx = len(current_model_part.elements)
+
+        # loop over time
+        for t in range(len(self.time)):
+
+            # get index of contact element at time t
+            active_element = self.active_elements[:,t]
+            active_el_idx = np.where(active_element)[0]
+
+            # check if active element is outside current model part, if it is outside, increment contact model part
+            if active_el_idx >= current_max_idx:
+                mp_idx += 1
+                current_model_part = self.contact_model_parts[mp_idx]
+                current_max_idx += len(current_model_part.elements)
+
+            # add contact model part to list
+            self.model_part_at_t.append(current_model_part)
 
     def set_load_vectors_as_function_of_time(self):
         """
@@ -485,6 +507,9 @@ class MovingPointLoad(LineLoadCondition):
         :param element_rot: rotation of contact element at time t
         :return:
         """
+
+        # get contact_model part
+        self.contact_model_part = self.model_part_at_t[time_idx]
 
         # todo make calling of shapefunctions more general, for now it only works on a beam with normal, y and z-rot dof
         # get nodal normal force vector
