@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 # if RENEW_BENCHMARKS is true, the analytical solutions will be recalculated, results will be plotted together with the
 # numerical solution.
 RENEW_BENCHMARKS = False
-TEST_PATH = os.path.join('rose', 'tests')
+TEST_PATH = 'tests'
 # TEST_PATH = '.'
 
 
