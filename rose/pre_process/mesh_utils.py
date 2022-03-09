@@ -5,6 +5,7 @@ from rose.model.model_part import ConstraintModelPart, ElementModelPart
 # from rose.base.boundary_conditions import LineLoadCondition, MovingPointLoad
 import rose.model.utils as utils
 
+from copy import deepcopy
 import itertools
 import numpy as np
 
@@ -76,63 +77,73 @@ def add_no_displacement_boundary_to_bottom(bottom_model_part: ElementModelPart):
 
 
 def add_semi_rigid_hinge_at_x(rail_model_part, x_coordinate_hinge, hinge_stiffness):
+    """
+    Adds a semi rigid hinge to the rail at a certain x coordinate. As a result, the rail model part is split in 4 parts.
+    The elements before the hinge, the two elements connected to the hinge, and the elements after the hinge.
+
+    :param rail_model_part: original rail model part
+    :param x_coordinate_hinge: x coordinate of the hinge
+    :param hinge_stiffness: stiffness of the hinge
+    :return:
+    """
 
     # find node which is located at the x coord.
     hinge_node = None
-    for node in rail_model_part.nodes:
+    removed_node_idx = None
+    for idx, node in enumerate(rail_model_part.nodes):
         if np.isclose(node.coordinates[0], x_coordinate_hinge):
+            removed_node_idx = idx
             hinge_node = node
             rail_model_part.nodes.remove(node)
             break
     if hinge_node is None:
-        # print(f"node at x-coord {x_coordinate_hinge} is not found")
-        return None
-        # raise Exception(f"node at x-coord {x_coordinate_hinge} is not found")
+        raise Exception(f"node at x-coord {x_coordinate_hinge} is not found")
 
     # find elements which use the hinge_node
-
     # reverse iterate such that removing elements is done correctly
     hinge_elements = []
     hinge_rail_model_parts = []
-    for element in reversed(rail_model_part.elements):
+    removed_el_idx = None
+    for idx, element in enumerate(reversed(rail_model_part.elements)):
+
+        # element is hinge element if it is connected to the hinge node
         if hinge_node in element.nodes:
+            removed_el_idx = idx
             hinge_elements.append(element)
             rail_model_part.elements.remove(element)
+
+            # create new rail model part for the hinge and set element. nodes and length rail
             hinge_rail_model_part = Rail()
             hinge_rail_model_part.elements = [element]
             hinge_rail_model_part.nodes = element.nodes
             hinge_rail_model_part.length_rail = rail_model_part.length_rail
 
-            if hinge_node ==  element.nodes[0]:
+            # add hinge stiffness to hinge model part
+            if hinge_node == element.nodes[0]:
                 hinge_rail_model_part.spring_stiffness1 = hinge_stiffness
             if hinge_node == element.nodes[1]:
                 hinge_rail_model_part.spring_stiffness2 = hinge_stiffness
+
             hinge_rail_model_parts.append(hinge_rail_model_part)
 
     # reverse list such that the elements are in order of x-coordinate
     hinge_rail_model_parts.reverse()
 
+    # reverse removed element index, since element iteration was done in reverse
+    removed_el_idx = len(rail_model_part.elements) - removed_el_idx + 1
 
-    #todo split rail model part at hinge
+    # copy and split rail model parts at hinge
+    rail_part_1 = deepcopy(rail_model_part)
+    rail_part_2 = deepcopy(rail_model_part)
 
-    return hinge_rail_model_parts
+    rail_part_1.elements = [rail_part_1.elements[i] for i in range(removed_el_idx)]
+    rail_part_1.nodes = [rail_part_1.nodes[i] for i in range(removed_node_idx)]
 
+    rail_part_2.elements = [rail_part_2.elements[i] for i in range(removed_el_idx,len(rail_model_part.elements))]
+    rail_part_2.nodes = [rail_part_2.nodes[i] for i in range(removed_node_idx,len(rail_model_part.nodes))]
 
-
-# def create_horizontal_track_with_semi_rigid_end(n_sleepers, sleeper_distance, soil_depth,location_semi_rigid):
-#     """
-#     Creates mesh of an horizontal track with a semi rigid ending. Where the top of the track lies at z=0
-#
-#     :param n_sleepers: number of sleepers [-]
-#     :param sleeper_distance: distance between sleepers [m]
-#     :param soil_depth: depth of the soil [m]
-#     :param location_semi_rigid: location of the semi rigid end, "left" or "right"
-#     :return: Dictionary with: rail model part, rail pad model part, sleeper model part, soil model part. Mesh
-#     """
-#     element_model_parts, mesh = create_horizontal_track(n_sleepers, sleeper_distance, soil_depth)
-#     a=1+1
-
-
+    # return sorted rail model parts
+    return [rail_part_1] + hinge_rail_model_parts + [rail_part_2]
 
 def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     """
