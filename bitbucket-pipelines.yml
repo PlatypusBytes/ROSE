@@ -38,7 +38,7 @@ pipelines:
             script:
                 - conda env update -n rose --file env_rose.yml
                 - conda activate rose
-                - pytest -v --cov=rose --cov-report html:test-reports/coverage rose/tests/ -m "not workinprogress"
+                - pytest -v --cov=rose --cov-report html:test-reports/coverage tests/ -m "not workinprogress"
                 - apt-get update && apt-get --yes install zip
                 - zip -r test-reports/coverage.zip test-reports/coverage
                 - pipe: atlassian/bitbucket-upload-file:0.3.1
