@@ -368,7 +368,7 @@ class CoupledTrainTrack(GlobalSystem):
         """
 
         # get all nodes and elements from all rail model parts,
-        rail_model_parts = [model_part for model_part in self.track.model_parts if isinstance(model_part,Rail)]
+        rail_model_parts = [model_part for model_part in self.track.model_parts if isinstance(model_part,TimoshenkoBeamElementModelPart)]
         rail_nodes = [part.nodes for part in rail_model_parts]
         rail_nodes = list(itertools.chain.from_iterable(rail_nodes))
         rail_node_idxs = [node.index for node in rail_nodes]
@@ -435,6 +435,10 @@ class CoupledTrainTrack(GlobalSystem):
         """
         print("Initialising track and subsoil")
 
+        # set element and node ids
+        self.track.mesh.reorder_element_ids()
+        self.track.mesh.reorder_node_ids()
+
         self.track.solver = self.solver.__class__()
         self.initialize_wheel_loads()
         self.track.initialise()
@@ -444,7 +448,6 @@ class CoupledTrainTrack(GlobalSystem):
         Initialises train, track, train-track interaction, stages and the solver.
         :return:
         """
-
         # initialize train and track in this order
         self.initialise_train()
         self.initialise_track()

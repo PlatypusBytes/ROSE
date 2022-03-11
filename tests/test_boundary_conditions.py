@@ -50,8 +50,6 @@ class TestBoundaryConditions:
         force.elements = elements_track
         force.time = time
 
-
-
         force.initialize_matrices()
 
         # set coordinate of moving load per timestep
@@ -71,7 +69,7 @@ class TestBoundaryConditions:
         force.moving_coords = moving_coords
         force.moving_y_force =  np.array([1, 1, 1, 1, 1, 1, 1])
         force.time = time
-        force.contact_model_part = beam
+        force.model_part_at_t = [beam for t in range(len(force.time))]
 
         force.active_elements = active_elements
 
@@ -170,7 +168,7 @@ class TestBoundaryConditions:
         force.moving_coords = moving_coords
         force.moving_y_force = np.array([1, 1, 1, 1, 1, 1, 1])
         force.time = time
-        force.contact_model_part = beam
+        force.model_part_at_t = [beam for t in range(len(force.time))]
 
         force.active_elements = active_elements
 
