@@ -456,6 +456,10 @@ class GlobalSystem:
 
         :return:
         """
+
+        self.mesh.reorder_element_ids()
+        self.mesh.reorder_node_ids()
+
         self.initialise_model_parts()
         self.initialise_ndof()
         self.initialise_global_matrices()
