@@ -6,7 +6,7 @@ import numpy as np
 # import package
 from rose.utils import LayeredHalfSpace
 
-TEST_PATH = "./rose/tests"
+TEST_PATH = "tests"
 tol = 1e-12
 
 

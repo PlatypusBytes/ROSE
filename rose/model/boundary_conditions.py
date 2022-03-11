@@ -263,29 +263,32 @@ class MovingPointLoad(LineLoadCondition):
         :return:
         """
 
+        if self.contact_model_parts is not None:
 
-        self.model_part_at_t = []
+            self.model_part_at_t = []
 
-        # get first contact model part
-        mp_idx = 0
-        current_model_part = self.contact_model_parts[mp_idx]
-        current_max_idx = len(current_model_part.elements)
+            # get first contact model part
+            mp_idx = 0
+            current_model_part = self.contact_model_parts[mp_idx]
+            current_max_idx = len(current_model_part.elements)
 
-        # loop over time
-        for t in range(len(self.time)):
+            # loop over time
+            for t in range(len(self.time)):
 
-            # get index of contact element at time t
-            active_element = self.active_elements[:,t]
-            active_el_idx = np.where(active_element)[0]
+                # get index of contact element at time t
+                active_element = self.active_elements[:,t]
+                active_el_idx = np.where(active_element)[0]
 
-            # check if active element is outside current model part, if it is outside, increment contact model part
-            if active_el_idx >= current_max_idx:
-                mp_idx += 1
-                current_model_part = self.contact_model_parts[mp_idx]
-                current_max_idx += len(current_model_part.elements)
+                # check if active element is outside current model part, if it is outside, increment contact model part
+                if active_el_idx >= current_max_idx:
+                    mp_idx += 1
+                    current_model_part = self.contact_model_parts[mp_idx]
+                    current_max_idx += len(current_model_part.elements)
 
-            # add contact model part to list
-            self.model_part_at_t.append(current_model_part)
+                # add contact model part to list
+                self.model_part_at_t.append(current_model_part)
+        else:
+            self.model_part_at_t = [self.contact_model_part for t in range(len(self.time))]
 
     def set_load_vectors_as_function_of_time(self):
         """

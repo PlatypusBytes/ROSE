@@ -19,7 +19,7 @@ dependencies:
   - pyshp=2.1.2
   - pyproj=2.6.1
   - flask=1.1.2
-  - pypardiso=0.4.0
+  - haasad::pypardiso=0.4.0
   - fiona=1.8.18
   - pip:
     - sphinx-rtd-theme==0.5.1

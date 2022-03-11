@@ -6,7 +6,7 @@ import os
 import json
 
 
-TEST_PATH = "./rose/tests"
+TEST_PATH = "tests"
 tol = 1e-6
 
 
