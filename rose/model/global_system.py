@@ -4,7 +4,8 @@ from rose.model.geometry import Mesh
 from rose.model.exceptions import *
 
 from solvers.newmark_solver import NewmarkSolver
-from rose.model.solver import StaticSolver, ZhaiSolver, Solver
+from solvers.static_solver import StaticSolver
+from rose.model.solver import ZhaiSolver, Solver
 from rose.model import utils
 
 from scipy import sparse
@@ -296,11 +297,14 @@ class GlobalSystem:
         # gets indices without mass
         massless_indices = list(np.flip(np.where(np.isclose(self.global_mass_matrix.diagonal(), 0))[0]))
 
+        #gets indices without stiffness
+        stiffnessless_indices = list(np.flip(np.where(np.isclose(self.global_stiffness_matrix.diagonal(), 0))[0]))
+
         # gets indices which are constrained
         constrained_row_indices = self.__get_constrained_indices()
 
         # combine massless and constrained indices
-        obsolete_indices = sorted(list(np.unique(constrained_row_indices + massless_indices)), reverse=True)
+        obsolete_indices = sorted(list(np.unique(constrained_row_indices + massless_indices + stiffnessless_indices)), reverse=True)
 
         # remove obsolete rows and columns from global matrices
         self.trim_global_matrices_on_indices(list(obsolete_indices), list(obsolete_indices))
