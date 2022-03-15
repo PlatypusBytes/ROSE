@@ -13,6 +13,7 @@ from analytical_solutions.simple_supported import \
     SimpleSupportEulerNoDamping, \
     SimpleSupportEulerStatic
 from analytical_solutions.cantilever_beam import PulseLoadNoDamping
+from analytical_solutions.beam_with_hinge import BeamWithHinge
 
 
 class TestBenchmarkSet1:
@@ -616,6 +617,141 @@ class TestBenchmarkSet1:
 
         # assert max displacement
         assert max_disp == pytest.approx(expected_max_displacement, rel=1e-3)
+
+
+    def test_point_load_on_beam_with_hinge(self):
+        """
+        Tests point load on beam with a hinge in the middle. This test tests the maximum displacement at the location of
+        the hinge, for a moving point load, from left to right, across the hinge.
+        :return:
+        """
+
+        # Set parameters of beam
+
+        length_beam = 1
+        youngs_mod_beam = 1.0e7
+        intertia_beam = 1
+        rho = 10
+        y_load = -10e3
+
+        # discretisation
+        n_beams = 100
+        hinge_location = 50
+        tot_length_beam = length_beam*n_beams
+
+        # setup numerical model
+        # set time integration
+        calculation_time_steps = 101
+        time = np.linspace(0, 10, calculation_time_steps)
+
+        # discretise the beam
+        nodes_track = [Node(i * length_beam, 0.0, 0.0) for i in range(n_beams +1 )]
+        elements_track = [
+            Element([nodes_track[i], nodes_track[i + 1]]) for i in range(n_beams)
+        ]
+
+        all_mesh = Mesh()
+        all_mesh.add_unique_nodes_to_mesh(nodes_track)
+        all_mesh.add_unique_elements_to_mesh(elements_track)
+        all_mesh.reorder_element_ids()
+        all_mesh.reorder_node_ids()
+
+        rail_model_part = Rail()
+        rail_model_part.elements = elements_track
+        rail_model_part.nodes = nodes_track
+        rail_model_part.length_rail = length_beam
+
+        # add hinge to rail
+        rail_model_parts, all_mesh = add_semi_rigid_hinge_at_x(rail_model_part, hinge_location, 0, all_mesh)
+
+        # get rail nodes and elements and reorder node and element ids
+        rail_nodes = [part.nodes for part in rail_model_parts]
+        rail_nodes = list(itertools.chain.from_iterable(rail_nodes))
+        rail_node_idxs = [node.index for node in rail_nodes]
+        _, unique_idxs = np.unique(rail_node_idxs, return_index=True)
+        rail_nodes = list(np.array(rail_nodes)[unique_idxs])
+
+        rail_elements = [part.elements for part in rail_model_parts]
+        rail_elements = list(itertools.chain.from_iterable(rail_elements))
+        all_mesh.reorder_node_ids()
+        all_mesh.reorder_element_ids()
+
+        # set rail elements
+        material = Material()
+        material.youngs_modulus = youngs_mod_beam  # Pa
+        material.poisson_ratio = 0.0
+        material.density = rho  # 7860
+
+        section = Section()
+        section.area = 1
+        section.sec_moment_of_inertia = intertia_beam
+        section.shear_factor = 0
+
+        for part in rail_model_parts:
+            part.section = section
+            part.material = material
+
+        # set load
+        position = np.array([node.coordinates[0] for node in rail_model_part.nodes])
+        velocity = (position[1] - position[0]) / (time[1])
+
+        # set moving load on rail_model_part
+        velocities = np.ones(len(time)) * velocity
+
+        # set moving load
+        load = MovingPointLoad(x_disp_dof=rail_model_part.normal_dof, y_disp_dof=rail_model_part.y_disp_dof,
+                               z_rot_dof=rail_model_part.z_rot_dof)
+        load.time = time
+        load.contact_model_part = rail_model_part
+        load.contact_model_parts = rail_model_parts
+        load.y_force = y_load
+        load.velocities = velocities
+        load.initialisation_time = []
+        load.nodes = rail_nodes
+        load.elements = rail_elements
+
+        # constraint rotation at the side boundaries
+        left_boundary = ConstraintModelPart(x_disp_dof=False, y_disp_dof=False, z_rot_dof=False)
+        right_boundary = ConstraintModelPart(x_disp_dof=False, y_disp_dof=False, z_rot_dof=True)
+        left_boundary.nodes = [rail_model_parts[0].nodes[0]]
+        right_boundary.nodes =[rail_model_parts[-1].nodes[-1]]
+
+        # set solver
+        solver = StaticSolver()
+
+        # populate global system
+        global_system = GlobalSystem()
+        global_system.mesh = all_mesh
+        global_system.time = time
+        global_system.solver = solver
+
+        global_system.is_rayleigh_damping = True
+        global_system.damping_ratio = 0.3
+        global_system.radial_frequency_one = 2
+        global_system.radial_frequency_two = 500
+
+        # get all element model parts from dictionary
+        model_parts = rail_model_parts + [left_boundary, right_boundary, load]
+
+        global_system.model_parts = model_parts
+
+        # calculate
+        global_system.main()
+
+        # get vertical displacement vertical rail
+        vertical_displacements_rail = np.array(
+            [node.displacements[:, 1] for node in rail_nodes])
+        coords = np.array([node.coordinates[0] for node in rail_nodes])
+
+        # get displacement at hinge
+        vertical_displacement_at_hinge = vertical_displacements_rail[50,:]
+
+        # calculate analytical solution max displacement middle node
+        analytical_beam = BeamWithHinge(hinge_location, tot_length_beam-hinge_location, youngs_mod_beam*intertia_beam, y_load)
+        max_displacements = np.array([analytical_beam.calculate_max_disp(coord) for coord in coords])
+
+        # assert if numerical solution is equal to analytical solution
+        np.testing.assert_allclose(vertical_displacement_at_hinge,max_displacements,atol=1e-7)
 
 
 @pytest.fixture
