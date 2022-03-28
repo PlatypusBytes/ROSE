@@ -19,7 +19,7 @@ dependencies:
   - pyshp=2.1.2
   - pyproj=2.6.1
   - flask=1.1.2
-  - haasad::pypardiso=0.4.0
+  - pypardiso=0.4.0
   - fiona=1.8.18
   - pip:
     - sphinx-rtd-theme==0.5.1
@@ -28,5 +28,5 @@ dependencies:
     - schema==0.7.4
     - Flask-Session==0.4.0
     - flask-cors==3.0.10
-    - "git+https://zuada@bitbucket.org/DeltaresGEO/solvers.git#egg=solvers"
+    - "git+https://bitbucket.org/DeltaresGEO/solvers.git#egg=solvers"
 
