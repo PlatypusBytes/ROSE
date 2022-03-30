@@ -157,7 +157,7 @@ def plot_data_summary_on_sos(fugro_dict, sos_dict, dir):
             _, _ = plot_settlement_in_range_vs_date(fugro_dict, xlim, ylim, fig=fig, position=321)
             plt.grid()
 
-            all_d1, all_d2, all_d3, succeeded_dates = [], [], [], []
+            all_d1, all_d2, all_d3, succeeded_dates, all_coords = [], [], [], [],[]
             for date, res_at_t in zip(fugro_dict["dates"], fugro_dict["data"]):
 
                 # get only the data within limits at time t
@@ -168,6 +168,7 @@ def plot_data_summary_on_sos(fugro_dict, sos_dict, dir):
                     all_d2.append(d2)
                     all_d3.append(d3)
                     succeeded_dates.append(date)
+                    all_coords.append(coordinates_in_range)
                 except:
                     print(f"d1, d2, d3 calculation has failed for date {date}")
 
