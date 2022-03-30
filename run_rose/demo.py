@@ -44,7 +44,7 @@ def train_model():
 def geometry(nb_sleeper, fact=1):
     # Set geometry parameters
     geometry = {}
-    geometry["n_segments"] = len(nb_sleeper)
+    geometry["n_segments"] = len(nb_sleeper)  # number of segments
     geometry["n_sleepers"] = [int(n / fact) for n in nb_sleeper]  # number of sleepers per segment
     geometry["sleeper_distance"] = 0.6 * fact  # distance between sleepers, equal for each segment
     geometry["depth_soil"] = [1, 1]  # depth of the soil [m] per segment

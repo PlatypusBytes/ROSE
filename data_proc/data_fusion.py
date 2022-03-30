@@ -14,6 +14,7 @@ import SoS
 import data_discontinuities as dd
 import smooth
 from rose.utils import signal_proc
+from SignalProcessing.window import Window
 
 settings_filter = {"FS": 250,
                    "cut-off": 120,
@@ -222,7 +223,7 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict, op
     # loop over sos segments
     for name, segment in sos_dict.items():
 
-        # if name == "Segment 1003":
+        if name == "Segment 1032":
             # initialise figure
             fig = plt.figure(figsize=(20,10))
             plt.tight_layout()
@@ -238,8 +239,8 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict, op
             _, _ = SoS.ReadSosScenarios.plot_highlighted_sos(sos_data, name, fig=fig, position=325)
             plt.grid()
             # add plot of settlement within the current segment measured by the fugro rila system
-            _, _ = fugro.plot_settlement_in_range_vs_date(fugro_dict, xlim, ylim, date_lim=date_lim, fig=fig, position=321)
-            plt.grid()
+            # _, _ = fugro.plot_settlement_in_range_vs_date(fugro_dict, xlim, ylim, date_lim=date_lim, fig=fig, position=321)
+            # plt.grid()
 
             # add plot of Sensar settlement measurements within the current segment
             sensar_items_within_bounds = sensar.get_all_items_within_bounds(sensar_dict, xlim, ylim)
@@ -253,6 +254,8 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict, op
             if ricardo_data_within_bounds["acc_side_1"].size>0:
 
                 # filter Ricardo measurements
+                window =Window(ricardo_data_within_bounds["time"],ricardo_data_within_bounds["acc_side_1"],10)
+                window.fft_w(False)
                 acc = signal_proc.filter_sig(ricardo_data_within_bounds["acc_side_1"],
                                              settings_filter["FS"], settings_filter["cut-off"], settings_filter["n"],
                                              ).tolist()
@@ -276,7 +279,7 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict, op
                     plt.grid()
 
             fig.suptitle(name)
-            fig.savefig(Path("tmp11", name))
+            fig.savefig(Path("tmp13", name))
 
             plt.close(fig)
 
@@ -328,7 +331,7 @@ def plot_fugro_colour_plot_per_segment(sos_dict,fugro_dict):
             except:
                 pass
             fig.suptitle(name)
-            fig.savefig(Path("tmp10", name))
+            fig.savefig(Path("tmp13", name))
 
 
 if __name__ == '__main__':
