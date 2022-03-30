@@ -406,8 +406,8 @@ def plot_settlements_from_item_list_over_time(items_within_bounds,date_lim=None,
 
     sorted_dates, sorted_settlements = get_all_dates_and_settlement_as_sorted_array(items_within_bounds)
     new_dates, all_means, all_stds = get_statistical_information(sorted_dates, sorted_settlements)
-    plot_settlement_over_time(sorted_dates, sorted_settlements, marker="o", color='blue', linewidth=0, markersize=3)
-    plot_settlement_over_time(new_dates, all_means, marker="o", color='red', linewidth=0, markersize=3)
+    plot_settlement_over_time(sorted_dates, sorted_settlements, marker="o", color='blue', linewidth=0, markersize=4)
+    plot_settlement_over_time(new_dates, all_means, marker="o", color='red', linewidth=0, markersize=4)
     plot_settlement_over_time(new_dates, all_means + all_stds, marker="_", color="red", linewidth=0)
     plot_settlement_over_time(new_dates, all_means - all_stds, marker="_", color="red", linewidth=0)
 

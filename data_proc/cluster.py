@@ -9,7 +9,7 @@ import warnings
 warnings.simplefilter('ignore', np.RankWarning)
 
 # rose packages
-from sensar import load_sensar_data, get_all_items_within_bounds, map_settlement_at_starting_date
+from data_proc.sensar import load_sensar_data, get_all_items_within_bounds, map_settlement_at_starting_date
 
 
 CLR = {0: {"color": "b",
@@ -228,12 +228,7 @@ def plot_segment(coordinates, data_class, data_features, percentage, sos_percent
             # get indexes for the unique date
             idx = [np.where(np.array(val) == d)[0] for i, val in enumerate(dat)]
             # get existing data at this date
-            data = []
-            for i, val in enumerate(idx):
-                if len(val) != 0:
-                    data.append(sett[i][val])
-
-            data = [sett[i][val] for i, val in enumerate(idx) if len(val) != 0]
+            data = [sett[i][val[0]] for i, val in enumerate(idx) if len(val) != 0]
             aver_val = np.mean(np.array(data))
             std_val = np.sqrt(np.average((np.array(data) - aver_val) ** 2))
             mean_v.append(aver_val)
@@ -269,7 +264,8 @@ def plot_segment(coordinates, data_class, data_features, percentage, sos_percent
 
 
 if __name__ == "__main__":
-    main("../data/Sensar/processed/filtered_processed_settlements_2.pickle",
+    # main("../data/Sensar/processed/filtered_processed_settlements_2.pickle",
+    main(r"C:\Users\zuada\software_dev\rose\tutorials\results/settlements.pickle",
          "../data_proc/SOS.json",
          "clustering_sensar",
          degree=1, coord=True, plot=True)
