@@ -385,7 +385,7 @@ def plot_settlement_over_time(dates: np.ndarray, settlements: np.ndarray, **kwar
     if dates.dtype == np.float:
         dates = [datetime.fromtimestamp(int(date)) for date in dates]
 
-    plt.plot(dates, settlements, 'o', **kwargs)
+    plt.plot(dates, settlements, **kwargs)
 
     plt.xlabel('Date [y]')
     plt.ylabel('Settlement [mm]')
@@ -406,10 +406,10 @@ def plot_settlements_from_item_list_over_time(items_within_bounds,date_lim=None,
 
     sorted_dates, sorted_settlements = get_all_dates_and_settlement_as_sorted_array(items_within_bounds)
     new_dates, all_means, all_stds = get_statistical_information(sorted_dates, sorted_settlements)
-    plot_settlement_over_time(sorted_dates, sorted_settlements)
-    plot_settlement_over_time(new_dates, all_means)
-    plot_settlement_over_time(new_dates, all_means + all_stds, marker="_", color="red")
-    plot_settlement_over_time(new_dates, all_means - all_stds, marker="_", color="red")
+    plot_settlement_over_time(sorted_dates, sorted_settlements, marker="o", color='blue', linewidth=0, markersize=3)
+    plot_settlement_over_time(new_dates, all_means, marker="o", color='red', linewidth=0, markersize=3)
+    plot_settlement_over_time(new_dates, all_means + all_stds, marker="_", color="red", linewidth=0)
+    plot_settlement_over_time(new_dates, all_means - all_stds, marker="_", color="red", linewidth=0)
 
     if date_lim is not None:
         ax.set_xlim(date_lim)
@@ -592,8 +592,8 @@ def plot_old_and_new_dataset(old_sensar, new_sensar,sos_dict):
 if __name__ == '__main__':
 
     import json
-    # data = read_geopackage(r"../data/Sensar/20190047_02_20210630\data/data.gpkg")
-    # save_sensar_data(data, "../data/Sensar/processed/processed_settlements_2.pickle")
+    data = read_geopackage(r"../data/Sensar/20190047_02_20210630\data/data.gpkg")
+    save_sensar_data(data, "../data/Sensar/processed/processed_settlements_2.pickle")
     #
     old_data = load_sensar_data("../data/Sensar/processed/processed_settlements.pickle")
     new_data = load_sensar_data("../data/Sensar/processed/processed_settlements_2.pickle")
