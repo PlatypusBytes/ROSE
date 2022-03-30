@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import KDTree
 
-import smooth
+import data_proc.smooth as smooth
 from rose.utils import signal_proc
 
 
@@ -68,6 +68,7 @@ def plot_train_velocity(data: Dict, fig=None, position=111):
 
     return fig, ax
 
+
 def plot_velocity_signal(time, acceleration, fig=None, position=111):
     """
     Integrates acceleration to velocity and plots a time series of the axle velocity time series
@@ -95,6 +96,7 @@ def plot_velocity_signal(time, acceleration, fig=None, position=111):
         ax.set_ylabel("Axle velocity [$\mathregular{m/s}$]")
 
     return fig, ax
+
 
 def plot_acceleration_signal(time, acceleration, fig=None, position=111):
     """
