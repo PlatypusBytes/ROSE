@@ -31,6 +31,7 @@ def create_animation(filename, x_data: Union[Tuple, np.array], y_data: Union[Tup
     """
     ims = []
     ax = fig.gca()
+    ax.set_position([0.15, 0.15, 0.8, 0.8])
 
     # set x_data and y_data as tuple
     if not isinstance(x_data, Tuple):
@@ -58,6 +59,7 @@ def create_animation(filename, x_data: Union[Tuple, np.array], y_data: Union[Tup
 
     plt.xlabel('distance [m]')
     plt.ylabel('displacement track [m]')
+    plt.grid()
 
     # create animation
     writer = animation.writers[format](fps=fps)

@@ -1,4 +1,7 @@
 in windows:
 > cd ./rose/dashboard
+bash:
 > set FLASK_APP=application.py
+PS:
+> $env:FLASK_APP="application.py"
 > flask run
