@@ -5,8 +5,8 @@ import numpy as np
 import matplotlib.pylab as plt
 from scipy.spatial import KDTree
 
-from ricardo import load_inframon_data, get_data_within_bounds
-from fugro import load_rila_data, interpolate_coordinates, calculate_d_values
+from data_proc.ricardo import load_inframon_data, get_data_within_bounds
+from data_proc.fugro import load_rila_data, interpolate_coordinates, calculate_d_values
 from SignalProcessing import window, signal_tools
 
 
