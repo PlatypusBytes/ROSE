@@ -44,8 +44,8 @@ def fft_sig(sig, FS, nb_points=None):
     freq = np.linspace(0, 1, nfft) * FS
 
     # usual representation
-    # freq = freq[:int(nfft / 2)]
-    # ampl = 2 * ampl[:int(nfft / 2)]
+    freq = freq[:int(nfft / 2)]
+    ampl = 2 * ampl[:int(nfft / 2)]
 
     return freq, ampl, phas
 

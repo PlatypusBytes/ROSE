@@ -126,7 +126,7 @@ def plot_fft_acceleration_signal(data, acceleration, smoothing_distance,fig=None
     time = data["time"]
 
     m_to_mm = 1e3
-    freq, ampl = signal_proc.fft_sig(np.array(acceleration), 250)
+    freq, ampl,_ = signal_proc.fft_sig(np.array(acceleration), 250)
     ampl = smooth_signal_within_bounds_over_wave_length(data, smoothing_distance, ampl)
 
     # initialises figure if it does not exists

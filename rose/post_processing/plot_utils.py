@@ -19,6 +19,7 @@ def plot_2d_geometry(elements):
 
 def create_animation(filename, x_data: Union[Tuple, np.array], y_data: Union[Tuple, np.array], format='html',fps=60, fig: plt.Figure = plt.figure(), **kwargs):
     """
+    Creates an animation of y data vs xdata
 
     :param filename: name of the animation file
     :param x_data: tuple of multiple x_data np arrays or 1 np.array of x_data

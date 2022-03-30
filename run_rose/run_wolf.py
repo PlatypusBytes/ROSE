@@ -97,6 +97,7 @@ def read_file(file, first_layer):
 
 
 if __name__ == "__main__":
+
     E = 100e6
     v = 0.2
     emb = ["embankment", E / (2 * (1 + v)), v, 2000, 0.05, 1]
