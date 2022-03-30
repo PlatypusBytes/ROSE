@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
-from rose.post_processing.plot_utils_tmp import create_animation
+from rose.post_processing.plot_utils import create_animation
 
 # Note that this is an example script which works together with the output as generated from the batch_calculation.py
 # script.
@@ -9,7 +9,7 @@ from rose.post_processing.plot_utils_tmp import create_animation
 
 # open result file from batch calculation
 
-with open(r"D:\software_development\ROSE\rose\batch_results\res_KDyn_Segment 1090_scenario 1_tmp3.pickle", 'rb') as f:
+with open(r"D:\software_development\rose\run_rose\res\res_0.pickle", 'rb') as f:
     res_numerical = pickle.load(f)
 
 # D:\software_development\ROSE\rose\batch_results\res_KDyn_Segment 1090_scenario 1_tmp3.pickle
@@ -20,7 +20,6 @@ with open(r"D:\software_development\ROSE\rose\batch_results\res_KDyn_Segment 109
 
 # define first output time index of calculation phase (Note that this might not be the same as the time index which is
 # used during the calculation).
-
 first_calc_t_idx = 500
 
 # Get displacement of each node of the train in the calculation phase
@@ -28,7 +27,6 @@ disp_train = np.array(res_numerical['vertical_displacements_train'])[:,first_cal
 
 # Get displacement of each node of the train in the calculation phase
 vert_force_train = np.array(res_numerical['vertical_force_train'])[:,first_calc_t_idx:]
-
 
 # get calculation time
 time = np.array(res_numerical['time'])[first_calc_t_idx:]
