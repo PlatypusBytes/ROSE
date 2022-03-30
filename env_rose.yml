@@ -18,15 +18,11 @@ dependencies:
   - sphinx-autodoc-typehints=1.11.1
   - pyshp=2.1.2
   - pyproj=2.6.1
-  - flask=1.1.2
   - pypardiso=0.4.0
   - pip:
     - sphinx-rtd-theme==0.5.1
     - rst2pdf==0.98
     - releases==1.6.3
     - fiona==1.8.18
-    - schema==0.7.4
-    - Flask-Session==0.4.0
-    - flask-cors==3.0.10
     - "git+https://bitbucket.org/DeltaresGEO/solvers.git#egg=solvers"
 
