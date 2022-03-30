@@ -1,15 +1,14 @@
-
+import numpy as np
 import json
 from rose.pre_process.default_trains import TrainType, set_train, train_class_to_dict
 
 
-def read_sos_data():
+def read_sos_data(path_sos_json):
     """
     Reads sos json file
     :return:
     """
-    path_sos_json = r"..\data_proc\SOS.json"
-    with open(path_sos_json,'r') as f:
+    with open(path_sos_json, 'r') as f:
         sos_data = json.load(f)
     return sos_data
 
@@ -27,18 +26,18 @@ def train_model(time, velocity, start_coord):
     intercity = set_train(time, velocity, start_coord, TrainType.INTERCITY)
     cargo = set_train(time, velocity, start_coord, TrainType.CARGO)
 
-    trains = {"Sprinter": {"model":sprinter,
-                           "traffic":{"nb-per-hour": 4,
+    trains = {"Sprinter": {"model": sprinter,
+                           "traffic": {"nb-per-hour": 4,
                                        "nb-hours": 16,
                                        "nb-axles": 16}},
-              "Intercity": {"model":intercity,
-                           "traffic":{"nb-per-hour": 4,
-                                       "nb-hours": 16,
-                                       "nb-axles": 16}},
+              "Intercity": {"model": intercity,
+                            "traffic": {"nb-per-hour": 4,
+                                        "nb-hours": 16,
+                                        "nb-axles": 16}},
               "Cargo": {"model": cargo,
-                           "traffic": {"nb-per-hour": 27,
-                                       "nb-hours": 1,
-                                       "nb-axles": 10*4}}}
+                        "traffic": {"nb-per-hour": 27,
+                                    "nb-hours": 1,
+                                    "nb-axles": 10 * 4}}}
 
     return trains
 
@@ -113,16 +112,14 @@ def time_integration():
     return time
 
 
-def create_dash_input_json():
-    import numpy as np
-
+def create_dash_input_json(path_sos_json, path_output_json):
     # reads sos data
-    sos_data = read_sos_data()
+    sos_data = read_sos_data(path_sos_json)
 
     # set time integration and track information
     time_data = time_integration()
     track_materials = materials()
-    track_geometry = geometry([200],fact=1)
+    track_geometry = geometry([200], fact=1)
 
     track_info = {"geometry": track_geometry,
                   "materials": track_materials}
@@ -164,9 +161,9 @@ def create_dash_input_json():
                   "track_info": track_info,
                   "time_integration": time_data}
 
-    with open('example_rose_input.json', 'w') as json_file:
+    with open(path_output_json, 'w') as json_file:
         json.dump(input_dict, json_file, indent=2)
 
 
 if __name__ == '__main__':
-    create_dash_input_json()
+    create_dash_input_json(r"..\data_proc\SOS.json", 'example_rose_input.json')

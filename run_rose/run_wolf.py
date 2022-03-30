@@ -3,6 +3,7 @@ import json
 # import rose packages
 from rose.utils import LayeredHalfSpace
 
+
 def run_wolf_on_layering(layering, omega):
 
     data = LayeredHalfSpace.Layers(layering)
@@ -12,6 +13,7 @@ def run_wolf_on_layering(layering, omega):
     data.dynamic_stiffness(omega)
 
     return data
+
 
 def run_wolf(layers_file, omega, output="./", freq=False, plots=True):
     r"""
@@ -101,7 +103,7 @@ if __name__ == "__main__":
     E = 100e6
     v = 0.2
     emb = ["embankment", E / (2 * (1 + v)), v, 2000, 0.05, 1]
-    layers = read_file(r"./SOS/SOS.json", emb)
+    layers = read_file(r"../data_proc/SOS.json", emb)
     import time
     t_ini = time.time()
     run_wolf(layers, np.array([8.729139587]), output=r"./wolf/dyn_stiffness", plots=False)

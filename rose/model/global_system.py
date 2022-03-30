@@ -410,7 +410,7 @@ class GlobalSystem:
         # calculate rayleigh damping if required
         if self.is_rayleigh_damping:
             a0, a1 = self.__calculate_rayleigh_damping_factors()
-            rayleigh_damping_matrix = self.global_mass_matrix.dot(a0) + self.global_stiffness_matrix.dot(a1)
+            rayleigh_damping_matrix = self.global_mass_matrix * a0 + self.global_stiffness_matrix * a1
 
             # add rayleigh damping matrix to the global damping matrix
             self.global_damping_matrix += rayleigh_damping_matrix

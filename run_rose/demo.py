@@ -314,7 +314,7 @@ def main():
     stiffness = [158e6, 180e6]
     damping = [30e3, 20e3]
     speed = 100 / 3.6
-    output_dir = "./res"
+    output_dir = "./results"
 
     # create train
     tr = train_model()
