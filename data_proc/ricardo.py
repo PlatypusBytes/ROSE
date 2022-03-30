@@ -154,7 +154,7 @@ def plot_fft_velocity_signal(data, acceleration, smoothing_distance, fig=None, p
     velocity = signal_proc.int_sig(acceleration, time, hp=True,
                               mov=False, baseline=False, ini_cond=0)
 
-    freq, ampl = signal_proc.fft_sig(np.array(velocity), 250)
+    freq, ampl,_ = signal_proc.fft_sig(np.array(velocity), 250)
 
     ampl = smooth_signal_within_bounds_over_wave_length(data, smoothing_distance, ampl)
 
@@ -215,6 +215,13 @@ def smooth_signal_within_bounds_over_wave_length(data: Dict, wavelength: float, 
 
 
 def read_inframon(file_names: List, output_f: str):
+    """
+    Reads Inframon data from json
+
+    :param file_names: all inframon json file names
+    :param output_f: output file name
+    :return:
+    """
 
     results = {}
     for fi in file_names:
@@ -261,8 +268,12 @@ def read_inframon(file_names: List, output_f: str):
         results[name]["segment"] = segment
 
     # write results to pickle
-    with open(os.path.join(output_f, "inframon.pickle"), "wb") as f:
-        pickle.dump(results, f)
+    if output_f.endswith("pickle"):
+        with open(output_f, "wb") as f:
+            pickle.dump(results, f)
+    else:
+        with open(output_f + "pickle", "wb") as f:
+            pickle.dump(results, f)
 
     return results
 
@@ -340,10 +351,10 @@ def filter_data_within_bounds(xbounds: np.ndarray, ybounds: np.ndarray, data: Di
 
 
 if __name__ == '__main__':
-    # filenames = [r"../data/Ricardo/Jan.json",
-    #              r"../data/Ricardo/Jun.json",
-    #              ]
-    # read_inframon(filenames, "./")
+    filenames = [r"../data/Ricardo/Jan.json",
+                 r"../data/Ricardo/Jun.json",
+                 ]
+    read_inframon(filenames, "./")
 
     ricardo_data = load_inframon_data("./inframon.pickle")
     # plot_speed(ricardo_data["Jun"])
