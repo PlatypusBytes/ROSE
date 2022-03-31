@@ -1,6 +1,3 @@
-from typing import Dict
-
-import fiona
 import numpy as np
 import matplotlib.pyplot as plt
 import json
