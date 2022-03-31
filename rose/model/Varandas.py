@@ -3,6 +3,7 @@ import numpy as np
 from scipy.integrate import trapz
 import os
 import json
+from tqdm import tqdm
 
 
 class AccumulationModel:
@@ -139,8 +140,17 @@ class AccumulationModel:
         # incremental number of cycles
         nb_cycle = 0
 
+        # progress bar
+        pbar = tqdm(
+            total=int(np.max(self.number_cycles)),
+            unit_scale=True,
+            unit="steps",
+        )
+
         # for the maximum number of cycles
         for xx in range(int(np.max(self.number_cycles))):
+            # update progress bar
+            pbar.update(1)
             # for each train
             for j in range(self.number_trains):
 
