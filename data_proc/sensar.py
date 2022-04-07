@@ -1,46 +1,12 @@
-import fiona
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.spatial import KDTree
-
+import sqlite3
 import pickle
 import os
 from typing import Dict, List
-
 from datetime import datetime
 
 import rose.utils.Kalman_Filter as KF
-
-
-def get_coordinates(feature: Dict) -> np.ndarray:
-    """
-    Gets coordinates from Sensar geopackage feature
-    :param feature: Sensar geopackage feature
-    :return:
-    """
-    return np.array(feature["geometry"]["coordinates"])
-
-
-def get_settlement(feature: Dict) -> (List, List):
-    """
-    Gets settlement at dates from sensar geopackage feature
-    :param feature: sensar geopackage feature
-    :return:
-    """
-    dates = []
-    settlements = []
-    for k,v in feature["properties"].items():
-        if k.startswith("v_"):
-            # get date from string
-            date = datetime(int(k[2:6]), int(k[6:8]), int(k[8:10]))
-            settlement = v
-
-            # append date and settlement if found
-            if date is not None and settlement is not None:
-                dates.append(date)
-                settlements.append(settlement)
-
-    return dates, settlements
 
 
 def filter_dataset(data: Dict) -> Dict:
@@ -154,26 +120,52 @@ def filter_signal(feature, is_flip=False):
 
 def read_geopackage(filename: str) -> Dict:
     """
-    Reads id, coordinates, dates and settlements from Sensar geopackage
-    :param filename: filename of the geopackage
+    Reads the geopackage of sensar data
 
-    :return:
+    @param filename: File name of geopackage
+    @return: dictionary with data
     """
+    # connect to database
+    conn = sqlite3.connect(filename)
+    cursor = conn.cursor()
+    # queries all database
+    query = 'SELECT * FROM "20190047SegmentedRailway"'
+    data = cursor.execute(query)
+    data_full = cursor.fetchall()
 
-    data = {}
-    with fiona.open(filename) as layer:
-        for feature in layer:
-            data[feature['id']] = {'coordinates': None,
-                                   'dates': None,
-                                   'settlements': None}
-            dates, settlements = get_settlement(feature)
-            coordinates = get_coordinates(feature)
-            data[feature['id']]["coverage_quality"] = feature["properties"]['coverage_quality']
-            data[feature['id']]["coordinates"] = coordinates
-            data[feature['id']]["dates"] = dates
-            data[feature['id']]["settlements"] = settlements
+    # collect index dates
+    idx_dates = [i for i, d in enumerate(data.description) if d[0].startswith("v_")]
 
-    return data
+    # collect index coverage
+    idx_coverage = [i for i, d in enumerate(data.description) if d[0] == "coverage_quality"][0]
+
+    # make dates list
+    dates = []
+    for i in idx_dates:
+        aux = data.description[i][0].split("v_")[1]
+        dates.append(datetime(int(aux[:4]), int(aux[4:6]), int(aux[6:8])))
+
+    data_sensar = {}
+    for i in range(len(data_full)):
+        # get ID
+        id = data_full[i][0]
+        # query coordinates from index
+        query = f'SELECT * FROM rtree_20190047SegmentedRailway_geom where ID= {id}'
+        cursor.execute(query)
+        coords = cursor.fetchall()[0]
+
+        # add data to data_sensar
+        data_sensar.update({f"{i + 1}": {"coordinates": np.array([[coords[1], coords[3]],
+                                                                  [coords[2], coords[4]]]),
+                                         "dates": dates,
+                                         "settlements": [data_full[i][j] for j in idx_dates],
+                                         "coverage_quality": data_full[i][idx_coverage]},
+                            })
+
+    # close connection
+    conn.close()
+    return data_sensar
+
 
 def save_sensar_data(data: dict, filename: str) -> None:
     """
