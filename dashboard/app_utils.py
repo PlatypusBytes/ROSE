@@ -310,6 +310,7 @@ def get_base_data(features, output_file):
 
     return base_data
 
+
 def runner(input_data, path_results, calculation_time=50):
     """
     Runs the complete ROSE calculation: Firstly stiffness and damping of the soil are determined with wolf; secondly
@@ -320,7 +321,7 @@ def runner(input_data, path_results, calculation_time=50):
     :param calculation_time: time of the cumulative settlement calculation [days]
     :return:
     """
-    from run_rose.run_wolf import create_layering_for_wolf, run_wolf_on_layering
+    from rose.utils.wolf_utils import create_layering_for_wolf, run_wolf_on_layering
 
     m_to_mm = 1e3   # meter to mm
     Nm_to_kNmm = 1e-6 # N/m to kN/mm
