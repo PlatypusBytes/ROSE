@@ -1,21 +1,20 @@
 import numpy as np
 import json
-# import rose packages
-from rose.utils import LayeredHalfSpace
+# import wolf package
+from WolfStiffness.wolfStiffness import WolfStiffness
 
 
 def run_wolf_on_layering(layering, omega):
 
-    data = LayeredHalfSpace.Layers(layering)
-    data.assign_properties()
-    data.correction_incompressible()
-    data.static_cone()
-    data.dynamic_stiffness(omega)
+    wolf = WolfStiffness(omega, output_folder="./")
+    wolf.name = layers[0]
+    wolf.layers = layering
+    wolf.compute()
+    # wolf.write(plot=plots, freq=True)
+    return wolf
 
-    return data
 
-
-def run_wolf(layers_file, omega, output="./", freq=False, plots=True):
+def run_wolf(layers_file, omega, output="./", plots=True):
     r"""
     Dynamic stiffness according to Wolf and Deeks (2004)
 
@@ -25,16 +24,12 @@ def run_wolf(layers_file, omega, output="./", freq=False, plots=True):
 
     for layers in layers_file:
         print(layers[0])
-        data = LayeredHalfSpace.Layers(layers[1])
 
-        data.assign_properties()
-        data.correction_incompressible()
-        data.static_cone()
-        data.dynamic_stiffness(omega)
-
-        LayeredHalfSpace.write_output(output, layers[0], data, omega, freq, plots=plots)
-
-    return data
+        wolf = WolfStiffness(omega, output_folder=output)
+        wolf.name = layers[0]
+        wolf.layers = layers[1]
+        wolf.compute()
+        wolf.write(plot=plots, freq=True)
 
 
 def create_layering_for_wolf(sos_layering_data, first_layer):
@@ -68,7 +63,11 @@ def create_layering_for_wolf(sos_layering_data, first_layer):
 
 
 def read_file(file, first_layer):
+    """
+    reads json SOS file and add first layer.
 
+    Returns a data structure that can be used in WolfStiffness
+    """
     force = ['Force', '-', '-', '-', '-', '-', '1', 'V']
 
     with open(file, "r") as f:
