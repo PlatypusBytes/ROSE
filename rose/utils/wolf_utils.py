@@ -1,42 +1,41 @@
-import os
-import json
-import matplotlib.pylab as plt
+# import wolf package
+from WolfStiffness.wolfStiffness import WolfStiffness
 
 
-class ComplexEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, complex):
-            return [obj.real, obj.imag]
-        # Let the base class default method raise the TypeError
-        return json.JSONEncoder.default(self, obj)
+def run_wolf_on_layering(layering, omega):
+
+    wolf = WolfStiffness(omega, output_folder="./")
+    wolf.layers = layering
+    wolf.compute()
+    # wolf.write(plot=plots, freq=True)
+    return wolf.data
 
 
-def create_plot(frequency, stiff, damp, label_x, path_results, name):
+def create_layering_for_wolf(sos_layering_data, first_layer):
+    """
+    Creates layering for Wolf
 
-    # create figure
-    fig, ax = plt.subplots(1, 2, figsize=(8.5, 3.5))
-    ax[0].set_position([0.13, 0.13, 0.35, 0.80])
-    ax[1].set_position([0.60, 0.13, 0.35, 0.80])
-    plt.rcParams.update({'font.size': 10})
+    :param sos_layering_data: SOS layering data for 1 scenario
+    :param first_layer:
+    :return:
+    """
+    force = ['Force', '-', '-', '-', '-', '-', '1', 'V']
+    aux = [force, first_layer]
+    for j in range(len(sos_layering_data["soil_name"]) - 1):
+        aux.append([sos_layering_data["soil_name"][j],
+                    str(sos_layering_data["shear_modulus"][j] * 1e6),
+                    str(sos_layering_data["poisson"][j]),
+                    str(sos_layering_data["gamma_wet"][j] * 1000 / 9.81),
+                    str(sos_layering_data["damping"][j]),
+                    str(sos_layering_data["top_level"][j] -
+                        sos_layering_data["top_level"][j + 1]),
+                    "-", "-"])
 
-    # plot stiffness
-    ax[0].grid()
-    ax[0].plot(frequency, stiff)
-    ax[0].set_xlabel(label_x)
-    ax[0].set_ylabel(r'K$_{dyn}$ [N/m]')
-    ax[0].set_xlim((frequency[0], frequency[-1]))
-    # ax[0].set_ylim(bottom=0)
+    aux.append([sos_layering_data["soil_name"][-1],
+                str(sos_layering_data["shear_modulus"][-1] * 1e6),
+                str(sos_layering_data["poisson"][-1]),
+                str(sos_layering_data["gamma_wet"][-1] * 1000 / 9.81),
+                str(sos_layering_data["damping"][-1]),
+                "inf", "-", "-"])  # add infinite
 
-    # plot damping
-    ax[1].grid()
-    ax[1].plot(frequency, damp)
-    ax[1].set_xlabel(label_x)
-    ax[1].set_ylabel(r'Damping [Ns/m]')
-    ax[1].set_xlim((frequency[0], frequency[-1]))
-    # ax[1].set_ylim(bottom=0)
-
-    # save fig
-    plt.savefig(os.path.join(path_results, f"{name}.png"))
-    plt.savefig(os.path.join(path_results, f"{name}.pdf"))
-    plt.close()
-    return
+    return aux

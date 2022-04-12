@@ -10,8 +10,7 @@ import matplotlib.pyplot as plt
 from scipy.spatial import KDTree
 
 import data_proc.smooth as smooth
-from rose.utils import signal_proc
-
+from SignalProcessing.signal_tools import Signal
 
 settings_filter = {"FS": 250,
                    "cut-off": 30,
@@ -81,8 +80,9 @@ def plot_velocity_signal(time, acceleration, fig=None, position=111):
     """
 
     # integrations acceleration signal to velocity signal
-    velocity = signal_proc.int_sig(acceleration, time, hp=True,
-                              mov=False, baseline=False, ini_cond=0)
+    signal = Signal(time, acceleration)
+    signal.integrate(hp=True,moving=False, baseline=False, ini_cond=False)
+    velocity = np.copy(signal.signal)
 
     # initialises figure if it does not exists
     if fig is None:
@@ -128,7 +128,13 @@ def plot_fft_acceleration_signal(data, acceleration, smoothing_distance,fig=None
     time = data["time"]
 
     m_to_mm = 1e3
-    freq, ampl,_ = signal_proc.fft_sig(np.array(acceleration), 250)
+
+    # perform a fft on acceleration signal
+    signal = Signal(time, acceleration, FS=settings_filter["FS"])
+    signal.fft(half_representation=True)
+    freq = signal.frequency
+    ampl = signal.amplitude
+
     ampl = smooth_signal_within_bounds_over_wave_length(data, smoothing_distance, ampl)
 
     # initialises figure if it does not exists
@@ -151,11 +157,15 @@ def plot_fft_velocity_signal(data, acceleration, smoothing_distance, fig=None, p
     time = data["time"]
 
     # integrations acceleration signal to velocity signal
-    velocity = signal_proc.int_sig(acceleration, time, hp=True,
-                              mov=False, baseline=False, ini_cond=0)
+    signal = Signal(time, acceleration,FS=settings_filter["FS"])
+    signal.integrate(hp=True,moving=False, baseline=False, ini_cond=False)
 
-    freq, ampl,_ = signal_proc.fft_sig(np.array(velocity), 250)
+    # perform a fft on velocity signal
+    signal.fft(half_representation=True)
+    freq = signal.frequency
+    ampl = signal.amplitude
 
+    # smooth signal
     ampl = smooth_signal_within_bounds_over_wave_length(data, smoothing_distance, ampl)
 
     # initialises figure if it does not exists
@@ -170,6 +180,7 @@ def plot_fft_velocity_signal(data, acceleration, smoothing_distance, fig=None, p
         ax.set_ylabel("Axle velocity amplitude [$\mathregular{mm/s/Hz}$]")
 
     return fig, ax
+
 
 def get_data_within_bounds(data: Dict, xlim: List, ylim: List) -> Dict:
     """
@@ -194,6 +205,7 @@ def get_data_within_bounds(data: Dict, xlim: List, ylim: List) -> Dict:
                     "segment": data["segment"][mask]}
 
     return bounded_data
+
 
 def smooth_signal_within_bounds_over_wave_length(data: Dict, wavelength: float, signal: np.ndarray):
     """

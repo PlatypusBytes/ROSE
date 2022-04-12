@@ -7,7 +7,7 @@ from time import time
 if __name__ == "__main__":
 
     t = time()
-    with open(r"../rose/tests/test_data/res_KDyn_Segment 1001_scenario 1_damping_70.pickle", "rb") as f:
+    with open(r"../tests/test_data/res_KDyn_Segment 1001_scenario 1_damping_70.pickle", "rb") as f:
         data = pickle.load(f)
 
     train_info = {"dubbeldekker": {"forces": data['vertical_force_soil'],

@@ -15,6 +15,7 @@ import data_discontinuities as dd
 import smooth
 from rose.utils import signal_proc
 from SignalProcessing.window import Window
+from SignalProcessing.signal_tools import Signal
 
 settings_filter = {"FS": 250,
                    "cut-off": 120,
@@ -98,24 +99,22 @@ def sensar_vs_ricardo(sos_dict,sensar_dict, ricardo_dict):
 
         # get ricardo data
         ricardo_data_within_bounds = ricardo.get_data_within_bounds(ricardo_dict, xlim, ylim)
-        # ricardo_data_within_bounds = ricardo.get_data_within_bounds(ricardo_dict["Jan"], xlim, ylim)
         if ricardo_data_within_bounds["acc_side_1"].size > 0:
 
-            acc = signal_proc.filter_sig(ricardo_data_within_bounds["acc_side_1"],
-                                         settings_filter["FS"], settings_filter["cut-off"], settings_filter["n"],
-                                         ).tolist()
-            acc = signal_proc.filter_sig(acc, settings_filter["FS"], 40, 10, type="highpass")
+            signal = Signal(ricardo_data_within_bounds["time"], ricardo_data_within_bounds["acc_side_1"],
+                            settings_filter["FS"])
 
-            # velocity = signal_proc.int_sig(acc, ricardo_data_within_bounds["time"], hp=True,
-            #                                mov=False, baseline=False, ini_cond=0)
+            # lowpass and highpass filter acceleration filter
+            signal.filter(settings_filter["cut-off"], settings_filter["n"])
+            signal.filter(40, settings_filter["n"], type_filter="highpass")
 
-            freq, ampl, _ = signal_proc.fft_sig(np.array(acc), 250)
-            # freq, ampl = signal_proc.fft_sig(np.array(velocity), 250)
+            # fast fourier transformation acceleration
+            signal.fft(half_representation=True)
+
+            ampl = signal.amplitude
             ampl = ricardo.smooth_signal_within_bounds_over_wave_length(ricardo_data_within_bounds, 10, ampl)
 
             max_ampl = max(ampl)
-
-
             mean_vel = np.nanmean(ricardo_data_within_bounds["speed"])
 
         else:
@@ -125,10 +124,7 @@ def sensar_vs_ricardo(sos_dict,sensar_dict, ricardo_dict):
 
         plot_data.append([latest_settlement,mean_vel, max_ampl])
 
-
     plot_data = np.array(plot_data)
-
-    # plot_data[~np.isnan(plot_data[:, 1]), 1], plot_data[~np.isnan(plot_data[:,2]),2]
 
     # create a trend line of all previous dates and settlements
     ricardo_trend = np.polyfit(plot_data[~np.isnan(plot_data[:, 2]), 2], plot_data[~np.isnan(plot_data[:,1]),1], 3)
@@ -250,16 +246,15 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict, op
 
             # get ricardo data
             ricardo_data_within_bounds = ricardo.get_data_within_bounds(ricardo_dict, xlim, ylim)
-            # ricardo_data_within_bounds = ricardo.get_data_within_bounds(ricardo_dict["Jan"], xlim, ylim)
+
             if ricardo_data_within_bounds["acc_side_1"].size>0:
 
                 # filter Ricardo measurements
-                window =Window(ricardo_data_within_bounds["time"],ricardo_data_within_bounds["acc_side_1"],10)
-                window.fft_w(False)
-                acc = signal_proc.filter_sig(ricardo_data_within_bounds["acc_side_1"],
-                                             settings_filter["FS"], settings_filter["cut-off"], settings_filter["n"],
-                                             ).tolist()
-                acc = signal_proc.filter_sig(acc, settings_filter["FS"], 40, 10, type="highpass")
+                signal = Signal(ricardo_data_within_bounds["time"], ricardo_data_within_bounds["acc_side_1"],
+                                settings_filter["FS"])
+                signal.filter(settings_filter["cut-off"], settings_filter["n"])
+                signal.filter(40, settings_filter["n"], type_filter="highpass")
+                acc = signal.signal
 
                 # plot train velocity
                 ricardo.plot_train_velocity(ricardo_data_within_bounds, fig=fig, position=322)
@@ -279,7 +274,7 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict, op
                     plt.grid()
 
             fig.suptitle(name)
-            fig.savefig(Path("tmp13", name))
+            fig.savefig(Path("tmp14", name))
 
             plt.close(fig)
 
