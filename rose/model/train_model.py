@@ -7,7 +7,8 @@ from rose.model.geometry import Node
 from rose.model.model_part import ElementModelPart
 from rose.model.global_system import GlobalSystem
 from solvers.newmark_solver import NewmarkSolver
-from rose.model.solver import  StaticSolver, ZhaiSolver
+from solvers.static_solver import StaticSolver
+from solvers.zhai_solver import ZhaiSolver
 from rose.model.irregularities import RailIrregularities
 
 g = 9.81

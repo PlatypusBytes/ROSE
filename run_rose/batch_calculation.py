@@ -8,7 +8,7 @@ from run_rose.read_wolf import read_wolf
 from rose.model.model_part import Material, Section
 from rose.pre_process.default_trains import TrainType, set_train
 from rose.model.train_track_interaction import *
-import rose.model.solver as solver_imp
+from solvers.newmark_solver import NewmarkSolver
 
 # Set geometry parameters
 n_segments = 1
@@ -63,7 +63,7 @@ tot_calc_time = 1.2       # total time during calculation phase   [s]
 n_t_calc = 8000        # number of time steps during calculation phase [-]
 
 # choose solver
-solver = solver_imp.NewmarkSolver()
+solver = NewmarkSolver()
 
 
 def set_base_model():

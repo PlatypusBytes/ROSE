@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 
 from rose.model.train_model import TrainModel, Cart, Bogie, Wheel
-from rose.model.solver import ZhaiSolver
+from solvers.zhai_solver import ZhaiSolver
 
 class TestTrainModel:
 

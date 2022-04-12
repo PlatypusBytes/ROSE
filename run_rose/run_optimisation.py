@@ -8,8 +8,8 @@ from run_rose.read_wolf import read_wolf
 from rose.model.model_part import Material, Section
 from rose.model.train_model import *
 from rose.model.train_track_interaction import *
-import rose.model.solver as solver_c
 from rose.optimisation.optimisation import Optimisation, OptimisationModelPart,ModelResults
+from solvers.newmark_solver import NewmarkSolver
 
 def set_base_model():
     # Set geometry parameters
@@ -84,7 +84,7 @@ def set_base_model():
     n_t_calc = 8000        # number of time steps during calculation phase [-]
 
     # choose solver
-    solver = solver_c.NewmarkSolver()
+    solver = NewmarkSolver()
     # solver = solver_c.ZhaiSolver()
 
     all_element_model_parts = []

@@ -5,7 +5,8 @@ from rose.model.exceptions import *
 
 from solvers.newmark_solver import NewmarkSolver
 from solvers.static_solver import StaticSolver
-from rose.model.solver import ZhaiSolver, Solver
+from solvers.zhai_solver import ZhaiSolver
+from solvers.base_solver import Solver
 from rose.model import utils
 
 from scipy import sparse
