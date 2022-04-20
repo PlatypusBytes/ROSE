@@ -1,4 +1,4 @@
-
+import os
 import json
 from pathlib import Path
 from typing import List, Dict
@@ -13,7 +13,6 @@ import ricardo
 import SoS
 import data_discontinuities as dd
 import smooth
-from rose.utils import signal_proc
 from SignalProcessing.window import Window
 from SignalProcessing.signal_tools import Signal
 
@@ -196,7 +195,7 @@ def filter_data_sets(sensar_dict: Dict, fugro_dict: Dict ,ricardo_dict: Dict,dat
     return sensar_dict, fugro_dict, ricardo_dict
 
 
-def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict, options):
+def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict, output_folder="./"):
     """
     Plots data from sensar, fugro and ricardo within each SOS segment in a separate subplot.
 
@@ -206,6 +205,9 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict, op
     :param ricardo_dict: Ricardo data
     :return:
     """
+
+    if not os.path.isdir(output_folder):
+        os.makedirs(output_folder)
 
     # get date limits from sensar data and fugro data
     sensar_dates = list(sensar_dict.values())[0]["dates"]
@@ -219,64 +221,63 @@ def plot_data_on_sos_segment(sos_dict, sensar_dict, fugro_dict, ricardo_dict, op
     # loop over sos segments
     for name, segment in sos_dict.items():
 
-        if name == "Segment 1032":
-            # initialise figure
-            fig = plt.figure(figsize=(20,10))
-            plt.tight_layout()
+        # initialise figure
+        fig = plt.figure(figsize=(20,10))
+        plt.tight_layout()
 
-            # get coordinates of current segments
-            coordinates = np.array(list(segment.values())[0]['coordinates'])
+        # get coordinates of current segments
+        coordinates = np.array(list(segment.values())[0]['coordinates'])
 
-            # get coordinate limits
-            xlim = [min(coordinates[:,0]), max(coordinates[:,0])]
-            ylim = [min(coordinates[:,1]), max(coordinates[:,1])]
+        # get coordinate limits
+        xlim = [min(coordinates[:,0]), max(coordinates[:,0])]
+        ylim = [min(coordinates[:,1]), max(coordinates[:,1])]
 
-            # add plot of highlighted sos segments
-            _, _ = SoS.ReadSosScenarios.plot_highlighted_sos(sos_data, name, fig=fig, position=325)
+        # add plot of highlighted sos segments
+        _, _ = SoS.ReadSosScenarios.plot_highlighted_sos(sos_data, name, fig=fig, position=325)
+        plt.grid()
+        # add plot of settlement within the current segment measured by the fugro rila system
+        # _, _ = fugro.plot_settlement_in_range_vs_date(fugro_dict, xlim, ylim, date_lim=date_lim, fig=fig, position=321)
+        # plt.grid()
+
+        # add plot of Sensar settlement measurements within the current segment
+        sensar_items_within_bounds = sensar.get_all_items_within_bounds(sensar_dict, xlim, ylim)
+        if sensar_items_within_bounds:
+            _, _ = sensar.plot_settlements_from_item_list_over_time(sensar_items_within_bounds,date_lim=date_lim, fig=fig, position=323)
             plt.grid()
-            # add plot of settlement within the current segment measured by the fugro rila system
-            # _, _ = fugro.plot_settlement_in_range_vs_date(fugro_dict, xlim, ylim, date_lim=date_lim, fig=fig, position=321)
-            # plt.grid()
 
-            # add plot of Sensar settlement measurements within the current segment
-            sensar_items_within_bounds = sensar.get_all_items_within_bounds(sensar_dict, xlim, ylim)
-            if sensar_items_within_bounds:
-                _, _ = sensar.plot_settlements_from_item_list_over_time(sensar_items_within_bounds,date_lim=date_lim, fig=fig, position=323)
+        # get ricardo data
+        ricardo_data_within_bounds = ricardo.get_data_within_bounds(ricardo_dict, xlim, ylim)
+
+        if ricardo_data_within_bounds["acc_side_1"].size>0:
+
+            # filter Ricardo measurements
+            signal = Signal(ricardo_data_within_bounds["time"], ricardo_data_within_bounds["acc_side_1"],
+                            settings_filter["FS"])
+            signal.filter(settings_filter["cut-off"], settings_filter["n"])
+            signal.filter(40, settings_filter["n"], type_filter="highpass")
+            acc = signal.signal
+
+            # plot train velocity
+            ricardo.plot_train_velocity(ricardo_data_within_bounds, fig=fig, position=322)
+            plt.grid()
+
+            # plot either ricardo acceleration measurements or transformed velocity
+            ricardo_signal_type = "acceleration"
+            if ricardo_signal_type == "acceleration":
+                ricardo.plot_acceleration_signal(ricardo_data_within_bounds["time"], acc, fig=fig, position=324)
+                plt.grid()
+                ricardo.plot_fft_acceleration_signal(ricardo_data_within_bounds, acc,10, fig=fig,position=326)
+                plt.grid()
+            elif ricardo_signal_type == "velocity":
+                ricardo.plot_velocity_signal(ricardo_data_within_bounds["time"], acc, fig=fig, position=324)
+                plt.grid()
+                ricardo.plot_fft_velocity_signal(ricardo_data_within_bounds,acc, 10,fig=fig, position=326)
                 plt.grid()
 
-            # get ricardo data
-            ricardo_data_within_bounds = ricardo.get_data_within_bounds(ricardo_dict, xlim, ylim)
+        fig.suptitle(name)
+        fig.savefig(Path(output_folder, name))
 
-            if ricardo_data_within_bounds["acc_side_1"].size>0:
-
-                # filter Ricardo measurements
-                signal = Signal(ricardo_data_within_bounds["time"], ricardo_data_within_bounds["acc_side_1"],
-                                settings_filter["FS"])
-                signal.filter(settings_filter["cut-off"], settings_filter["n"])
-                signal.filter(40, settings_filter["n"], type_filter="highpass")
-                acc = signal.signal
-
-                # plot train velocity
-                ricardo.plot_train_velocity(ricardo_data_within_bounds, fig=fig, position=322)
-                plt.grid()
-
-                # plot either ricardo acceleration measurements or transformed velocity
-                ricardo_signal_type = "acceleration"
-                if ricardo_signal_type == "acceleration":
-                    ricardo.plot_acceleration_signal(ricardo_data_within_bounds["time"], acc, fig=fig, position=324)
-                    plt.grid()
-                    ricardo.plot_fft_acceleration_signal(ricardo_data_within_bounds, acc,10, fig=fig,position=326)
-                    plt.grid()
-                elif ricardo_signal_type == "velocity":
-                    ricardo.plot_velocity_signal(ricardo_data_within_bounds["time"], acc, fig=fig, position=324)
-                    plt.grid()
-                    ricardo.plot_fft_velocity_signal(ricardo_data_within_bounds,acc, 10,fig=fig, position=326)
-                    plt.grid()
-
-            fig.suptitle(name)
-            fig.savefig(Path("tmp14", name))
-
-            plt.close(fig)
+        plt.close(fig)
 
 
 def plot_fugro_colour_plot_per_segment(sos_dict,fugro_dict):
@@ -336,7 +337,7 @@ if __name__ == '__main__':
     with open(sos_fn, 'r') as f:
         sos_data = json.load(f)
 
-    sensar_data = sensar.load_sensar_data("../data/Sensar/processed/filtered_processed_settlements_combined2.pickle")
+    sensar_data = sensar.load_sensar_data("../data/Sensar/processed/processed_settlements_2.pickle")
 
     fugro_data = fugro.load_rila_data(r"../data/Fugro/updated_rila_data.pickle")
     # fugro_data = fugro.merge_data(fugro_data)
@@ -369,4 +370,4 @@ if __name__ == '__main__':
 
     # cProfile.run('plot_data_on_sos_segment(sos_data, sensar_data, fugro_data, ricardo_data["Jan"],0)', 'data_fusion_profiler')
     #
-    plot_data_on_sos_segment(sos_data, sensar_data, fugro_data, ricardo_data["Jan"],0)
+    plot_data_on_sos_segment(sos_data, sensar_data, fugro_data, ricardo_data["Jan"], output_folder="tmp2")
