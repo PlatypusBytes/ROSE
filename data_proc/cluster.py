@@ -181,7 +181,7 @@ def main(path_sensar, path_SOS, path_results, degree=1, coord=False, plot=False)
             sos_perc[np.argsort(percentages_cluster)] = np.array(aux_perc)[np.argsort(aux_perc)]
 
             # plot figure
-            plot_segment(coordinates, cls, full_data, perc, sos_perc, name, path_results)
+            plot_segment(coordinates, cls.astype(int), full_data, perc, sos_perc, name, path_results)
 
     with open(os.path.join(path_results, "segments_cluster.pickle"), "wb") as fo:
         pickle.dump(results, fo)
@@ -250,7 +250,7 @@ def plot_segment(coordinates, data_class, data_features, percentage, sos_percent
     by_label = dict(zip(labels, handles))
     keys_sorted = sorted(by_label)
     values_sorted = [by_label[k] for k in keys_sorted]
-    keys_sorted = [f"Sce {k} Prob: {percentage[k]}% ({sos_percentage[i]}%)" for i, k in enumerate(keys_sorted)]
+    keys_sorted = [f"Sce {k} Prob: {percentage[int(k)]}% ({sos_percentage[int(i)]}%)" for i, k in enumerate(keys_sorted)]
     ax[0].legend(values_sorted, keys_sorted)
 
     ax[0].grid()
@@ -269,4 +269,4 @@ if __name__ == "__main__":
     main("../data/Sensar/processed/filtered_processed_settlements_2.pickle",
          "../data_proc/SOS.json",
          "clustering_sensar",
-         degree=1, coord=True, plot=False)
+         degree=1, coord=True, plot=True)
