@@ -159,11 +159,16 @@ def read_geopackage(filename: str) -> Dict:
         x = [k for k, v in enumerate(aux_set) if v is None]
         id_good = list(set(range(len(aux_set))) - set(x))
 
+        # sort data
+        id_sorted = np.argsort(np.array(dates)[id_good])
+        dates_res = np.array(dates)[id_good][id_sorted]
+        settlements_res = np.array(aux_set)[id_good][id_sorted]
+
         # add data to data_sensar
         data_sensar.update({f"{i + 1}": {"coordinates": np.array([[coords[1], coords[3]],
                                                                   [coords[2], coords[4]]]),
-                                         "dates": [dates[j] for j in id_good],
-                                         "settlements": [aux_set[j] for j in id_good],
+                                         "dates": dates_res.tolist(),
+                                         "settlements": settlements_res.tolist(),
                                          "coverage_quality": data_full[i][idx_coverage]},
                             })
 

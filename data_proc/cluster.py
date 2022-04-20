@@ -103,7 +103,6 @@ def main(path_sensar, path_SOS, path_results, degree=1, coord=False, plot=False)
             sensar_items_within_bounds.pop(i)
 
         for i in range(len(sensar_items_within_bounds)):
-
             fit = []  # fit
 
             # check if ranges in sensar dataset are good (are within RANGES)
@@ -167,7 +166,7 @@ def main(path_sensar, path_SOS, path_results, degree=1, coord=False, plot=False)
         results.update({name: {"coordinates": coord_list,
                                "scenario": list(map(int, cls)),
                                "time": [aux["dates"] for aux in full_data],
-                               "settlements": [aux["settlements"].tolist() for aux in full_data],
+                               "settlements": [aux["settlements"] for aux in full_data],
                                "percentage": perc}})
 
         if plot:
