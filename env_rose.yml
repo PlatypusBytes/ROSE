@@ -4,26 +4,26 @@ channels:
   - conda-forge
   - anaconda
 dependencies:
-  - matplotlib=3.1.3
-  - numpy=1.18.1
-  - scipy=1.4.1
-  - shapely=1.7.1
-  - tqdm=4.46.0
-  - pytest=5.4.2
-  - pytest-cov=2.10.1
-  - pip=20.0.2
-  - python=3.8.2
-  - sphinx=4.2.0
-  - sphinxcontrib-bibtex=1.0.0
-  - sphinx-autodoc-typehints=1.11.1
-  - pyshp=2.1.2
-  - pyproj=2.6.1
-  - pypardiso=0.4.0
-  - scikit-learn=0.23.2
+  - matplotlib=3.5.1
+  - numpy=1.22.3
+  - scipy=1.8.0
+  - shapely=1.8.0
+  - tqdm=4.64.0
+  - pytest=7.1.1
+  - pytest-cov=3.0.0
+  - pip=21.2.2
+  - python=3.8.13
+  - sphinx=4.5.0
+  - sphinxcontrib-bibtex=2.4.2
+  - sphinx-autodoc-typehints=1.12.0
+  - pyshp=2.2.0
+  - pyproj=3.3.0
+  - pypardiso=0.4.1
+  - scikit-learn=1.0.2
   - xlrd=2.0.1
   - pip:
-    - sphinx-rtd-theme==0.5.1
-    - rst2pdf==0.98
+    - sphinx-rtd-theme==1.0.0
+    - rst2pdf==0.99
     - releases==1.6.3
     - "git+https://bitbucket.org/DeltaresGEO/solvers.git#egg=solvers"
     - "git+https://bitbucket.org/DeltaresGEO/wolfstiff.git#egg=WolfStiffness"
