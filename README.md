@@ -12,8 +12,13 @@ and parameterisation of the model.
 
 ## Developers
 The ROSE software has been developed within a TKI project, and in a consortium with the following partners:
+
 * [Deltares](www.deltares.nl)
+
 * [ProRail](www.prorail.nl) 
+
 * [Sensar](www.sensar.nl)
+
 * [Fugro](www.fugro.com/nl)
+
 * [Ricardo Rail](www.rail.ricardo.com)
