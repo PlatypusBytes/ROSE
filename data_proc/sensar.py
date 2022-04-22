@@ -154,11 +154,21 @@ def read_geopackage(filename: str) -> Dict:
         cursor.execute(query)
         coords = cursor.fetchall()[0]
 
+        # remove indexes with None for the settlement
+        aux_set = [data_full[i][j] for j in idx_dates]
+        x = [k for k, v in enumerate(aux_set) if v is None]
+        id_good = list(set(range(len(aux_set))) - set(x))
+
+        # sort data
+        id_sorted = np.argsort(np.array(dates)[id_good])
+        dates_res = np.array(dates)[id_good][id_sorted]
+        settlements_res = np.array(aux_set)[id_good][id_sorted]
+
         # add data to data_sensar
         data_sensar.update({f"{i + 1}": {"coordinates": np.array([[coords[1], coords[3]],
                                                                   [coords[2], coords[4]]]),
-                                         "dates": dates,
-                                         "settlements": [data_full[i][j] for j in idx_dates],
+                                         "dates": dates_res.tolist(),
+                                         "settlements": settlements_res.tolist(),
                                          "coverage_quality": data_full[i][idx_coverage]},
                             })
 
@@ -586,20 +596,20 @@ if __name__ == '__main__':
     import json
     data = read_geopackage(r"../data/Sensar/20190047_02_20210630\data/data.gpkg")
     save_sensar_data(data, "../data/Sensar/processed/processed_settlements_2.pickle")
+    # #
+    # old_data = load_sensar_data("../data/Sensar/processed/processed_settlements.pickle")
+    # new_data = load_sensar_data("../data/Sensar/processed/processed_settlements_2.pickle")
     #
-    old_data = load_sensar_data("../data/Sensar/processed/processed_settlements.pickle")
-    new_data = load_sensar_data("../data/Sensar/processed/processed_settlements_2.pickle")
-
-    # filter_dataset(data)
+    # # filter_dataset(data)
+    # #
+    # # save_sensar_data(data, "../data/Sensar/processed/filtered_processed_settlements_combined2.pickle")
     #
-    # save_sensar_data(data, "../data/Sensar/processed/filtered_processed_settlements_combined2.pickle")
-
-
-    sos_fn = "../data_proc/SOS.json"
-    with open(sos_fn, 'r') as f:
-        sos_data = json.load(f)
-
-    plot_old_and_new_dataset(old_data, new_data, sos_data)
+    #
+    # sos_fn = "../data_proc/SOS.json"
+    # with open(sos_fn, 'r') as f:
+    #     sos_data = json.load(f)
+    #
+    # plot_old_and_new_dataset(old_data, new_data, sos_data)
 
 
     #

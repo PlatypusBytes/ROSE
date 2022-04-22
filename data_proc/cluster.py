@@ -1,5 +1,6 @@
 import os
 import json
+import pickle
 import numpy as np
 import matplotlib.pylab as plt
 from sklearn.cluster import KMeans
@@ -102,7 +103,6 @@ def main(path_sensar, path_SOS, path_results, degree=1, coord=False, plot=False)
             sensar_items_within_bounds.pop(i)
 
         for i in range(len(sensar_items_within_bounds)):
-
             fit = []  # fit
 
             # check if ranges in sensar dataset are good (are within RANGES)
@@ -123,7 +123,6 @@ def main(path_sensar, path_SOS, path_results, degree=1, coord=False, plot=False)
                 val = [all_settlements[i][k] for k in range(id_ini, id_end)]
 
                 fit.extend(np.polyfit(tim, val, deg=degree))
-
 
             x = [min(np.array(sensar_items_within_bounds[i]["coordinates"])[:, 0]),
                  max(np.array(sensar_items_within_bounds[i]["coordinates"])[:, 0])]
@@ -157,16 +156,19 @@ def main(path_sensar, path_SOS, path_results, degree=1, coord=False, plot=False)
         perc = {}
         # compute percentage of the K-mean classes
         for j in set(cls):
-            perc.update({str(j): round(len(np.where(cls == j)[0]) / len(cls) * 100, 1)})
+            perc.update({int(j): round(len(np.where(cls == j)[0]) / len(cls) * 100, 1)})
 
         # sensar data used for the clustering
-        time_data = [sensar_items_within_bounds[j] for j in idx]
+        full_data = [sensar_items_within_bounds[j] for j in idx]
 
         # add to output dict
-        coord_list = [[(coordinates[i][0] + coordinates[i][2])/ 2, (coordinates[i][1] + coordinates[i][3])/ 2] for i in range(len(coordinates))]
+        coord_list = [[(coordinates[i][0] + coordinates[i][2]) / 2, (coordinates[i][1] + coordinates[i][3])/ 2] for i in range(len(coordinates))]
         results.update({name: {"coordinates": coord_list,
-                               "scenario": cls.tolist(),
+                               "scenario": list(map(int, cls)),
+                               "time": [aux["dates"] for aux in full_data],
+                               "settlements": [aux["settlements"] for aux in full_data],
                                "percentage": perc}})
+
         if plot:
 
             # percentages clustering
@@ -179,10 +181,10 @@ def main(path_sensar, path_SOS, path_results, degree=1, coord=False, plot=False)
             sos_perc[np.argsort(percentages_cluster)] = np.array(aux_perc)[np.argsort(aux_perc)]
 
             # plot figure
-            plot_segment(coordinates, cls, time_data, perc, sos_perc, name, path_results)
+            plot_segment(coordinates, cls.astype(int), full_data, perc, sos_perc, name, path_results)
 
-    with open(os.path.join(path_results, "segments_cluster.json"), "w") as fo:
-        json.dump(results, fo, indent=2)
+    with open(os.path.join(path_results, "segments_cluster.pickle"), "wb") as fo:
+        pickle.dump(results, fo)
 
     print(f"Mean score {np.mean(np.array(score_km))}")
     print(f"Maximum {np.max(np.array(score_km))}")
@@ -248,7 +250,7 @@ def plot_segment(coordinates, data_class, data_features, percentage, sos_percent
     by_label = dict(zip(labels, handles))
     keys_sorted = sorted(by_label)
     values_sorted = [by_label[k] for k in keys_sorted]
-    keys_sorted = [f"Sce {k} Prob: {percentage[k]}% ({sos_percentage[i]}%)" for i, k in enumerate(keys_sorted)]
+    keys_sorted = [f"Sce {k} Prob: {percentage[int(k)]}% ({sos_percentage[int(i)]}%)" for i, k in enumerate(keys_sorted)]
     ax[0].legend(values_sorted, keys_sorted)
 
     ax[0].grid()
@@ -264,8 +266,7 @@ def plot_segment(coordinates, data_class, data_features, percentage, sos_percent
 
 
 if __name__ == "__main__":
-    # main("../data/Sensar/processed/filtered_processed_settlements_2.pickle",
-    main(r"C:\Users\zuada\software_dev\rose\tutorials\results/settlements.pickle",
+    main("../data/Sensar/processed/filtered_processed_settlements_2.pickle",
          "../data_proc/SOS.json",
          "clustering_sensar",
          degree=1, coord=True, plot=True)

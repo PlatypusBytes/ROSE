@@ -1,6 +1,25 @@
 # README #
 
-Consists of:
+ROSE consists of a software for the computation of railway track degradation. 
 
-* Dynamic train track interaction model
-* Cumulative settlement model
+The ROSE software simulates train-track interaction, and computes the resulting 
+long-term deformation caused by train traffic.
+
+The ROSE software allows the use of data in order to improve the schematisation 
+and parameterisation of the model. 
+
+![./docs/static/scheme.png](./docs/static/scheme.png)
+
+
+## Developers
+The ROSE software has been developed within a TKI project, and in a consortium with the following partners:
+
+* [Deltares](www.deltares.nl)
+
+* [ProRail](www.prorail.nl) 
+
+* [Sensar](www.sensar.nl)
+
+* [Fugro](www.fugro.com/nl)
+
+* [Ricardo Rail](www.rail.ricardo.com)
