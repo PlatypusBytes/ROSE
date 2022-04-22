@@ -112,7 +112,6 @@ class Node:
         self.y_disp_dof = bool(self.y_disp_dof + other.y_disp_dof)
         self.z_rot_dof = bool(self.z_rot_dof + other.z_rot_dof)
 
-
         # combine all model parts of the current node and other node
         self.model_parts = self.model_parts + other.model_parts
         return True
@@ -160,7 +159,7 @@ class Element:
             if node not in other.nodes:
                 return False
 
-        self.model_parts = self.model_parts + other.model_parts
+        self.model_parts = list(set(self.model_parts + other.model_parts))
 
         return True
 

@@ -76,7 +76,7 @@ class Optimisation():
         results = []
         for model_result in self.model_results:
 
-            # get results from numerical model without using a post process funtion
+            # get results from numerical model without using a post process function
             if model_result.result_function is None:
                 for res_name in model_result.result_names:
                     result = getattr(self.model, res_name)[model_result.time_step_indices, :]

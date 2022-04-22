@@ -158,7 +158,8 @@ class ModelPart:
         :return:
         """
         self.calculate_total_n_dof()
-        [element.add_model_part(self) for element in self.elements]
+        for element in self.elements:
+            element.add_model_part(self)
 
     def update(self):
         pass
@@ -678,8 +679,8 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         s2 = self.spring_stiffness2  # spring stiffness 2
         # set fixity factor
 
-        alpha1 = 1 / (1 + 3 * EI / s1 * l) if s1 > 0 else 0
-        alpha2 = 1 / (1 + 3 * EI / s2 * l) if s2 > 0 else 0
+        alpha1 = 1 / (1 + 3 * EI / (s1 * l)) if s1 > 0 else 0
+        alpha2 = 1 / (1 + 3 * EI / (s2 * l)) if s2 > 0 else 0
 
         rigid_mat = np.zeros((6, 6))
         rigid_mat[[0, 3], [0, 3]] = 1

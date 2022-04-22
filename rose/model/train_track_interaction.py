@@ -393,7 +393,7 @@ class CoupledTrainTrack(GlobalSystem):
             load.y_force = wheel.total_static_load
 
             # add track properties to the moving load
-            load.contact_model_parts  = rail_model_parts
+            load.contact_model_parts = rail_model_parts
             load.contact_model_part = self.rail
             load.nodes = rail_nodes
             load.elements = rail_elements
@@ -401,8 +401,12 @@ class CoupledTrainTrack(GlobalSystem):
             # add moving load to the wheel loads list
             self.wheel_loads.append(load)
 
+        # Get current non-moving load model parts
+        current_track_model_parts = [model_part for model_part in self.track.model_parts if
+                                     not isinstance(model_part, MovingPointLoad)]
+
         # add wheel loads to the model parts list
-        self.track.model_parts.extend(self.wheel_loads)
+        self.track.model_parts = current_track_model_parts + self.wheel_loads
 
     def initialise_track_wheel_interaction(self):
         """
@@ -428,6 +432,25 @@ class CoupledTrainTrack(GlobalSystem):
         self.train.solver = self.solver.__class__()
         self.train.initialise()
 
+    def clean_model(self):
+        """
+        Cleans model, this is required if multiple calculations are performed with the same model.
+        - Resets degrees of freedom.
+        - Clears model parts from nodes and elements.
+        - Resets train mesh.
+        :return:
+        """
+        self.total_n_dof = None
+        self.track.total_n_dof = None
+        self.train.total_n_dof = None
+        for node in self.track.mesh.nodes:
+            node.index_dof = np.array([None, None, None])
+            node.model_parts = []
+        for element in self.track.mesh.elements:
+            element.model_parts = []
+
+        self.train.mesh = Mesh()
+
     def initialise_track(self):
         """
         Initialises track system and adds wheel loads to track
@@ -448,6 +471,10 @@ class CoupledTrainTrack(GlobalSystem):
         Initialises train, track, train-track interaction, stages and the solver.
         :return:
         """
+
+        # clean model
+        self.clean_model()
+
         # initialize train and track in this order
         self.initialise_train()
         self.initialise_track()
