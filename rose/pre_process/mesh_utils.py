@@ -127,9 +127,9 @@ def add_semi_rigid_hinge_at_x(rail_model_part, x_coordinate_hinge, hinge_stiffne
 
             # add hinge stiffness to hinge model part
             if hinge_node == element.nodes[0]:
-                hinge_rail_model_part.spring_stiffness1 = hinge_stiffness
+                hinge_rail_model_part.spring_stiffness1 = hinge_stiffness/2
             if hinge_node == element.nodes[1]:
-                hinge_rail_model_part.spring_stiffness2 = hinge_stiffness
+                hinge_rail_model_part.spring_stiffness2 = hinge_stiffness/2
 
             hinge_rail_model_parts.append(hinge_rail_model_part)
 
@@ -149,17 +149,9 @@ def add_semi_rigid_hinge_at_x(rail_model_part, x_coordinate_hinge, hinge_stiffne
     rail_part_2.elements = [rail_model_part.elements[i] for i in range(removed_el_idx,len(rail_model_part.elements))]
     rail_part_2.nodes = [rail_model_part.nodes[i] for i in range(removed_node_idx,len(rail_model_part.nodes))]
 
-    # all_rail_model_parts = [rail_part_1] + hinge_rail_model_parts + [rail_part_2]
-    #
-    # # # correct pointers within mesh
-    # # for model_part in all_rail_model_parts:
-    # #     for element in model_part.elements:
-    # #         mesh.elements[element.index] = element
-    # #     for node in model_part.nodes:
-    # #         mesh.nodes[node.index] = node
-
     # return list of spatially sorted rail model parts and updated mesh
     return [rail_part_1] + hinge_rail_model_parts + [rail_part_2], mesh
+
 
 def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     """
