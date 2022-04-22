@@ -9,7 +9,7 @@ import solvers.newmark_solver as solver_c
 # import rose.model.solver as solver_c
 
 
-def train_model():
+def train_model(train_start_coord):
     # set up train
     train = {}
     # set up bogie configuration
@@ -21,7 +21,7 @@ def train_model():
     train["cart_length"] = 28  # length of the cart [m]
 
     # set up train configuration
-    train["cart_distances"] = [26.55 + 14]  # cart distances from the start of the track [m]
+    train["cart_distances"] = [train_start_coord]  # cart distances from the start of the track [m]
 
     # set train parameters
     train["mass_wheel"] = 1834  # mass of one wheel [kg]
@@ -101,10 +101,9 @@ def soil_parameters(sleeper_distance, stiffness, damping):
     return soil
 
 
-def create_model(tr, geometry, mat, time_int, soil, velocity):
+def create_model(tr, geometry, mat, time_int, soil, velocity, use_irregularities):
     # choose solver
     solver = solver_c.NewmarkSolver()
-    # solver = solver_c.ZhaiSolver()
 
     all_element_model_parts = []
     all_meshes = []
@@ -180,7 +179,7 @@ def create_model(tr, geometry, mat, time_int, soil, velocity):
 
     # set up train
     train = TrainModel()
-    train.use_irregularities = True
+    train.use_irregularities = use_irregularities
     train.time = time
     train.velocities = velocities
 
@@ -269,11 +268,20 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
     #     [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
     # coords_sleeper = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[2].nodes])
 
+    # collect results
+    soil_nodes = []
+    soil_elements = []
+    for i in range(2):
+        soil_nodes.append(coupled_model.track.model_parts[i+4].nodes)
+        soil_elements.append(coupled_model.track.model_parts[i+4].elements)
+    soil_nodes = list(itertools.chain.from_iterable(soil_nodes))
+    soil_elements = list(itertools.chain.from_iterable(soil_elements))
+
     vertical_displacements_soil = np.array(
-        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[4].nodes])
+        [node.displacements[0::output_interval, 1] for node in soil_nodes])
     vertical_force_soil = np.array(
-        [element.force[0::output_interval, 0] for element in coupled_model.track.model_parts[4].elements])
-    coords_soil = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[4].nodes])
+        [element.force[0::output_interval, 0] for element in soil_elements])
+    coords_soil = np.array([node.coordinates[0] for node in soil_nodes])
 
     vertical_displacements_train = np.array(
         [node.displacements[0::output_interval, 1] for node in coupled_model.train.nodes])
@@ -310,13 +318,22 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
 
 def main():
     nb_sleepers = [100, 100]
-    stiffness = [158e6, 180e6]
+    stiffness = [158e7, 180e6]
     damping = [30e3, 20e3]
-    speed = 100 / 3.6
-    output_dir = "./results"
+    train_speed = 100 / 3.6  # [m/s]
+
+    # starting coordinate of the middle of the train. Note that the whole train should be within the geometry at all
+    # time steps.
+    train_start_coord = 40
+
+    # choose if train and track irregularities
+    use_irregularities = True
+
+    output_dir = "./res"
+    filename = "transition_demo"
 
     # create train
-    tr = train_model()
+    tr = train_model(train_start_coord)
     # create geometry
     geom = geometry(nb_sleepers)
     # materials
@@ -326,12 +343,11 @@ def main():
     # soil parameters
     soil = soil_parameters(geom["sleeper_distance"], stiffness, damping)
     # define train-track mode model
-    coupled_model = create_model(tr, geom, mat, tim, soil, speed)
+    coupled_model = create_model(tr, geom, mat, tim, soil, train_speed, use_irregularities)
     # calculate
     coupled_model.main()
     # write results
-    for sce in range(len(nb_sleepers)):
-        write_results(coupled_model, sce, output_dir, output_interval=10)
+    write_results(coupled_model, filename, output_dir, output_interval=10)
 
 
 if __name__ == "__main__":
