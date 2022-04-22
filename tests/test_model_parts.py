@@ -4,6 +4,7 @@ from rose.model.geometry import Element, Node
 
 from rose.model.model_part import *
 
+
 class TestRodElement:
     def test_initialize_rod_element(self):
         rod_element = RodElementModelPart()
@@ -84,6 +85,7 @@ class TestRodElement:
             for col in range(len(expected_damping_matrix[row])):
                 assert expected_damping_matrix[row][col] == pytest.approx(rod_element.aux_damping_matrix[row, col])
 
+
 class TestTimoshenkoBeamElementModelPart:
 
     def test_euler_stiffness_matrix_track(
@@ -160,8 +162,8 @@ class TestTimoshenkoBeamElementModelPart:
 
         # test semi rigid beam
         # alpha 1 and 2 is 2/3
-        beam.spring_stiffness1 = 6*beam.material.youngs_modulus * beam.section.sec_moment_of_inertia * beam.length_element
-        beam.spring_stiffness2 = 6*beam.material.youngs_modulus * beam.section.sec_moment_of_inertia * beam.length_element
+        beam.spring_stiffness1 = 6*beam.material.youngs_modulus * beam.section.sec_moment_of_inertia / beam.length_element
+        beam.spring_stiffness2 = 6*beam.material.youngs_modulus * beam.section.sec_moment_of_inertia / beam.length_element
         beam.set_aux_stiffness_matrix()
 
         # set expected matrix

@@ -667,7 +667,6 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         if self.timoshenko_factor != 0:
             self.aux_mass_matrix += self.__set_rotational_aux_mass_matrix()
 
-
     def __set_rigid_part_stiffness_matrix(self):
         """
         sets part of the stiffness matrix which sets bending rigidity
