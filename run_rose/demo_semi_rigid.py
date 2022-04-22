@@ -14,7 +14,7 @@ import solvers.newmark_solver as solver_c
 import itertools
 
 
-def train_model():
+def train_model(start_coord):
     # set up train
     train = {}
     # set up bogie configuration
@@ -26,7 +26,7 @@ def train_model():
     train["cart_length"] = 28  # length of the cart [m]
 
     # set up train configuration
-    train["cart_distances"] = [26.55 + 14]  # cart distances from the start of the track [m]
+    train["cart_distances"] = [start_coord]  # cart distances from the start of the track [m]
 
     # set train parameters
     train["mass_wheel"] = 1834  # mass of one wheel [kg]
@@ -51,7 +51,7 @@ def geometry(nb_sleeper, fact=1):
     geometry["n_segments"] = len(nb_sleeper)
     geometry["n_sleepers"] = [int(n / fact) for n in nb_sleeper]  # number of sleepers per segment
     geometry["sleeper_distance"] = 0.6 * fact  # distance between sleepers, equal for each segment
-    geometry["depth_soil"] = [1, 1]  # depth of the soil [m] per segment
+    geometry["depth_soil"] = [1]*len(nb_sleeper) # depth of the soil [m] per segment
 
     return geometry
 
@@ -106,7 +106,7 @@ def soil_parameters(sleeper_distance, stiffness, damping):
     return soil
 
 
-def create_model(tr, geometry, mat, time_int, soil, velocity):
+def create_model(tr, geometry, mat, time_int, soil, velocity, hinge_coord, hinge_stiffness, use_irregularities):
     # choose solver
     solver = solver_c.NewmarkSolver()
     # solver = solver_c.ZhaiSolver()
@@ -127,8 +127,7 @@ def create_model(tr, geometry, mat, time_int, soil, velocity):
     rail_model_part, sleeper_model_part, rail_pad_model_part, soil_model_parts, all_mesh = \
         combine_horizontal_tracks(all_element_model_parts, all_meshes)
 
-    # rail_model_parts, all_mesh = add_semi_rigid_hinge_at_x(rail_model_part, 69.6, 2 / 3, all_mesh)
-    rail_model_parts, all_mesh = add_semi_rigid_hinge_at_x(rail_model_part, 69.6, 2000000, all_mesh)
+    rail_model_parts, all_mesh = add_semi_rigid_hinge_at_x(rail_model_part, hinge_coord, hinge_stiffness, all_mesh)
 
     # Fixate the bottom boundary
     bottom_boundaries = [add_no_displacement_boundary_to_bottom(soil_model_part)["bottom_boundary"] for soil_model_part
@@ -189,7 +188,7 @@ def create_model(tr, geometry, mat, time_int, soil, velocity):
 
     # set up train
     train = TrainModel()
-    train.use_irregularities = True
+    train.use_irregularities = use_irregularities
     train.time = time
     train.velocities = velocities
 
@@ -258,7 +257,6 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
         os.makedirs(output_dir)
 
     # collect results
-
     rail_nodes = []
     rail_elements = []
     for i in range(4):
@@ -272,7 +270,6 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
     vertical_force_rail = np.array(
         [element.force[0::output_interval, 1] for element in rail_elements])
     coords_rail = np.array([node.coordinates[0] for node in rail_nodes])
-
 
     vertical_displacements_rail_pad = np.array(
         [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[4].nodes])
@@ -326,19 +323,27 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
 
 
 def main():
-    nb_sleepers = [100, 100]
-    stiffness = [158e6, 180e6]
-    damping = [30e3, 20e3]
 
-    nb_sleepers = [200]
-    stiffness = [158e6]
-    damping = [30e3]
+    nb_sleepers = [200]  # number of sleepers per segment
+    stiffness = [158e6]  # stiffness per segment
+    damping = [30e3]  # damping per segment
+    hinge_coord = 69.6  # x-coordinate of the hinge, should be a multiple of the sleeper distance i.e. 0.6 m
+    hinge_stiffness = 2000000  # stiffness of the hinge
 
-    speed = 100 / 3.6
+    train_speed = 100 / 3.6  # [m/s]
+
+    # starting coordinate of the middle of the train. Note that the whole train should be within the geometry at all
+    # time steps.
+    train_start_coord = 40
+
+    # choose if train and track irregularities
+    use_irregularities = True
+
     output_dir = "./res"
+    filename = "hinge_demo"
 
     # create train
-    tr = train_model()
+    tr = train_model(train_start_coord)
     # create geometry
     geom = geometry(nb_sleepers)
     # materials
@@ -348,12 +353,11 @@ def main():
     # soil parameters
     soil = soil_parameters(geom["sleeper_distance"], stiffness, damping)
     # define train-track mode model
-    coupled_model = create_model(tr, geom, mat, tim, soil, speed)
+    coupled_model = create_model(tr, geom, mat, tim, soil, train_speed, hinge_coord, hinge_stiffness, use_irregularities)
     # calculate
     coupled_model.main()
     # write results
-    for sce in range(len(nb_sleepers)):
-        write_results(coupled_model, sce, output_dir, output_interval=10)
+    write_results(coupled_model, filename, output_dir, output_interval=10)
 
 
 if __name__ == "__main__":
