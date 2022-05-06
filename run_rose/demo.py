@@ -24,18 +24,18 @@ def train_model(train_start_coord):
     train["cart_distances"] = [train_start_coord]  # cart distances from the start of the track [m]
 
     # set train parameters
-    train["mass_wheel"] = 1834  # mass of one wheel [kg]
-    train["mass_bogie"] = 6e3  # mass of one bogie [kg]
-    train["mass_cart"] = 75.5e3  # mass of one cart  [kg]
+    train["mass_wheel"] = 1834/2  # mass of one wheel [kg]
+    train["mass_bogie"] = 6e3/2  # mass of one bogie [kg]
+    train["mass_cart"] = 75.5e3/2  # mass of one cart  [kg]
 
-    train["inertia_bogie"] = 0.31e3  # mass inertia of one bogie   [kg.m2]
-    train["inertia_cart"] = 128.8e3  # mass inertia of one cart   [kg.m2]
+    train["inertia_bogie"] = 0.31e3/2  # mass inertia of one bogie   [kg.m2]
+    train["inertia_cart"] = 128.8e3/2  # mass inertia of one cart   [kg.m2]
 
-    train["prim_stiffness"] = 4800e3  # primary suspension: stiffness between wheels and bogie  [N/m]
-    train["sec_stiffness"] = 2708e3  # secondary suspension: stiffness between bogies and cart  [N/m]
+    train["prim_stiffness"] = 4800e3/2  # primary suspension: stiffness between wheels and bogie  [N/m]
+    train["sec_stiffness"] = 2708e3/2  # secondary suspension: stiffness between bogies and cart  [N/m]
 
-    train["prim_damping"] = 0.25e3  # primary suspension: damping between wheels and bogie  [N.s/m]
-    train["sec_damping"] = 64e3  # secondary suspension: damping between bogies and cart  [N.s/m]
+    train["prim_damping"] = 0.25e3/2  # primary suspension: damping between wheels and bogie  [N.s/m]
+    train["sec_damping"] = 64e3/2  # secondary suspension: damping between bogies and cart  [N.s/m]
 
     return train
 
@@ -58,7 +58,7 @@ def materials():
     material["poisson_beam"] = 0.0  # poison ration rail
     material["inertia_beam"] = 2.24E-05  # inertia of the rail
     material["rho"] = 7860  # density of the rail
-    material["rail_area"] = 69.6e-2  # area of the rail
+    material["rail_area"] = 69.6e-4  # area of the rail
     material["shear_factor_rail"] = 0  # Timoshenko shear factor
 
     # Rayleigh damping system
