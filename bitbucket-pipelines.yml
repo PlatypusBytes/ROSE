@@ -28,7 +28,7 @@ pipelines:
           - conda
           - pip
         script: # Modify the commands below to build your repository.
-          - conda env update -n rose --file env_rose.yml
+          - conda env update -n rose --file env_rose.yml --force-reinstall
     - parallel:
         - step: # Run tests
             name: Run tests and codecoverage.
