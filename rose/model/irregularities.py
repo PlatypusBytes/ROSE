@@ -2,10 +2,14 @@ import numpy as np
 import matplotlib.pylab as plt
 # from SignalProcessing import signal_tools
 
+# set seed for random generator for reproducibility
+seed = 99
+random_generator = np.random.default_rng(seed)
+
 
 class RailIrregularities:
     def __init__(self, x: np.ndarray,
-                 f_min: float = 2, f_max: float = 500, N: int = 2000, Av: float = 0.000003365, omega_c: float = 0.8242):
+                 f_min: float = 2, f_max: float = 500, N: int = 2000, Av: float = 0.00003365, omega_c: float = 0.8242):
         """
         Creates rail unevenness following :cite: `zhang_2001`.
 
@@ -37,7 +41,7 @@ class RailIrregularities:
         # for each frequency increment
         for n in range(N):
             omega_n = omega_min + delta_omega * n
-            phi = np.random.uniform(0, 2 * np.pi)
+            phi = random_generator.uniform(0, 2 * np.pi)
             self.irregularities += np.sqrt(4 * self.spectral(omega_n) * delta_omega) * np.cos(omega_n * x - phi)
 
         # # compute spectrum
