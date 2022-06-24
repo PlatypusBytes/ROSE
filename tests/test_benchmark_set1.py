@@ -111,7 +111,7 @@ class TestBenchmarkSet1:
 
 
         # set solver
-        solver = NewmarkSolver()
+        solver = NewmarkExplicit()
 
         # populate global system
         global_system = GlobalSystem()
@@ -205,7 +205,7 @@ class TestBenchmarkSet1:
         model_parts = [beam, foundation1, foundation2, load]
 
         # set solver
-        solver = NewmarkSolver()
+        solver = NewmarkExplicit()
 
         # populate global system
         global_system = GlobalSystem()
@@ -371,7 +371,7 @@ class TestBenchmarkSet1:
         no_disp_boundary_condition.nodes = [nodes_beam[1]]
 
         # set solver
-        solver = NewmarkSolver()
+        solver = NewmarkExplicit()
 
         # populate global system
         global_system = GlobalSystem()
@@ -463,7 +463,7 @@ class TestBenchmarkSet1:
         model_parts = [beam, foundation1, load]
 
         # set solver
-        solver = NewmarkSolver()
+        solver = NewmarkExplicit()
 
         # populate global system
         global_system = GlobalSystem()
@@ -583,7 +583,7 @@ class TestBenchmarkSet1:
         soil.damping = 0
 
         # set solver
-        solver = NewmarkSolver()
+        solver = NewmarkExplicit()
 
         # populate global system
         global_system = GlobalSystem()

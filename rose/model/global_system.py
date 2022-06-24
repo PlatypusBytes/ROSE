@@ -3,7 +3,7 @@ from rose.model.boundary_conditions import LoadCondition
 from rose.model.geometry import Mesh
 from rose.model.exceptions import *
 
-from solvers.newmark_solver import NewmarkSolver
+from solvers.newmark_solver import NewmarkExplicit
 from solvers.static_solver import StaticSolver
 from solvers.zhai_solver import ZhaiSolver
 from solvers.base_solver import Solver
@@ -511,7 +511,7 @@ class GlobalSystem:
             self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
 
         # run_stages with Newmark solver if required
-        if isinstance(self.solver, NewmarkSolver):
+        if isinstance(self.solver, NewmarkExplicit):
             self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
 
         # run_stages with Static solver if required
