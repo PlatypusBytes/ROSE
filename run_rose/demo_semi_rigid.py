@@ -1,48 +1,10 @@
 import os
 import pickle
 # import ROSE packages
-import numpy as np
-
-from run_rose.read_wolf import read_wolf
 from rose.model.model_part import Material, Section
-from rose.model.train_model import *
 from rose.model.train_track_interaction import *
-
+from rose.pre_process.default_trains import TrainType, set_train
 import solvers.newmark_solver as solver_c
-# import rose.model.solver as solver_c
-
-import itertools
-
-
-def train_model(start_coord):
-    # set up train
-    train = {}
-    # set up bogie configuration
-    train["wheel_distances"] = [-1.25, 1.25]  # wheel distances from the centre of the bogie [m]
-    train["bogie_length"] = 2  # length of the bogie [m]
-
-    # set up cart configuration
-    train["bogie_distances"] = [-10, 10]  # bogie distances from the centre of the cart [m]
-    train["cart_length"] = 28  # length of the cart [m]
-
-    # set up train configuration
-    train["cart_distances"] = [start_coord]  # cart distances from the start of the track [m]
-
-    # set train parameters
-    train["mass_wheel"] = 1834/2  # mass of one wheel [kg]
-    train["mass_bogie"] = 6e3/2  # mass of one bogie [kg]
-    train["mass_cart"] = 75.5e3/2  # mass of one cart  [kg]
-
-    train["inertia_bogie"] = 0.31e3/2  # mass inertia of one bogie   [kg.m2]
-    train["inertia_cart"] = 128.8e3/2  # mass inertia of one cart   [kg.m2]
-
-    train["prim_stiffness"] = 4800e3/2  # primary suspension: stiffness between wheels and bogie  [N/m]
-    train["sec_stiffness"] = 2708e3/2  # secondary suspension: stiffness between bogies and cart  [N/m]
-
-    train["prim_damping"] = 0.25e3/2  # primary suspension: damping between wheels and bogie  [N.s/m]
-    train["sec_damping"] = 64e3/2  # secondary suspension: damping between bogies and cart  [N.s/m]
-
-    return train
 
 
 def geometry(nb_sleeper, fact=1):
@@ -106,9 +68,9 @@ def soil_parameters(sleeper_distance, stiffness, damping):
     return soil
 
 
-def create_model(tr, geometry, mat, time_int, soil, velocity, hinge_coord, hinge_stiffness, use_irregularities):
+def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity, hinge_coord, hinge_stiffness, use_irregularities):
     # choose solver
-    solver = solver_c.NewmarkSolver()
+    solver = solver_c.NewmarkExplicit()
     # solver = solver_c.ZhaiSolver()
 
     all_element_model_parts = []
@@ -192,31 +154,8 @@ def create_model(tr, geometry, mat, time_int, soil, velocity, hinge_coord, hinge
     train.time = time
     train.velocities = velocities
 
-    # set up carts
-    train.cart_distances = tr["cart_distances"]
-    train.carts = [Cart() for idx in range(len(tr["cart_distances"]))]
-    for cart in train.carts:
-        cart.bogie_distances = tr["bogie_distances"]
-        cart.inertia = tr["inertia_cart"]
-        cart.mass = tr["mass_cart"]
-        cart.stiffness = tr["sec_stiffness"]
-        cart.damping = tr["sec_damping"]
-        cart.length = tr["cart_length"]
-
-        # setup bogies per cart
-        cart.bogies = [Bogie() for idx in range(len(tr["bogie_distances"]))]
-        for bogie in cart.bogies:
-            bogie.wheel_distances = tr["wheel_distances"]
-            bogie.mass = tr["mass_bogie"]
-            bogie.inertia = tr["inertia_bogie"]
-            bogie.stiffness = tr["prim_stiffness"]
-            bogie.damping = tr["prim_damping"]
-            bogie.length = tr["bogie_length"]
-
-            # setup wheels per bogie
-            bogie.wheels = [Wheel() for idx in range(len(tr["wheel_distances"]))]
-            for wheel in bogie.wheels:
-                wheel.mass = tr["mass_wheel"]
+    # create train
+    train = set_train(time, velocities, train_start_coord, train_type)
 
     # setup coupled train track system
     coupled_model = CoupledTrainTrack()
@@ -339,11 +278,12 @@ def main():
     # choose if train and track irregularities
     use_irregularities = True
 
+    # Trains
+    train_type = TrainType.DOUBLEDEKKER
+
     output_dir = "./res"
     filename = "hinge_demo"
 
-    # create train
-    tr = train_model(train_start_coord)
     # create geometry
     geom = geometry(nb_sleepers)
     # materials
@@ -353,7 +293,7 @@ def main():
     # soil parameters
     soil = soil_parameters(geom["sleeper_distance"], stiffness, damping)
     # define train-track mode model
-    coupled_model = create_model(tr, geom, mat, tim, soil, train_speed, hinge_coord, hinge_stiffness, use_irregularities)
+    coupled_model = create_model(train_type, train_start_coord, geom, mat, tim, soil, train_speed, hinge_coord, hinge_stiffness, use_irregularities)
     # calculate
     coupled_model.main()
     # write results
@@ -361,7 +301,4 @@ def main():
 
 
 if __name__ == "__main__":
-    import cProfile
-
-    cProfile.run('main()','profiler')
-    # main()
+    main()

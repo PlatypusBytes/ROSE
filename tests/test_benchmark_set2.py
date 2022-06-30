@@ -87,7 +87,7 @@ class TestBenchmarkSet2:
         model_parts = [rod, foundation1, foundation2, load]
 
         # set solver
-        solver = NewmarkSolver()
+        solver = NewmarkExplicit()
 
         # populate global system
         global_system = GlobalSystem()
@@ -200,7 +200,7 @@ class TestBenchmarkSet2:
         model_parts = [beam, foundation1, foundation2, load]
 
         # set solver
-        solver = NewmarkSolver()
+        solver = NewmarkExplicit()
 
         # populate global system
         global_system = GlobalSystem()
@@ -327,7 +327,7 @@ class TestBenchmarkSet2:
         model_parts = [beam, foundation1, foundation2, load]
 
         # set solver
-        solver = NewmarkSolver()
+        solver = NewmarkExplicit()
         # solver = ZhaiSolver()
 
         # populate global system
@@ -448,7 +448,7 @@ class TestBenchmarkSet2:
         model_parts = [beam, foundation1, foundation2, load]
 
         # set solver
-        solver = NewmarkSolver()
+        solver = NewmarkExplicit()
 
         # populate global system
         global_system = GlobalSystem()
@@ -634,7 +634,7 @@ class TestBenchmarkSet2:
         side_boundaries.nodes = [rail_model_part.nodes[0], rail_model_part.nodes[-1]]
 
         # set solver
-        solver = NewmarkSolver()
+        solver = NewmarkExplicit()
         # solver = ZhaiSolver()
 
         # populate global system
@@ -791,7 +791,7 @@ class TestBenchmarkSet2:
         side_boundaries.nodes = [rail_model_part.nodes[0], rail_model_part.nodes[-1]]
 
         # set solver
-        solver = NewmarkSolver()
+        solver = NewmarkExplicit()
         # solver = ZhaiSolver()
 
         # populate global system
@@ -891,7 +891,7 @@ class TestBenchmarkSet2:
         # coupled_model.wheel_loads = None
 
     @pytest.mark.parametrize("solver, n_timesteps, filename_expected",
-                             [(NewmarkSolver(), 2000, "train_on_beam_newmark.json"),
+                             [(NewmarkExplicit(), 2000, "train_on_beam_newmark.json"),
                               (ZhaiSolver(), 20000, "train_on_beam_zhai.json")
                               ])
     def test_train_on_beam(self, solver, n_timesteps, filename_expected):
@@ -1189,7 +1189,7 @@ class TestBenchmarkSet2:
         side_boundaries.nodes = [rail_model_parts[0].nodes[0], rail_model_parts[-1].nodes[-1]]
 
         # set solver
-        solver = NewmarkSolver()
+        solver = NewmarkExplicit()
 
         # populate global system
         global_system = GlobalSystem()
