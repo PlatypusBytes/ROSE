@@ -239,24 +239,31 @@ class GlobalSystem:
         :return:
         """
 
-        i = 0  # Negative counter which keeps track of the amount of removed indices
+        j = 0
         for node in self.mesh.nodes:
-            for idx, index_dof in enumerate(node.index_dof):
 
-                # if degree of freedom index is removed from the global system, also remove the index from the node
-                if index_dof in removed_indices:
-                    i -= 1
-                    node.index_dof[idx] = None
+            # if node does not have a dof, continue
+            if all(node.index_dof == None):
+                for idx in range(len(node.index_dof)):
                     node.set_dof(idx, False)
-                elif index_dof is None:
-                    node.set_dof(idx, False)
+            else:
 
-                # if degree of freedom index is still present, reset the index value
-                else:
-                    node.index_dof[idx] = index_dof + i
+                for idx, index_dof in enumerate(node.index_dof):
+
+                    # if degree of freedom index is removed from the global system, also remove the index from the node
+                    if index_dof in removed_indices:
+                        node.index_dof[idx] = None
+                        node.set_dof(idx, False)
+                    elif index_dof is None:
+                        node.set_dof(idx, False)
+
+                    # if degree of freedom index is still present, reset the index value
+                    else:
+                        node.index_dof[idx] = j
+                        j += 1
 
         # recalculate the total amount of active degrees of freedom in the whole system
-        self.total_n_dof = self.total_n_dof + i
+        self.total_n_dof = j
 
     def __get_constrained_indices(self):
         """
