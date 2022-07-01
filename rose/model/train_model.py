@@ -777,7 +777,11 @@ class Cart(ElementModelPart):
         # calculate static load on the bogie itself
         cart_dofs = self.nodes[0].index_dof
 
-        self.total_static_load = static_force_vector[cart_dofs[1],0] + external_load
+        if not all(cart_dofs == None):
+            self.total_static_load = static_force_vector[cart_dofs[1],0] + external_load
+        else:
+            self.total_static_load = external_load
+
 
         # firstly calculate static loads on bogies
         # distribute the total static load on the cart over the amount of connected bogies
