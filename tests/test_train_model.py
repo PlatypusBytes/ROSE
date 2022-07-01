@@ -7,7 +7,7 @@ from solvers.zhai_solver import ZhaiSolver
 
 class TestTrainModel:
 
-    def test_calculate_total_static_load(self):
+    def test_calculate_total_static_load_bogie_and_wheel(self):
         """
         Tests the calculation of the total static load of a train which consists of 1 bogie and 1 wheel
         :return:
@@ -41,11 +41,12 @@ class TestTrainModel:
         # initialise train
         train.calculate_distances()
         train.set_mesh()
+        train.get_train_parts()
         train.initialise_ndof()
 
         # set static force vector
-        train.static_force_vector = np.array([0,0,-mass_bogie*9.81,0,-mass_wheel*9.81])[:,None]
-        train.global_force_vector = np.array([0,0,-mass_bogie*9.81,0,-mass_wheel*9.81])[:,None]
+        train.static_force_vector = np.array([0, 0, -mass_bogie*9.81, 0, -mass_wheel*9.81])[:, None]
+        train.global_force_vector = np.array([0, 0, -mass_bogie*9.81, 0, -mass_wheel*9.81])[:, None]
 
         # calculate total static load
         train.calculate_total_static_load(0)
@@ -60,6 +61,81 @@ class TestTrainModel:
 
         assert pytest.approx(calculated_bogie_load) == expected_bogie_load
         assert pytest.approx(calculated_wheel_load) == expected_wheel_load
+
+    def test_calculate_total_static_load_shared_bogie(self):
+        """
+        Tests the calculation of the total static load of a train which consists of 1 bogie and 1 wheel
+        :return:
+        """
+        # Setup parameters train
+        mass_wheel = 5750
+        mass_bogie = 3000
+        mass_cart = 2000
+        velocity = 100 / 3.6
+
+        # create carts and bogies
+        carts = [Cart(), Cart()]
+        bogies = [Bogie(), Bogie(), Bogie()]
+
+        train = TrainModel()
+        train.time = np.array([0,1])
+        train.velocities = np.ones(len(train.time)) * velocity
+
+        # set up carts
+        train.cart_distances = [0,10]
+        train.carts = carts
+
+        # set up bogies
+        train.carts[0].bogies = [bogies[0], bogies[1]]
+        train.carts[1].bogies = [bogies[1], bogies[2]]
+
+        for cart in train.carts:
+            cart.bogie_distances = [-5,5]
+            cart.mass = mass_cart
+            cart.length = 10
+
+            # setup bogies per cart
+            for bogie in cart.bogies:
+                bogie.wheel_distances = [-1.5,1.5]
+                bogie.mass = mass_bogie
+                bogie.length = 3
+
+                # setup wheels per bogie
+                bogie.wheels = [Wheel(), Wheel()]
+                for wheel in bogie.wheels:
+                    wheel.mass = mass_wheel
+
+        # initialise train
+        train.calculate_distances()
+        train.set_mesh()
+        train.get_train_parts()
+        train.initialise_ndof()
+
+        # set static force vector
+        train.initialize_force_vector()
+
+        # calculate total static load
+        train.calculate_total_static_load(0)
+
+        # calculate expected static loads in the carts, bogies and wheels
+        expected_static_load_cart = - mass_cart * 9.81
+        expected_static_load_end_bogies = 0.5*expected_static_load_cart - mass_bogie*9.81
+        expected_static_load_mid_bogie = expected_static_load_cart - mass_bogie*9.81
+
+        expected_static_load_end_wheels = expected_static_load_end_bogies / 2 - mass_wheel * 9.81
+        expected_static_load_mid_wheels = expected_static_load_mid_bogie / 2 - mass_wheel * 9.81
+
+        # get the end wheels and the middle wheels
+        end_wheels = np.array(train.wheels)[[0,1,4,5]]
+        mid_wheels = np.array(train.wheels)[[2,3]]
+
+        # assert static load on end wheels
+        for wheel in end_wheels:
+            assert pytest.approx(wheel.total_static_load) == expected_static_load_end_wheels
+
+        # assert static load on mid wheels
+        for wheel in mid_wheels:
+            assert pytest.approx(wheel.total_static_load) == expected_static_load_mid_wheels
 
     @pytest.mark.workinprogress
     def test_set_aux_mass_matrix_cart(self, expected_cart_mass_matrix, set_up_cart):

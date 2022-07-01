@@ -57,7 +57,7 @@ class Wheel(ElementModelPart):
 
         wheel_dofs = self.nodes[0].index_dof
 
-        static_force_vector[wheel_dofs[1],0] += -self.mass * g
+        static_force_vector[wheel_dofs[1],0] = -self.mass * g
 
     def set_static_force_vector(self):
         """
@@ -308,7 +308,7 @@ class Bogie(ElementModelPart):
         # get degrees of freedom of the bogie
         bogie_dofs = self.nodes[0].index_dof
 
-        static_force_vector[bogie_dofs[1],0] += -self.mass * g
+        static_force_vector[bogie_dofs[1],0] = -self.mass * g
 
         # set connected bogies part of the static force vector
         for i in range(len(self.wheels)):
@@ -331,7 +331,11 @@ class Bogie(ElementModelPart):
         self.total_static_load = self.total_static_load + external_load
 
     def distribute_static_load(self):
+        """
         # distribute the total static load on the bogie over the amount of connected wheels
+        :return:
+        """
+
         distributed_load = self.total_static_load / len(self.wheels)
         for wheel in self.wheels:
             wheel.calculate_total_static_load(distributed_load)
@@ -538,7 +542,7 @@ class Cart(ElementModelPart):
         cart_dofs = self.nodes[0].index_dof
 
         # add static force of cart to the static force vector
-        static_force_vector[cart_dofs[1],0] += -self.mass * g
+        static_force_vector[cart_dofs[1],0] = -self.mass * g
 
         # fill static force vector for all bogies connected to the cart
         for i in range(len(self.bogies)):
@@ -565,10 +569,6 @@ class Cart(ElementModelPart):
         distributed_load = self.total_static_load / len(self.bogies)
         for bogie in self.bogies:
             bogie.calculate_total_static_load(distributed_load, static_force_vector)
-
-        #secondly distribute loads on wheels
-        for bogie in self.bogies:
-            bogie.distribute_static_load()
 
 
 class TrainModel(GlobalSystem):
@@ -745,11 +745,15 @@ class TrainModel(GlobalSystem):
         # divide static load among carts
         distributed_load = self.total_static_load / len(self.carts)
 
-        # add static load on all the carts
+        # firstly add static load on all the carts and bogies
         # todo note that static force vector is not used, instead first time index of global force vector is used for the
         # static force, because the obsolete indices are not reduced from the static force vector
         for cart in self.carts:
             cart.calculate_total_static_load(distributed_load, self.global_force_vector[:,0,None])
+
+        # secondly distribute loads on wheels
+        for bogie in self.bogies:
+            bogie.distribute_static_load()
 
     def initialise_irregularities_at_wheels(self):
         """
