@@ -38,32 +38,22 @@ class Wheel(ElementModelPart):
         return True
 
     def fill_mass_matrix(self, mass_matrix):
+        """
+        Fills global mass matrix with the wheel contribution
+
+        :param mass_matrix: global mass matrix
+        :return:
+        """
         wheel_dofs = self.nodes[0].index_dof
         mass_matrix[wheel_dofs[1], wheel_dofs[1]] += self.mass
 
-    def set_aux_mass_matrix(self):
-        """
-        Sets the local auxiliary mass matrix for the wheel.
-        :return:
-        """
-        self.aux_mass_matrix = np.zeros((1, 1))
-        self.aux_mass_matrix[0] = self.mass
-
-    def set_aux_stiffness_matrix(self):
-        """
-        Sets the local auxiliary stiffness matrix for the wheel.
-        :return:
-        """
-        self.aux_stiffness_matrix = np.zeros((1, 1))
-
-    def set_aux_damping_matrix(self):
-        """
-        Sets the local auxiliary damping matrix for the wheel.
-        :return:
-        """
-        self.aux_damping_matrix = np.zeros((1, 1))
-
     def fill_static_force_vector(self, static_force_vector):
+        """
+        Fills global static force vector with the wheel contribution
+
+        :param static_force_vector: global static force vector
+        :return:
+        """
 
         wheel_dofs = self.nodes[0].index_dof
 
@@ -131,6 +121,7 @@ class Wheel(ElementModelPart):
         # add external force
         self.total_static_load = self.total_static_load + external_load
 
+
 class Bogie(ElementModelPart):
     """
     Bogie model part class. This class bases from :class:`~rose.model.model_part.ElementModelPart`. A bogie is a mass
@@ -196,8 +187,11 @@ class Bogie(ElementModelPart):
             wheel.set_mesh(mesh)
 
     def reset_mesh(self,mesh):
-
-
+        """
+        Resets mesh of the bogie and underlying wheels.
+        :param mesh: global mesh
+        :return:
+        """
         # add nodes to train mesh
         mesh.add_unique_nodes_to_mesh(self.nodes)
 
@@ -235,55 +229,44 @@ class Bogie(ElementModelPart):
         return index_dof
 
     def fill_mass_matrix(self, mass_matrix):
-        bogie_dofs = self.nodes[0].index_dof
-
-        mass_matrix[bogie_dofs[1], bogie_dofs[1]] += self.mass
-        mass_matrix[bogie_dofs[2], bogie_dofs[2]] += self.inertia
-
-        # set connected bogies part of the local stiffness matrix
-        for i in range(len(self.wheels)):
-            self.wheels[i].fill_mass_matrix(mass_matrix)
-
-    def set_aux_mass_matrix(self):
         """
-        Sets the local auxiliary mass matrix of the bogie + connected wheels.
+        Fills global mass matrix with the bogie contribution
+
+        :param mass_matrix: global mass matrix
         :return:
         """
 
-        # initialise local mass matrix
-        self.aux_mass_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
-
-        # set bogie part of the local mass matrix
-        self.aux_mass_matrix[0, 0] = self.mass
-        self.aux_mass_matrix[1, 1] = self.inertia
-
-        # set connected wheels part of the local mass matrix
-        l = 2  # local degree of freedom counter
-        for wheel in self.wheels:
-            # set mass matrix of a wheel
-            wheel.set_aux_mass_matrix()
-            n_dof_wheel = wheel.aux_mass_matrix.shape[0]
-
-            # add mass matrix of the wheels to the bogie local mass matrix
-            for j in range(n_dof_wheel):
-                for k in range(n_dof_wheel):
-                    self.aux_mass_matrix[l + j, l + k] = wheel.aux_mass_matrix[j, k]
-            l += n_dof_wheel
-
-    def fill_stiffness_matrix(self, stiffness_matrix):
-
+        # get bogie degrees off freedom
         bogie_dofs = self.nodes[0].index_dof
 
+        # adds bogie contribution
+        mass_matrix[bogie_dofs[1], bogie_dofs[1]] += self.mass
+        mass_matrix[bogie_dofs[2], bogie_dofs[2]] += self.inertia
+
+        # set connected wheels part of the mass matrix
+        for i in range(len(self.wheels)):
+            self.wheels[i].fill_mass_matrix(mass_matrix)
+
+    def fill_stiffness_matrix(self, stiffness_matrix):
+        """
+        Fills global stiffness matrix with the bogie contribution
+
+        :param stiffness_matrix: global stiffness matrix
+        :return:
+        """
+
+        # get bogie degrees off freedom
+        bogie_dofs = self.nodes[0].index_dof
+
+        # adds bogie contribution
         stiffness_matrix[bogie_dofs[1],bogie_dofs[1]] += len(self.wheels) * self.stiffness
 
+        # set connected wheels part of the stiffness matrix
         for i in range(len(self.wheels)):
 
             wheel_dofs = self.wheels[i].nodes[0].index_dof
-            # set stiffness matrix of a wheel
-            #self.wheels[i].set_aux_stiffness_matrix()
-            #n_dof_wheel = self.wheels[i].aux_stiffness_matrix.shape[0]
 
-            # add interaction between the bogie and wheels to the bogie local stiffness matrix
+            # add interaction between the bogie and wheels to the stiffness matrix
             stiffness_matrix[bogie_dofs[2], bogie_dofs[2]] += self.stiffness * self.wheel_distances[i] ** 2
 
             stiffness_matrix[bogie_dofs[1], wheel_dofs[1]] += -self.stiffness
@@ -293,53 +276,6 @@ class Bogie(ElementModelPart):
             stiffness_matrix[wheel_dofs[1], bogie_dofs[2]] += self.stiffness * self.wheel_distances[i]
 
             stiffness_matrix[wheel_dofs[1], wheel_dofs[1]] += self.stiffness
-
-
-            # add stiffness matrix of the wheels to the bogie local stiffness matrix
-
-            # self.wheels[i].fill_stiffness_matrix(stiffness_matrix)
-
-
-
-        pass
-
-    def set_aux_stiffness_matrix(self):
-        """
-        Sets the local auxiliary stiffness matrix of the bogie + connected wheels.
-        :return:
-        """
-
-        # initialise local stiffness matrix
-        self.aux_stiffness_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
-
-        # set bogie part of the local stiffness matrix
-        self.aux_stiffness_matrix[0, 0] = len(self.wheels) * self.stiffness
-
-        # set connected wheels part of the local stiffness matrix
-        l = 2  # local degree of freedom counter
-        for i in range(len(self.wheels)):
-            # set stiffness matrix of a wheel
-            self.wheels[i].set_aux_stiffness_matrix()
-            n_dof_wheel = self.wheels[i].aux_stiffness_matrix.shape[0]
-
-            # add interaction between the bogie and wheels to the bogie local stiffness matrix
-            self.aux_stiffness_matrix[1, 1] += self.stiffness * self.wheel_distances[i] ** 2
-
-            self.aux_stiffness_matrix[0, l] += -self.stiffness
-            self.aux_stiffness_matrix[l, 0] += -self.stiffness
-
-            self.aux_stiffness_matrix[1, l] += self.stiffness * self.wheel_distances[i]
-            self.aux_stiffness_matrix[l, 1] += self.stiffness * self.wheel_distances[i]
-
-            self.aux_stiffness_matrix[l, l] += self.stiffness
-
-            # add stiffness matrix of the wheels to the bogie local stiffness matrix
-            for j in range(n_dof_wheel):
-                for k in range(n_dof_wheel):
-                    self.aux_stiffness_matrix[l + j, l + k] += self.wheels[i].aux_stiffness_matrix[j, k]
-
-            l += n_dof_wheel
-
 
     def fill_damping_matrix(self, damping_matrix):
 
@@ -362,77 +298,21 @@ class Bogie(ElementModelPart):
 
             damping_matrix[wheel_dofs[1], wheel_dofs[1]] += self.damping
 
-
-    def set_aux_damping_matrix(self):
-        """
-        Sets the local auxiliary damping matrix of the bogie + connected wheels.
-        :return:
-        """
-
-        # initialise local damping matrix
-        self.aux_damping_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
-
-        # set bogie part of the local damping matrix
-        self.aux_damping_matrix[0, 0] = len(self.wheels) * self.damping
-
-        # set connected wheels part of the local damping matrix
-        l = 2  # local degree of freedom counter
-        for i in range(len(self.wheels)):
-            # set damping matrix of a wheel
-            self.wheels[i].set_aux_damping_matrix()
-            n_dof_wheel = self.wheels[i].aux_damping_matrix.shape[0]
-
-            # add interaction between the bogie and wheels to the bogie local damping matrix
-            self.aux_damping_matrix[1, 1] += self.damping * self.wheel_distances[i] ** 2
-
-            self.aux_damping_matrix[0, l] += -self.damping
-            self.aux_damping_matrix[l, 0] += -self.damping
-
-            self.aux_damping_matrix[1, l] += self.damping * self.wheel_distances[i]
-            self.aux_damping_matrix[l, 1] += self.damping * self.wheel_distances[i]
-
-            self.aux_damping_matrix[l, l] += self.damping
-
-            # add damping matrix of the wheels to the bogie local damping matrix
-            for j in range(n_dof_wheel):
-                for k in range(n_dof_wheel):
-                    self.aux_damping_matrix[l + j, l + k] += self.wheels[i].aux_damping_matrix[j, k]
-
-            l += n_dof_wheel
-
     def fill_static_force_vector(self, static_force_vector):
-
-        bogie_dofs = self.nodes[0].index_dof
-
-        static_force_vector[bogie_dofs[1],0] += -self.mass * g
-
-        # set connected bogies part of the local stiffness matrix
-        for i in range(len(self.wheels)):
-            # bogie_dofs = self.bogies[i].nodes[0].index_dof
-            self.wheels[i].fill_static_force_vector(static_force_vector)
-
-    def set_static_force_vector(self):
         """
-        Calculates the static load of the bogie and wheels and adds to the local static force vector. Static load is
+        Calculates the static load of the bogie and wheels and adds to the static force vector. Static load is
         calculated as -mass * gravity constant
         :return:
         """
 
-        # calculate static load of the bogie
-        self.static_force_vector = np.zeros((self.active_n_dof, 1))
-        self.static_force_vector[0, 0] = -self.mass * g
+        # get degrees of freedom of the bogie
+        bogie_dofs = self.nodes[0].index_dof
 
-        # set connected wheels part of the local static matrix
-        l = 2  # local degree of freedom counter
+        static_force_vector[bogie_dofs[1],0] += -self.mass * g
+
+        # set connected bogies part of the static force vector
         for i in range(len(self.wheels)):
-            # set static load vector of a wheel
-            self.wheels[i].set_static_force_vector()
-            n_dof_wheel = self.wheels[i].static_force_vector.shape[0]
-
-            # add static load vector of the wheels to the bogie static load vector
-            for j in range(n_dof_wheel):
-                self.static_force_vector[l+j, 0] += self.wheels[i].static_force_vector[j, 0]
-            l += n_dof_wheel
+            self.wheels[i].fill_static_force_vector(static_force_vector)
 
     def calculate_total_static_load(self, external_load, static_force_vector):
         """
@@ -521,6 +401,12 @@ class Cart(ElementModelPart):
             bogie.set_mesh(mesh)
 
     def reset_mesh(self, mesh):
+        """
+        Resets mesh of the cart and underlying bogies.
+
+        :param mesh: global mesh of the train
+        :return:
+        """
 
         # add nodes to train mesh
         mesh.add_unique_nodes_to_mesh(self.nodes)
@@ -557,57 +443,44 @@ class Cart(ElementModelPart):
         return index_dof
 
     def fill_mass_matrix(self,mass_matrix):
-        cart_dofs = self.nodes[0].index_dof
-
-        mass_matrix[cart_dofs[1], cart_dofs[1]] += self.mass
-        mass_matrix[cart_dofs[2], cart_dofs[2]] += self.inertia
-
-        # set connected bogies part of the local stiffness matrix
-        for i in range(len(self.bogies)):
-            self.bogies[i].fill_mass_matrix(mass_matrix)
-            # bogie_dofs = self.bogies[i].nodes[0].index_dof
-
-    def set_aux_mass_matrix(self):
         """
-        Sets the local auxiliary mass matrix of the cart + connected bogies.
+        Fills global mass matrix with cart contribution
+
+        :param mass_matrix: global mass matrix of the train
         :return:
         """
 
-        # initialise local mass matrix
-        self.aux_mass_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
+        # get degrees of freedom of the cart
+        cart_dofs = self.nodes[0].index_dof
 
-        # set cart part of the local mass matrix
-        self.aux_mass_matrix[0, 0] = self.mass
-        self.aux_mass_matrix[1, 1] = self.inertia
+        # set cart part of mass matrix
+        mass_matrix[cart_dofs[1], cart_dofs[1]] += self.mass
+        mass_matrix[cart_dofs[2], cart_dofs[2]] += self.inertia
 
-        # set connected bogies part of the local mass matrix
-        l = 2  # local degree of freedom counter
-        for bogie in self.bogies:
-            # set mass matrix of a bogie
-            bogie.set_aux_mass_matrix()
-            n_dof_bogie = bogie.aux_mass_matrix.shape[0]
-
-            # add mass matrix of the bogies to the cart local mass matrix
-            for j in range(n_dof_bogie):
-                for k in range(n_dof_bogie):
-                    self.aux_mass_matrix[l + j, l + k] += bogie.aux_mass_matrix[j, k]
-            l += n_dof_bogie
+        # set connected bogies part of the mass matrix
+        for i in range(len(self.bogies)):
+            self.bogies[i].fill_mass_matrix(mass_matrix)
 
     def fill_stiffness_matrix(self, stiffness_matrix):
+        """
+        Fills global stiffness matrix with cart contribution
 
+        :param stiffness_matrix: global stiffness matrix of the train
+        :return:
+        """
+
+        # get degrees of freedom of the cart
         cart_dofs = self.nodes[0].index_dof
 
         stiffness_matrix[cart_dofs[1], cart_dofs[1]] += len(self.bogies) * self.stiffness
 
-        # set connected bogies part of the local stiffness matrix
+        # set connected bogies part of the stiffness matrix
         for i in range(len(self.bogies)):
 
+            # get bogie degrees of freedom
             bogie_dofs = self.bogies[i].nodes[0].index_dof
-            # set stiffness matrix of a bogie
-            #self.bogies[i].set_aux_stiffness_matrix()
-            #n_dof_bogie = self.bogies[i].aux_stiffness_matrix.shape[0]
 
-            # add interaction between the cart and bogies to the cart local stiffness matrix
+            # add interaction between the cart and bogies to the stiffness matrix
             stiffness_matrix[cart_dofs[2], cart_dofs[2]] += self.stiffness * self.bogie_distances[i] ** 2
 
             stiffness_matrix[cart_dofs[1], bogie_dofs[1]] += -self.stiffness
@@ -618,71 +491,28 @@ class Cart(ElementModelPart):
 
             stiffness_matrix[bogie_dofs[1], bogie_dofs[1]] += self.stiffness
 
+            # fill stiffness matrix with bogie contribution
             self.bogies[i].fill_stiffness_matrix(stiffness_matrix)
 
-            # # add stiffness matrix of the bogies to the cart local stiffness matrix
-            # for j in range(n_dof_bogie):
-            #     for k in range(n_dof_bogie):
-            #         stiffness_matrix[l + j, l + k] += self.bogies[i].aux_stiffness_matrix[j, k]
-            # l += n_dof_bogie
-
-        # all_bogies_dofs = []
-        # for bogie in self.bogies:
-        #     bogie_dofs = bogie.nodes[0].index_dof
-        #     all_bogies_dofs.append(bogie_dofs)
-        #     all_wheel_dofs = []
-        #     for wheel in bogie.wheels:
-        #         wheel_dofs = wheel.nodes[0].index_dof
-        #         all_wheel_dofs.append(wheel_dofs)
-
-    def set_aux_stiffness_matrix(self):
+    def fill_damping_matrix(self, damping_matrix):
         """
-        Sets the local auxiliary stiffness matrix of the cart + connected bogies.
+        Fills global damping matrix with cart contribution
+
+        :param damping_matrix: global damping matrix of the train
         :return:
         """
 
-        # initialise local stiffness matrix
-        self.aux_stiffness_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
-
-        # set cart part of the local stiffness matrix
-        self.aux_stiffness_matrix[0, 0] = len(self.bogies) * self.stiffness
-
-        # set connected bogies part of the local stiffness matrix
-        l = 2  # local degree of freedom counter
-        for i in range(len(self.bogies)):
-            # set stiffness matrix of a bogie
-            self.bogies[i].set_aux_stiffness_matrix()
-            n_dof_bogie = self.bogies[i].aux_stiffness_matrix.shape[0]
-
-            # add interaction between the cart and bogies to the cart local stiffness matrix
-            self.aux_stiffness_matrix[1, 1] += self.stiffness * self.bogie_distances[i] ** 2
-
-            self.aux_stiffness_matrix[0, l] += -self.stiffness
-            self.aux_stiffness_matrix[l, 0] += -self.stiffness
-
-            self.aux_stiffness_matrix[1, l] += self.stiffness * self.bogie_distances[i]
-            self.aux_stiffness_matrix[l, 1] += self.stiffness * self.bogie_distances[i]
-
-            self.aux_stiffness_matrix[l, l] += self.stiffness
-
-            # add stiffness matrix of the bogies to the cart local stiffness matrix
-            for j in range(n_dof_bogie):
-                for k in range(n_dof_bogie):
-                    self.aux_stiffness_matrix[l + j, l + k] += self.bogies[i].aux_stiffness_matrix[j, k]
-            l += n_dof_bogie
-
-
-    def fill_damping_matrix(self, damping_matrix):
-
+        # get cart degrees of freedom
         cart_dofs = self.nodes[0].index_dof
 
+        # set cart part of damping matrix
         damping_matrix[cart_dofs[1], cart_dofs[1]] += len(self.bogies) * self.damping
 
-        # set connected bogies part of the local stiffness matrix
+        # set connected bogies part of the local damping matrix
         for i in range(len(self.bogies)):
             bogie_dofs = self.bogies[i].nodes[0].index_dof
 
-            # add interaction between the cart and bogies to the cart local damping matrix
+            # add interaction between the cart and bogies to the damping matrix
             damping_matrix[cart_dofs[2], cart_dofs[2]] += self.damping * self.bogie_distances[i] ** 2
 
             damping_matrix[cart_dofs[1], bogie_dofs[1]] += -self.damping
@@ -693,77 +523,26 @@ class Cart(ElementModelPart):
 
             damping_matrix[bogie_dofs[1], bogie_dofs[1]] += self.damping
 
+            # fill damping matrix with bogie contribution
             self.bogies[i].fill_damping_matrix(damping_matrix)
 
-
-    def set_aux_damping_matrix(self):
+    def fill_static_force_vector(self, static_force_vector):
         """
-        Sets the local auxiliary damping matrix of the cart + connected bogies.
+        Fills global static force vector with static force in carts
+
+        :param static_force_vector: global vector of the static force in the train model
         :return:
         """
 
-        # initialise local damping matrix
-        self.aux_damping_matrix = np.zeros((self.active_n_dof, self.active_n_dof))
-
-        # set cart part of the local damping matrix
-        self.aux_damping_matrix[0, 0] = len(self.bogies) * self.damping
-
-        # set connected bogies part of the local damping matrix
-        l = 2  # local degree of freedom counter
-        for i in range(len(self.bogies)):
-            # set damping matrix of a bogie
-            self.bogies[i].set_aux_damping_matrix()
-            n_dof_bogie = self.bogies[i].aux_damping_matrix.shape[0]
-
-            # add interaction between the cart and bogies to the cart local damping matrix
-            self.aux_damping_matrix[1, 1] += self.damping * self.bogie_distances[i] ** 2
-
-            self.aux_damping_matrix[0, l] += -self.damping
-            self.aux_damping_matrix[l, 0] += -self.damping
-
-            self.aux_damping_matrix[1, l] += self.damping * self.bogie_distances[i]
-            self.aux_damping_matrix[l, 1] += self.damping * self.bogie_distances[i]
-
-            self.aux_damping_matrix[l, l] += self.damping
-
-            # add damping matrix of the bogies to the cart local damping matrix
-            for j in range(n_dof_bogie):
-                for k in range(n_dof_bogie):
-                    self.aux_damping_matrix[l + j, l + k] += self.bogies[i].aux_damping_matrix[j, k]
-            l += n_dof_bogie
-
-    def fill_static_force_vector(self, static_force_vector):
-
+        # get degrees of freedom of current cart
         cart_dofs = self.nodes[0].index_dof
 
+        # add static force of cart to the static force vector
         static_force_vector[cart_dofs[1],0] += -self.mass * g
 
-        # set connected bogies part of the local stiffness matrix
+        # fill static force vector for all bogies connected to the cart
         for i in range(len(self.bogies)):
             self.bogies[i].fill_static_force_vector(static_force_vector)
-
-    def set_static_force_vector(self):
-        """
-        Calculates the static load of the cart and bogies and adds to the local static force vector. Static load is
-        calculated as -mass * gravity constant
-        :return:
-        """
-
-        # calculate static load of the cart
-        self.static_force_vector = np.zeros((self.active_n_dof, 1))
-        self.static_force_vector[0, 0] = -self.mass * g
-
-        # set connected bogies part of the local static matrix
-        l = 2  # local degree of freedom counter
-        for i in range(len(self.bogies)):
-            # set static load vector of a bogie
-            self.bogies[i].set_static_force_vector()
-            n_dof_bogie = self.bogies[i].static_force_vector.shape[0]
-
-            # add static load vector of the bogies to the cart static load vector
-            for j in range(n_dof_bogie):
-                self.static_force_vector[l + j, 0] += self.bogies[i].static_force_vector[j, 0]
-            l += n_dof_bogie
 
     def calculate_total_static_load(self, external_load, static_force_vector):
         """
@@ -780,7 +559,6 @@ class Cart(ElementModelPart):
             self.total_static_load = static_force_vector[cart_dofs[1],0] + external_load
         else:
             self.total_static_load = external_load
-
 
         # firstly calculate static loads on bogies
         # distribute the total static load on the cart over the amount of connected bogies
@@ -823,6 +601,7 @@ class TrainModel(GlobalSystem):
         self.total_static_load: float = None
 
         self.contact_dofs: List = None
+        self.nodes = None
 
         self.__bogies = None
         self.__wheels = None
@@ -863,18 +642,20 @@ class TrainModel(GlobalSystem):
         bogie_nodes = []
         for cart in self.carts:
             for bogie in cart.bogies:
+                # only add bogie if there is no bogie at the same location
                 if bogie.nodes[0] not in bogie_nodes:
                     bogie_nodes.append(bogie.nodes[0])
                     self.__bogies.append(bogie)
-        a=1+1
-            # self.__bogies.extend(cart.bogies)
 
     def __get_wheels(self):
         self.__wheels = []
-
+        wheel_nodes = []
         for bogie in self.__bogies:
-
-            self.__wheels.extend(bogie.wheels)
+            for wheel in bogie.wheels:
+                # only add wheel if there is no wheel at the same location
+                if wheel.nodes[0] not in wheel_nodes:
+                    wheel_nodes.append(wheel.nodes[0])
+                    self.__wheels.append(wheel)
 
     def get_train_parts(self):
         """
@@ -912,23 +693,6 @@ class TrainModel(GlobalSystem):
         for cart in self.carts:
             cart.fill_mass_matrix(self.global_mass_matrix)
 
-        # # initialise global mass matrix
-        # self.global_mass_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
-        #
-        # # set local mass matrices for each cart and add to global mass matrix
-        # l = 0  # global degree of freedom counter
-        # for cart in self.carts:
-        #     # set local mass matrix of cart
-        #     cart.set_aux_mass_matrix()
-        #
-        #     # add local mass matrix of cart to global mass matrix of train
-        #     n_dof_cart = cart.aux_mass_matrix.shape[0]
-        #     for j in range(n_dof_cart):
-        #         for k in range(n_dof_cart):
-        #             self.global_mass_matrix[l + j, l + k] += cart.aux_mass_matrix[j, k]
-        #     l += n_dof_cart
-
-
     def set_global_stiffness_matrix(self):
         """
         Set global stiffness matrix of train
@@ -941,47 +705,6 @@ class TrainModel(GlobalSystem):
         # set local stiffness matrices for each cart and add to global stiffness matrix
         for cart in self.carts:
             cart.fill_stiffness_matrix(self.global_stiffness_matrix)
-
-        # import matplotlib.pyplot as plt
-        #
-        # plt.spy(self.global_stiffness_matrix)
-        # plt.gca().set_xticks(np.arange(-0.5,20.5,1))
-        # plt.gca().set_yticks(np.arange(-0.5, 20.5, 1))
-        # plt.grid()
-        # plt.show()
-
-        a=1+1
-            # set local stiffness matrix of cart
-            # cart.set_aux_stiffness_matrix()
-            #
-            # # add local stiffness matrix of cart to global stiffness matrix of train
-            # n_dof_cart = cart.aux_stiffness_matrix.shape[0]
-            # for j in range(n_dof_cart):
-            #     for k in range(n_dof_cart):
-            #         self.global_stiffness_matrix[l + j, l + k] += cart.aux_stiffness_matrix[j, k]
-            # l += n_dof_cart
-
-    # def set_global_stiffness_matrix(self):
-    #     """
-    #     Set global stiffness matrix of train
-    #     :return:
-    #     """
-    #
-    #     # initialise global stiffness matrix
-    #     self.global_stiffness_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
-    #
-    #     # set local stiffness matrices for each cart and add to global stiffness matrix
-    #     l = 0  # global degree of freedom counter
-    #     for cart in self.carts:
-    #         # set local stiffness matrix of cart
-    #         cart.set_aux_stiffness_matrix()
-    #
-    #         # add local stiffness matrix of cart to global stiffness matrix of train
-    #         n_dof_cart = cart.aux_stiffness_matrix.shape[0]
-    #         for j in range(n_dof_cart):
-    #             for k in range(n_dof_cart):
-    #                 self.global_stiffness_matrix[l + j, l + k] += cart.aux_stiffness_matrix[j, k]
-    #         l += n_dof_cart
 
     def set_global_damping_matrix(self):
         """
@@ -996,19 +719,6 @@ class TrainModel(GlobalSystem):
         for cart in self.carts:
             cart.fill_damping_matrix(self.global_damping_matrix)
 
-        # # set local damping matrices for each cart and add to global damping matrix
-        # l = 0  # global degree of freedom counter
-        # for cart in self.carts:
-        #     # set local damping matrix of cart
-        #     cart.set_aux_damping_matrix()
-        #
-        #     # add local damping matrix of cart to global damping matrix of train
-        #     n_dof_cart = cart.aux_damping_matrix.shape[0]
-        #     for j in range(n_dof_cart):
-        #         for k in range(n_dof_cart):
-        #             self.global_damping_matrix[l + j, l + k] += cart.aux_damping_matrix[j, k]
-        #     l += n_dof_cart
-
     def set_static_force_vector(self):
         """
         Set static force vector of train
@@ -1019,19 +729,8 @@ class TrainModel(GlobalSystem):
         self.static_force_vector = np.zeros((self.total_n_dof, 1))
 
         # set static force vector for each cart and add to global static force vector
-        l = 0  # global degree of freedom counter
         for cart in self.carts:
-
             cart.fill_static_force_vector(self.static_force_vector)
-
-            # # set static force vector of cart
-            # cart.set_static_force_vector()
-            # n_dof_cart = cart.static_force_vector.shape[0]
-            #
-            # # add static force vector of cart to train
-            # for j in range(n_dof_cart):
-            #     self.static_force_vector[l + j, 0] += cart.static_force_vector[j, 0]
-            # l += n_dof_cart
 
     def calculate_total_static_load(self, external_load=0):
         """
@@ -1138,25 +837,15 @@ class TrainModel(GlobalSystem):
 
         # remove obsolete indices from global matrices
         self.trim_global_matrices()
-        # import matplotlib.pyplot as plt
-
-
-        # plt.spy(self.global_stiffness_matrix)
-        # plt.gca().set_xticks(np.arange(-0.5,20.5,1))
-        # plt.gca().set_yticks(np.arange(-0.5, 20.5, 1))
-        # plt.grid()
-        # plt.show()
-        #
-
-
-            # b=1+1
-
-
-        a=1+1
 
     def reset_mesh(self):
+        """
+        Resets mesh of the train. A new instance of mesh is created and is filled with existing nodes of the carts, bogies and wheels
+        :return:
+        """
         self.mesh = Mesh()
 
+        # reset mesh of the carts and underlying bogies and wheels
         for cart in self.carts:
             cart.reset_mesh(self.mesh)
 
@@ -1184,6 +873,8 @@ class TrainModel(GlobalSystem):
         self.initialise_ndof()
         self.get_contact_dofs()
 
+        # resets mesh, this function should be obsolete but it isn't and I don't know why. Currently there are problems
+        # when a bogie is connected to 2 carts, therefore this function is required for now.
         self.reset_mesh()
 
         # initialise global matrices and force vector
