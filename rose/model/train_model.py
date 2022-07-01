@@ -740,7 +740,6 @@ class Cart(ElementModelPart):
 
         # set connected bogies part of the local stiffness matrix
         for i in range(len(self.bogies)):
-            bogie_dofs = self.bogies[i].nodes[0].index_dof
             self.bogies[i].fill_static_force_vector(static_force_vector)
 
     def set_static_force_vector(self):
@@ -1048,8 +1047,10 @@ class TrainModel(GlobalSystem):
         distributed_load = self.total_static_load / len(self.carts)
 
         # add static load on all the carts
+        # todo note that static force vector is not used, instead first time index of global force vector is used for the
+        # static force, because the obsolete indices are not reduced from the static force vector
         for cart in self.carts:
-            cart.calculate_total_static_load(distributed_load, self.static_force_vector)
+            cart.calculate_total_static_load(distributed_load, self.global_force_vector[:,0,None])
 
     def initialise_irregularities_at_wheels(self):
         """

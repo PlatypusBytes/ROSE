@@ -15,13 +15,6 @@ class TestTrainModel:
         # Setup parameters train
         mass_wheel = 5750
         mass_bogie = 3000
-        mass_cart = 0
-        inertia_cart = 0
-        inertia_bogie = 0
-        prim_stiffness = 1595e5
-        sec_stiffness = 0
-        prim_damping = 1000
-        sec_damping = 0
 
         velocity = 100 / 3.6
 
@@ -33,21 +26,10 @@ class TestTrainModel:
         bogie.wheels = [wheel]
         bogie.wheel_distances = [0]
         bogie.mass = mass_bogie
-        bogie.intertia = inertia_bogie
-        bogie.stiffness = prim_stiffness
-        bogie.damping = prim_damping
-        bogie.length = 0
-        bogie.calculate_total_n_dof()
 
         cart = Cart()
         cart.bogies = [bogie]
         cart.bogie_distances = [0]
-        cart.inertia = inertia_cart
-        cart.mass = mass_cart
-        cart.stiffness = sec_stiffness
-        cart.damping = sec_damping
-        cart.length = 0
-        cart.calculate_total_n_dof()
 
         train = TrainModel()
         train.carts = [cart]
@@ -63,10 +45,10 @@ class TestTrainModel:
 
         # set static force vector
         train.static_force_vector = np.array([0,0,-mass_bogie*9.81,0,-mass_wheel*9.81])[:,None]
+        train.global_force_vector = np.array([0,0,-mass_bogie*9.81,0,-mass_wheel*9.81])[:,None]
 
         # calculate total static load
         train.calculate_total_static_load(0)
-
 
         # get static load results
         calculated_bogie_load = train.carts[0].bogies[0].total_static_load
