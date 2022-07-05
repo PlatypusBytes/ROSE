@@ -8,6 +8,9 @@ from rose.post_processing.plot_utils import *
 from rose.model.train_model import *
 from rose.model.train_track_interaction import *
 
+from solvers.newmark_solver import NewmarkExplicit
+from solvers.zhai_solver import ZhaiSolver
+
 from analytical_solutions.analytical_wave_prop import OneDimWavePropagation
 from analytical_solutions.simple_supported import \
     SimpleSupportEulerWithDamping, \
