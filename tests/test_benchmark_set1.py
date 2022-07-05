@@ -9,6 +9,8 @@ from rose.post_processing.plot_utils import *
 
 import rose.utils.signal_proc as sp
 
+from solvers.newmark_solver import NewmarkExplicit
+
 from analytical_solutions.simple_supported import \
     SimpleSupportEulerNoDamping, \
     SimpleSupportEulerStatic
