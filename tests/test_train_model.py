@@ -126,8 +126,8 @@ class TestTrainModel:
         expected_static_load_mid_wheels = expected_static_load_mid_bogie / 2 - mass_wheel * 9.81
 
         # get the end wheels and the middle wheels
-        end_wheels = np.array(train.wheels)[[0,1,4,5]]
-        mid_wheels = np.array(train.wheels)[[2,3]]
+        end_wheels = np.array(train.wheels)[[0, 1, 4, 5]]
+        mid_wheels = np.array(train.wheels)[[2, 3]]
 
         # assert static load on end wheels
         for wheel in end_wheels:
@@ -137,25 +137,23 @@ class TestTrainModel:
         for wheel in mid_wheels:
             assert pytest.approx(wheel.total_static_load) == expected_static_load_mid_wheels
 
-    @pytest.mark.workinprogress
-    def test_set_aux_mass_matrix_cart(self, expected_cart_mass_matrix, set_up_cart):
+    def test_set_global_mass_matrix_cart(self, expected_cart_mass_matrix, set_up_cart):
         """
         Checks of mass matrix of cart is as expected
         :param expected_cart_mass_matrix:
         :param set_up_cart:
         :return:
         """
-        cart = set_up_cart
-        cart.set_aux_mass_matrix()
+        train = set_up_cart
+        train.set_global_mass_matrix()
 
-        calculated_mass_matrix = cart.aux_mass_matrix
+        calculated_mass_matrix = train.global_mass_matrix
 
         for i in range(len(expected_cart_mass_matrix)):
             for j in range(len(expected_cart_mass_matrix[i])):
                 assert expected_cart_mass_matrix[i][j] == pytest.approx(calculated_mass_matrix[i, j])
 
-    @pytest.mark.workinprogress
-    def test_set_aux_stiffness_matrix_cart(self, expected_cart_stiffness_matrix, set_up_cart):
+    def test_set_global_stiffness_matrix_cart(self, expected_cart_stiffness_matrix, set_up_cart):
         """
         Checks if stiffness matrix of cart is as expected
 
@@ -163,118 +161,32 @@ class TestTrainModel:
         :param set_up_cart:
         :return:
         """
-        cart = set_up_cart
-        cart.set_aux_stiffness_matrix()
+        train = set_up_cart
+        train.set_global_stiffness_matrix()
 
-        calculated_stiffness_matrix = cart.aux_stiffness_matrix
+        calculated_stiffness_matrix = train.global_stiffness_matrix
 
         for i in range(len(expected_cart_stiffness_matrix)):
             for j in range(len(expected_cart_stiffness_matrix[i])):
                 assert expected_cart_stiffness_matrix[i][j] == pytest.approx(calculated_stiffness_matrix[i,j])
 
-    @pytest.mark.workinprogress
-    def test_set_aux_damping_matrix_cart(self, expected_cart_damping_matrix, set_up_cart):
+    def test_set_global_damping_matrix_cart(self, expected_cart_damping_matrix, set_up_cart):
         """
         Checks if stiffness matrix of cart is as expected
 
-        :param expected_cart_stiffness_matrix:
+        :param expected_cart_damping_matrix:
         :param set_up_cart:
         :return:
         """
-        cart = set_up_cart
-        cart.set_aux_damping_matrix()
 
-        calculated_damping_matrix = cart.aux_damping_matrix
+        train = set_up_cart
+        train.set_global_damping_matrix()
+
+        calculated_damping_matrix = train.global_damping_matrix
 
         for i in range(len(expected_cart_damping_matrix)):
             for j in range(len(expected_cart_damping_matrix[i])):
                 assert expected_cart_damping_matrix[i][j] == pytest.approx(calculated_damping_matrix[i, j])
-
-    @pytest.mark.workinprogress
-    def test_train(self, set_up_cart):
-        train = TrainModel()
-        train.carts = [set_up_cart]
-        time = np.linspace(0,1,10000)
-
-
-        train.time = time
-        train.velocities = np.ones(len(train.time)) * 3.6
-        train.cart_distances = [0]
-
-        train.herzian_contact_cof = 9.1e-7
-
-        train.calculate_distances()
-
-        train.get_train_parts()
-        train.get_irregularities_track_at_wheels()
-
-        # train.set_mesh()
-        train.calculate_active_n_dof()
-
-        train.get_contact_dofs()
-
-        train.get_irregularities_track_at_wheels()
-        train.get_deformation_track_at_wheels()
-
-        train.get_deformation_wheels()
-        train.set_static_force_vector()
-        train.initialize_force_vector()
-        train.calculate_static_wheel_deformation()
-        # train.calculate_static_wheel_deformation()
-
-        train.solver = ZhaiSolver()
-        # train.solver.initialise(train.active_n_dof, train.time)
-        # train.solver.load_func = train.update_force_vector
-        # train.set_aux_mass_matrix()
-        # train.set_aux_damping_matrix()
-        # train.set_aux_stiffness_matrix()
-
-        # train.solver = NewmarkSolver()
-        train.solver.initialise(train.active_n_dof, train.time)
-        train.solver.load_func = train.update_force_vector
-        train.set_aux_mass_matrix()
-        train.set_aux_damping_matrix()
-        train.set_aux_stiffness_matrix()
-
-        # for t in range(len(train.time)-2):
-        #     train.set_dynamic_force_vector(t)
-        #     train.set_force_vector()
-        #     train.update_stage(t, t+1)
-        #     train.calculate_stage(t, t+1)
-        #     a = train.force_vector
-
-        # for t in range(len(train.time) - 2):
-        # train.set_dynamic_force_vector(0)
-        # train.set_force_vector()
-        train.calculate_initial_displacement([0, 0, 0, 0])
-        train.update_stage(0, len(time)-1)
-        train.calculate_stage(0, len(time)-1)
-
-        import matplotlib.pyplot as plt
-        plt.plot(train.solver.u[:, 0])
-        # plt.plot(train.solver.u[:, 8])
-        # plt.plot(train.solver.u[:, 9])
-        # plt.plot(train.solver.u[:, 4])
-        # plt.plot(train.solver.u[:, 5])
-
-        # plt.plot(train.solver.u[:, 4])
-        # plt.plot(train.solver.u[:, 5])
-        # plt.plot(train.solver.u[:, 8])
-        # plt.plot(train.solver.u[:, 9])
-        # plt.plot(-train.irregularities_at_wheels[-1,:])
-
-        # plt.plot(train.solver.u[:, 8])
-        # plt.plot(train.irregularities_at_wheels[-2,:])
-        plt.show()
-
-
-        # import matplotlib.pyplot as plt
-        #
-        # plt.plot(train.solver.u[:,0])
-        # plt.show()
-
-        pass
-
 
 
 @pytest.fixture
@@ -352,16 +264,6 @@ def set_up_cart():
     prim_damping = 4.9e4
     sec_damping = 7e4
 
-    # mass_wheel = 1e-6
-    # mass_bogie = 1e-6
-    # mass_cart = 1e-6
-    # inertia_cart = 1.2e6
-    # inertia_bogie = 760
-    # prim_stiffness = 2.14e6
-    # sec_stiffness = 5.32e6
-    # prim_damping = 1e-6
-    # sec_damping = 1e-6
-
 
     length_cart = 3
     length_bogie = 1
@@ -392,8 +294,23 @@ def set_up_cart():
     cart.damping = sec_damping
     cart.length = length_cart
 
-    cart.calculate_total_n_dof()
-    # cart.calculate_active_n_dof(0)
 
-    return cart
+    train = TrainModel()
+    train.time = np.array([0])
+    train.velocities = np.array([0])
+    train.carts = [cart]
+    train.cart_distances = [0]
+
+    # initialise train model steps
+    train.calculate_distances()
+    train.set_mesh()
+
+    # Get bogies and wheels
+    train.get_train_parts()
+
+    # check distribution of bogie and wheel stiffnesses
+    train.check_distribution_factors()
+    train.initialise_ndof()
+
+    return train
 
