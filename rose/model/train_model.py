@@ -45,7 +45,7 @@ class Wheel(ElementModelPart):
         :return:
         """
         wheel_dofs = self.nodes[0].index_dof
-        mass_matrix[wheel_dofs[1], wheel_dofs[1]] += self.mass
+        mass_matrix[wheel_dofs[1], wheel_dofs[1]] = self.mass
 
     def fill_static_force_vector(self, static_force_vector):
         """
@@ -131,6 +131,9 @@ class Bogie(ElementModelPart):
     :Attributes:
         - :self.wheels:                 all wheels which are connected to the bogie
         - :self.wheel_distances:        List of distance of each connected wheel to the centre of the bogie, including sign
+        - :self.distribution_factor     List of factors which indicate how big of a part of stiffness and damping between
+                                        wheels and bogie is taken into account. This is important in case of shared bogies
+                                        default is 1
         - :self.mass:                   Mass of the bogie
         - :self.inertia:                Moment of inertia of the bogie
         - :self.stiffness:              Stiffness of the spring between the wheels and the bogie
@@ -145,6 +148,7 @@ class Bogie(ElementModelPart):
 
         self.wheels: List = []
         self.wheel_distances: List = []  # including sign
+        self.distribution_factor: List = []
         self.mass = 0
         self.inertia = 0
         self.stiffness = 0  # stiffness between bogie and wheels
@@ -240,8 +244,8 @@ class Bogie(ElementModelPart):
         bogie_dofs = self.nodes[0].index_dof
 
         # adds bogie contribution
-        mass_matrix[bogie_dofs[1], bogie_dofs[1]] += self.mass
-        mass_matrix[bogie_dofs[2], bogie_dofs[2]] += self.inertia
+        mass_matrix[bogie_dofs[1], bogie_dofs[1]] = self.mass
+        mass_matrix[bogie_dofs[2], bogie_dofs[2]] = self.inertia
 
         # set connected wheels part of the mass matrix
         for i in range(len(self.wheels)):
@@ -259,7 +263,8 @@ class Bogie(ElementModelPart):
         bogie_dofs = self.nodes[0].index_dof
 
         # adds bogie contribution
-        stiffness_matrix[bogie_dofs[1],bogie_dofs[1]] += len(self.wheels) * self.stiffness
+        # stiffness_matrix[bogie_dofs[1],bogie_dofs[1]] += len(self.wheels) * self.stiffness
+        stiffness_matrix[bogie_dofs[1], bogie_dofs[1]] +=  self.stiffness *sum(self.distribution_factor)
 
         # set connected wheels part of the stiffness matrix
         for i in range(len(self.wheels)):
@@ -267,36 +272,36 @@ class Bogie(ElementModelPart):
             wheel_dofs = self.wheels[i].nodes[0].index_dof
 
             # add interaction between the bogie and wheels to the stiffness matrix
-            stiffness_matrix[bogie_dofs[2], bogie_dofs[2]] += self.stiffness * self.wheel_distances[i] ** 2
+            stiffness_matrix[bogie_dofs[2], bogie_dofs[2]] += self.stiffness * self.wheel_distances[i] ** 2 * self.distribution_factor[i]
 
-            stiffness_matrix[bogie_dofs[1], wheel_dofs[1]] += -self.stiffness
-            stiffness_matrix[wheel_dofs[1], bogie_dofs[1]] += -self.stiffness
+            stiffness_matrix[bogie_dofs[1], wheel_dofs[1]] += -self.stiffness * self.distribution_factor[i]
+            stiffness_matrix[wheel_dofs[1], bogie_dofs[1]] += -self.stiffness * self.distribution_factor[i]
 
-            stiffness_matrix[bogie_dofs[2], wheel_dofs[1]] += self.stiffness * self.wheel_distances[i]
-            stiffness_matrix[wheel_dofs[1], bogie_dofs[2]] += self.stiffness * self.wheel_distances[i]
+            stiffness_matrix[bogie_dofs[2], wheel_dofs[1]] += self.stiffness * self.wheel_distances[i] * self.distribution_factor[i]
+            stiffness_matrix[wheel_dofs[1], bogie_dofs[2]] += self.stiffness * self.wheel_distances[i] * self.distribution_factor[i]
 
-            stiffness_matrix[wheel_dofs[1], wheel_dofs[1]] += self.stiffness
+            stiffness_matrix[wheel_dofs[1], wheel_dofs[1]] += self.stiffness * self.distribution_factor[i]
 
     def fill_damping_matrix(self, damping_matrix):
 
         bogie_dofs = self.nodes[0].index_dof
 
-        damping_matrix[bogie_dofs[1], bogie_dofs[1]] += len(self.wheels) * self.damping
-
+        # damping_matrix[bogie_dofs[1], bogie_dofs[1]] += len(self.wheels) * self.damping
+        damping_matrix[bogie_dofs[1], bogie_dofs[1]] += self.damping * sum(self.distribution_factor)
         # set connected bogies part of the local stiffness matrix
         for i in range(len(self.wheels)):
             wheel_dofs = self.wheels[i].nodes[0].index_dof
 
             # add interaction between the cart and bogies to the cart local damping matrix
-            damping_matrix[bogie_dofs[2], bogie_dofs[2]] += self.damping * self.wheel_distances[i] ** 2
+            damping_matrix[bogie_dofs[2], bogie_dofs[2]] += self.damping * self.wheel_distances[i] ** 2 * self.distribution_factor[i]
 
-            damping_matrix[bogie_dofs[1], wheel_dofs[1]] += -self.damping
-            damping_matrix[wheel_dofs[1], bogie_dofs[1]] += -self.damping
+            damping_matrix[bogie_dofs[1], wheel_dofs[1]] += -self.damping * self.distribution_factor[i]
+            damping_matrix[wheel_dofs[1], bogie_dofs[1]] += -self.damping * self.distribution_factor[i]
 
-            damping_matrix[bogie_dofs[2], wheel_dofs[1]] += self.damping * self.wheel_distances[i]
-            damping_matrix[wheel_dofs[1], bogie_dofs[2]] += self.damping * self.wheel_distances[i]
+            damping_matrix[bogie_dofs[2], wheel_dofs[1]] += self.damping * self.wheel_distances[i] * self.distribution_factor[i]
+            damping_matrix[wheel_dofs[1], bogie_dofs[2]] += self.damping * self.wheel_distances[i] * self.distribution_factor[i]
 
-            damping_matrix[wheel_dofs[1], wheel_dofs[1]] += self.damping
+            damping_matrix[wheel_dofs[1], wheel_dofs[1]] += self.damping * self.distribution_factor[i]
 
     def fill_static_force_vector(self, static_force_vector):
         """
@@ -350,6 +355,9 @@ class Cart(ElementModelPart):
     :Attributes:
         - :self.bogies:                 all bogies which are connected to the cart
         - :self.bogie_distances:        List of distance of each connected bogie to the centre of the cart, including sign
+        - :self.distribution_factor:    List of factors which indicate how big of a part of stiffness and damping between
+                                        carts and bogie is taken into account. This is important in case of shared carts
+                                        default is 1
         - :self.mass:                   Mass of the cart
         - :self.inertia:                Moment of inertia of the cart
         - :self.stiffness:              Stiffness of the spring between the bogies and the cart
@@ -364,6 +372,7 @@ class Cart(ElementModelPart):
 
         self.bogies: List = []
         self.bogie_distances: List = []  # including sign
+        self.distribution_factor: List = []
         self.mass = 0
         self.inertia = 0
         self.stiffness = 0  # stiffness cart - bogie
@@ -458,8 +467,8 @@ class Cart(ElementModelPart):
         cart_dofs = self.nodes[0].index_dof
 
         # set cart part of mass matrix
-        mass_matrix[cart_dofs[1], cart_dofs[1]] += self.mass
-        mass_matrix[cart_dofs[2], cart_dofs[2]] += self.inertia
+        mass_matrix[cart_dofs[1], cart_dofs[1]] = self.mass
+        mass_matrix[cart_dofs[2], cart_dofs[2]] = self.inertia
 
         # set connected bogies part of the mass matrix
         for i in range(len(self.bogies)):
@@ -476,7 +485,9 @@ class Cart(ElementModelPart):
         # get degrees of freedom of the cart
         cart_dofs = self.nodes[0].index_dof
 
-        stiffness_matrix[cart_dofs[1], cart_dofs[1]] += len(self.bogies) * self.stiffness
+        # stiffness_matrix[cart_dofs[1], cart_dofs[1]] += len(self.bogies) * self.stiffness
+        stiffness_matrix[cart_dofs[1], cart_dofs[1]] += self.stiffness * sum(
+            self.distribution_factor)
 
         # set connected bogies part of the stiffness matrix
         for i in range(len(self.bogies)):
@@ -485,15 +496,15 @@ class Cart(ElementModelPart):
             bogie_dofs = self.bogies[i].nodes[0].index_dof
 
             # add interaction between the cart and bogies to the stiffness matrix
-            stiffness_matrix[cart_dofs[2], cart_dofs[2]] += self.stiffness * self.bogie_distances[i] ** 2
+            stiffness_matrix[cart_dofs[2], cart_dofs[2]] += self.stiffness * self.bogie_distances[i] ** 2 * self.distribution_factor[i]
 
-            stiffness_matrix[cart_dofs[1], bogie_dofs[1]] += -self.stiffness
-            stiffness_matrix[bogie_dofs[1], cart_dofs[1]] += -self.stiffness
+            stiffness_matrix[cart_dofs[1], bogie_dofs[1]] += -self.stiffness * self.distribution_factor[i]
+            stiffness_matrix[bogie_dofs[1], cart_dofs[1]] += -self.stiffness * self.distribution_factor[i]
 
-            stiffness_matrix[cart_dofs[2], bogie_dofs[1]] += self.stiffness * self.bogie_distances[i]
-            stiffness_matrix[bogie_dofs[1], cart_dofs[2]] += self.stiffness * self.bogie_distances[i]
+            stiffness_matrix[cart_dofs[2], bogie_dofs[1]] += self.stiffness * self.bogie_distances[i] * self.distribution_factor[i]
+            stiffness_matrix[bogie_dofs[1], cart_dofs[2]] += self.stiffness * self.bogie_distances[i] * self.distribution_factor[i]
 
-            stiffness_matrix[bogie_dofs[1], bogie_dofs[1]] += self.stiffness
+            stiffness_matrix[bogie_dofs[1], bogie_dofs[1]] += self.stiffness * self.distribution_factor[i]
 
             # fill stiffness matrix with bogie contribution
             self.bogies[i].fill_stiffness_matrix(stiffness_matrix)
@@ -510,22 +521,23 @@ class Cart(ElementModelPart):
         cart_dofs = self.nodes[0].index_dof
 
         # set cart part of damping matrix
-        damping_matrix[cart_dofs[1], cart_dofs[1]] += len(self.bogies) * self.damping
+        # damping_matrix[cart_dofs[1], cart_dofs[1]] += len(self.bogies) * self.damping
+        damping_matrix[cart_dofs[1], cart_dofs[1]] += self.damping * sum(self.distribution_factor)
 
         # set connected bogies part of the local damping matrix
         for i in range(len(self.bogies)):
             bogie_dofs = self.bogies[i].nodes[0].index_dof
 
             # add interaction between the cart and bogies to the damping matrix
-            damping_matrix[cart_dofs[2], cart_dofs[2]] += self.damping * self.bogie_distances[i] ** 2
+            damping_matrix[cart_dofs[2], cart_dofs[2]] += self.damping * self.bogie_distances[i] ** 2 * self.distribution_factor[i]
 
-            damping_matrix[cart_dofs[1], bogie_dofs[1]] += -self.damping
-            damping_matrix[bogie_dofs[1], cart_dofs[1]] += -self.damping
+            damping_matrix[cart_dofs[1], bogie_dofs[1]] += -self.damping * self.distribution_factor[i]
+            damping_matrix[bogie_dofs[1], cart_dofs[1]] += -self.damping * self.distribution_factor[i]
 
-            damping_matrix[cart_dofs[2], bogie_dofs[1]] += self.damping * self.bogie_distances[i]
-            damping_matrix[bogie_dofs[1], cart_dofs[2]] += self.damping * self.bogie_distances[i]
+            damping_matrix[cart_dofs[2], bogie_dofs[1]] += self.damping * self.bogie_distances[i] * self.distribution_factor[i]
+            damping_matrix[bogie_dofs[1], cart_dofs[2]] += self.damping * self.bogie_distances[i] * self.distribution_factor[i]
 
-            damping_matrix[bogie_dofs[1], bogie_dofs[1]] += self.damping
+            damping_matrix[bogie_dofs[1], bogie_dofs[1]] += self.damping * self.distribution_factor[i]
 
             # fill damping matrix with bogie contribution
             self.bogies[i].fill_damping_matrix(damping_matrix)
@@ -856,6 +868,15 @@ class TrainModel(GlobalSystem):
         # collect nodes
         self.nodes = list(self.mesh.nodes)
 
+    def check_distribution_factors(self):
+        for cart in self.carts:
+            if len(cart.distribution_factor) == 0:
+                cart.distribution_factor = np.ones(len(cart.bogies))
+
+        for bogie in self.bogies:
+            if len(bogie.distribution_factor) == 0:
+                bogie.distribution_factor = np.ones(len(bogie.wheels))
+
     def initialise(self):
         """
         Initialise train. Set geometry, set degrees of freedom, initialises global matrices and vectors, stages and
@@ -869,6 +890,9 @@ class TrainModel(GlobalSystem):
 
         # Get bogies and wheels
         self.get_train_parts()
+
+        # check distribution of bogie and wheel stiffnesses
+        self.check_distribution_factors()
 
         # initialise irregularities at the wheels
         self.initialise_irregularities_at_wheels()
