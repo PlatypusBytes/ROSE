@@ -181,25 +181,42 @@ def set_sprinter_slt_train(time, velocities, start_coord):
     :return:
     """
 
+    cart_length = 2 * 7.785
+
     sprinter_train = TrainModel()
 
     sprinter_train.time = time
     sprinter_train.velocities = velocities
-    sprinter_train.carts = [Cart()]
-    sprinter_train.cart_distances = [start_coord]
+    sprinter_train.carts = [Cart(), Cart()]
+    sprinter_train.cart_distances = [start_coord, start_coord + cart_length]
 
-    cart = sprinter_train.carts[0]
-    cart.bogie_distances = [-7.785, 7.785]
-    cart.inertia = 73.4e3/2
-    cart.mass = 46e3/2
-    cart.stiffness = 2468e3
-    cart.damping = 50.2e3
-    cart.length = 26.1
-    cart.calculate_total_n_dof()
+    # create all bogies
+    bogies = [Bogie() for _ in range(len(sprinter_train.carts) + 1)]
 
-    # setup bogies per cart
-    cart.bogies = [Bogie() for _ in range(len(cart.bogie_distances))]
-    for bogie in cart.bogies:
+    for idx, cart in enumerate(sprinter_train.carts):
+
+        cart.inertia = 73.4e3 / 2
+        cart.mass = 46e3 / 2
+        cart.stiffness = 2468e3
+        cart.damping = 50.2e3
+        cart.length = cart_length
+
+        # connect bogies to carts
+        cart.bogies =[bogies[idx], bogies[idx+1]]
+        cart.bogie_distances = [-cart_length / 2, cart_length / 2]
+
+        # right bogie is shared between 2 carts
+        if idx == 0:
+            cart.distribution_factor = [1, 0.5]
+        # left bogie is shared between 2 carts
+        elif idx == len(sprinter_train.carts):
+            cart.distribution_factor = [0.5, 1]
+        # both bogies are shared between 2 carts
+        else:
+            cart.distribution_factor = [0.5, 0.5]
+
+    # fill in bogie parameters
+    for bogie in bogies:
         bogie.wheel_distances = [-1.4, 1.4]
         bogie.mass = 3.2e3/2
         bogie.inertia = 0.17e3/2
