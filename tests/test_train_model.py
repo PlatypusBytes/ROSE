@@ -93,6 +93,44 @@ class TestTrainModel:
             for j in range(len(expected_shared_bogie_stiffness_matrix[i])):
                 assert expected_shared_bogie_stiffness_matrix[i][j] == pytest.approx(calculated_stiffness_matrix[i, j])
 
+    def test_set_global_damping_matrix_shared_bogie(self, set_up_shared_bogie_train, expected_shared_bogie_damping_matrix):
+        """
+        Tests the calculation of the global stiffness matrix of a train with 2 carts, where the 2 carts share a bogie
+        :return:
+        """
+
+        train = set_up_shared_bogie_train
+
+        # set global damping matrix
+        train.set_global_damping_matrix()
+
+        # get calculated global damping matrix
+        calculated_damping_matrix = train.global_damping_matrix
+
+        # assert global stiffness matrix
+        for i in range(len(expected_shared_bogie_damping_matrix)):
+            for j in range(len(expected_shared_bogie_damping_matrix[i])):
+                assert expected_shared_bogie_damping_matrix[i][j] == pytest.approx(calculated_damping_matrix[i, j])
+
+    def test_set_global_mass_matrix_shared_bogie(self, set_up_shared_bogie_train, expected_shared_bogie_mass_matrix):
+        """
+        Tests the calculation of the global stiffness matrix of a train with 2 carts, where the 2 carts share a bogie
+        :return:
+        """
+
+        train = set_up_shared_bogie_train
+
+        # set global damping matrix
+        train.set_global_mass_matrix()
+
+        # get calculated global damping matrix
+        calculated_mass_matrix = train.global_mass_matrix
+
+        # assert global stiffness matrix
+        for i in range(len(expected_shared_bogie_mass_matrix)):
+            for j in range(len(expected_shared_bogie_mass_matrix[i])):
+                assert expected_shared_bogie_mass_matrix[i][j] == pytest.approx(calculated_mass_matrix[i, j])
+
     def test_set_global_mass_matrix_cart(self, expected_cart_mass_matrix, set_up_cart):
         """
         Checks of mass matrix of cart is as expected
@@ -241,6 +279,75 @@ def expected_shared_bogie_stiffness_matrix():
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -k1, k1 * lw, 0, k1]]
 
     return stiffness_matrix
+
+
+@pytest.fixture
+def expected_shared_bogie_damping_matrix():
+    """
+    Set expected global damping matrix of a train with 2 carts and 3 bogies. The middle bogie is shared between 2
+    carts. Each bogie has 2 wheel sets.
+    :return:
+    """
+
+    # Setup parameters train
+
+    prim_damping = 4000
+    sec_damping = 3000
+
+    length_cart = 10
+    length_bogie = 3
+
+    c1 = prim_damping
+    c2 = sec_damping
+    lt = length_cart/2
+    lw = length_bogie/2
+
+    damping_matrix = [[1.5 * c2, 0, -c2, 0, 0, 0, -0.5 * c2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 1.5 * c2 * lt ** 2, -c2 * lt, 0, 0, 0, 0.5 * c2 * lt, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [-c2, -c2 * lt, c2 + 2 * c1, 0, -c1, -c1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 2 * c1 * lw ** 2, -c1 * lw, c1 * lw, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, -c1, -c1 * lw, c1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, -c1, c1 * lw, 0, c1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [-0.5 * c2, 0.5 * c2 * lt, 0, 0, 0, 0, c2 + 2 * c1, 0, -c1, -c1, -0.5 * c2, -0.5 * c2 * lt, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 2 * c1 * lw ** 2, -c1 * lw, c1 * lw, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, -c1, -c1 * lw, c1, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, -c1, c1 * lw, 0, c1, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, -0.5 * c2, 0, 0, 0, 1.5 * c2, 0, -c2, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, -0.5 * c2 * lt, 0, 0, 0, 0, 1.5 * c2 * lt ** 2, c2 * lt, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -c2, c2 * lt, c2 + 2 * c1, 0, -c1, -c1],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2 * c1 * lw ** 2, -c1 * lw, c1 * lw],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -c1, -c1 * lw, c1, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -c1, c1 * lw, 0, c1]]
+
+    return damping_matrix
+
+
+@pytest.fixture
+def expected_shared_bogie_mass_matrix():
+    mw = 5750
+    mb = 3000
+    mc = 2000
+    ic = 800
+    ib = 700
+
+    mass_matrix = [[mc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+     [0, ic, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, mb, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, ib, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, mw, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, mw, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, mb, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, ib, 0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, mw, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, 0, mw, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, mc, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ic, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, mb, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ib, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, mw, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, mw]]
+
+    return mass_matrix
 
 
 @pytest.fixture
