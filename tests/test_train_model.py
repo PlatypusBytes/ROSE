@@ -3,11 +3,11 @@ import pytest
 import numpy as np
 
 from rose.model.train_model import TrainModel, Cart, Bogie, Wheel
-from solvers.zhai_solver import ZhaiSolver
+
 
 class TestTrainModel:
 
-    def test_calculate_total_static_load_bogie_and_wheel(self):
+    def test_calculate_total_static_load_bogie_and_wheel(self,set_up_bogie_and_wheel):
         """
         Tests the calculation of the total static load of a train which consists of 1 bogie and 1 wheel
         :return:
@@ -16,33 +16,7 @@ class TestTrainModel:
         mass_wheel = 5750
         mass_bogie = 3000
 
-        velocity = 100 / 3.6
-
-        # setup geometry train
-        wheel = Wheel()
-        wheel.mass = mass_wheel
-
-        bogie = Bogie()
-        bogie.wheels = [wheel]
-        bogie.wheel_distances = [0]
-        bogie.mass = mass_bogie
-
-        cart = Cart()
-        cart.bogies = [bogie]
-        cart.bogie_distances = [0]
-
-        train = TrainModel()
-        train.carts = [cart]
-        train.time = np.array([0,1])
-
-        train.velocities = np.ones(len(train.time)) * velocity
-        train.cart_distances = [0]
-
-        # initialise train
-        train.calculate_distances()
-        train.set_mesh()
-        train.get_train_parts()
-        train.initialise_ndof()
+        train = set_up_bogie_and_wheel
 
         # set static force vector
         train.static_force_vector = np.array([0, 0, -mass_bogie*9.81, 0, -mass_wheel*9.81])[:, None]
@@ -62,7 +36,7 @@ class TestTrainModel:
         assert pytest.approx(calculated_bogie_load) == expected_bogie_load
         assert pytest.approx(calculated_wheel_load) == expected_wheel_load
 
-    def test_calculate_total_static_load_shared_bogie(self):
+    def test_calculate_total_static_load_shared_bogie(self, set_up_shared_bogie_train):
         """
         Tests the calculation of the total static load of a train which consists of 1 bogie and 1 wheel
         :return:
@@ -71,45 +45,8 @@ class TestTrainModel:
         mass_wheel = 5750
         mass_bogie = 3000
         mass_cart = 2000
-        velocity = 100 / 3.6
 
-        # create carts and bogies
-        carts = [Cart(), Cart()]
-        bogies = [Bogie(), Bogie(), Bogie()]
-
-        train = TrainModel()
-        train.time = np.array([0,1])
-        train.velocities = np.ones(len(train.time)) * velocity
-
-        # set up carts
-        train.cart_distances = [0,10]
-        train.carts = carts
-
-        # set up bogies
-        train.carts[0].bogies = [bogies[0], bogies[1]]
-        train.carts[1].bogies = [bogies[1], bogies[2]]
-
-        for cart in train.carts:
-            cart.bogie_distances = [-5,5]
-            cart.mass = mass_cart
-            cart.length = 10
-
-            # setup bogies per cart
-            for bogie in cart.bogies:
-                bogie.wheel_distances = [-1.5,1.5]
-                bogie.mass = mass_bogie
-                bogie.length = 3
-
-                # setup wheels per bogie
-                bogie.wheels = [Wheel(), Wheel()]
-                for wheel in bogie.wheels:
-                    wheel.mass = mass_wheel
-
-        # initialise train
-        train.calculate_distances()
-        train.set_mesh()
-        train.get_train_parts()
-        train.initialise_ndof()
+        train = set_up_shared_bogie_train
 
         # set static force vector
         train.initialize_force_vector()
@@ -136,6 +73,25 @@ class TestTrainModel:
         # assert static load on mid wheels
         for wheel in mid_wheels:
             assert pytest.approx(wheel.total_static_load) == expected_static_load_mid_wheels
+
+    def test_set_global_stiffness_matrix_shared_bogie(self, set_up_shared_bogie_train, expected_shared_bogie_stiffness_matrix):
+        """
+        Tests the calculation of the global stiffness matrix of a train with 2 carts, where the 2 carts share a bogie
+        :return:
+        """
+
+        train = set_up_shared_bogie_train
+
+        # set global stiffness matrix
+        train.set_global_stiffness_matrix()
+
+        # get calculated global stiffness matrix
+        calculated_stiffness_matrix = train.global_stiffness_matrix
+
+        # assert global stiffness matrix
+        for i in range(len(expected_shared_bogie_stiffness_matrix)):
+            for j in range(len(expected_shared_bogie_stiffness_matrix[i])):
+                assert expected_shared_bogie_stiffness_matrix[i][j] == pytest.approx(calculated_stiffness_matrix[i, j])
 
     def test_set_global_mass_matrix_cart(self, expected_cart_mass_matrix, set_up_cart):
         """
@@ -248,6 +204,63 @@ def expected_cart_mass_matrix():
 
 
 @pytest.fixture
+def expected_shared_bogie_stiffness_matrix():
+    """
+    Set expected global stiffness matrix of a train with 2 carts and 3 bogies. The middle bogie is shared between 2
+    carts. Each bogie has 2 wheel sets.
+    :return:
+    """
+
+    # Setup parameters train
+    prim_stiffness = 6000
+    sec_stiffness = 5000
+
+    length_cart = 10
+    length_bogie = 3
+
+    k1 = prim_stiffness
+    k2 = sec_stiffness
+    lt = length_cart/2
+    lw = length_bogie/2
+
+    stiffness_matrix= [[1.5 * k2, 0, -k2, 0, 0, 0, -0.5 * k2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 1.5 * k2 * lt ** 2, -k2 * lt, 0, 0, 0, 0.5 * k2 * lt, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [-k2, -k2 * lt, k2 + 2 * k1, 0, -k1, -k1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 2 * k1 * lw ** 2, -k1 * lw, k1 * lw, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, -k1, -k1 * lw, k1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, -k1, k1 * lw, 0, k1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [-0.5 * k2, 0.5 * k2 * lt, 0, 0, 0, 0, k2 + 2 * k1, 0, -k1, -k1, -0.5 * k2, -0.5 * k2 * lt, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 2 * k1 * lw ** 2, -k1 * lw, k1 * lw, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, -k1, -k1 * lw, k1, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, -k1, k1 * lw, 0, k1, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, -0.5 * k2, 0, 0, 0, 1.5 * k2, 0, -k2, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, -0.5 * k2 * lt, 0, 0, 0, 0, 1.5 * k2 * lt ** 2, k2 * lt, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -k2, k2 * lt, k2 + 2 * k1, 0, -k1, -k1],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2 * k1 * lw ** 2, -k1 * lw, k1 * lw],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -k1, -k1 * lw, k1, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -k1, k1 * lw, 0, k1]]
+
+    return stiffness_matrix
+
+    # return [[1.5*k2,	0.,	            -k2,	        0.,	        0.,	    0.,	    -0.5 * k2,	0.,	        0.,	        0.,     0.,             0.,0.,0.,0.,0.], # cart
+    #     [0.,	        1.5*k2*lt**2,	-k2*lt,	        0.,	        0.,	    0.,	    0.5 * k2*lt,0.,	        0.,	        0.,     0.,             0.,0.,0.,0.,0.], # cart
+    #     [-k2,	        -k2*lt,	        k2+2*k1,	    0.,	        -k1,    -k1,	0.,	        0.,	        0.,	        0.,     0.,             0.,0.,0.,0.,0.], # bogie
+    #     [0,             0,              0,              2*k1*lw**2, -k1*lw, k1*lw,  0.,         0.,         0.,         0.,     0.,             0., 0., 0., 0., 0.],# bogie
+    #     [0.,	        0.,	            -k1,	        -k1*lw,	    k1,     0.,	    0.,	        0.,	        0.,	        0.,     0.,             0.,0.,0.,0.,0.], # wheel
+    #     [0.,	        0.,	            -k1,	        k1*lw,	    0.,	    k1,	    0.,	        0.,	        0.,	        0.,     0.,             0.,0.,0.,0.,0.],# wheel
+    #     [-0.5* k2,	    0.5 * k2*lt,	0.,	            0.,	        0.,	    0.,	    k2 + 2*k1,	0.,	        -k1,	    -k1,    -0.5* k2,       -0.5 * k2*lt,0.,0.,0.,0.],# bogie
+    #     [-k2,	        k2*lt,	        0.,	            0.,	        0.,	    0.,	    0,	        2*k1*lw**2,	-k1*lw,	    -k1*lw, 0.,             0.,0.,0.,0.,0.],# bogie
+    #     [0.,	        0.,	            0.,	            0.,	        0.,	    0.,	    0.,	        2*k1*lw**2,	-k1*lw,	    k1*lw,  0.,             0.,0.,0.,0.,0.],# wheel
+    #     [0.,	        0.,	            0.,	            0.,	        0.,	    0.,	    -k1,	    -k1*lw,	    k1,	        0.,     0.,             0.,0.,0.,0.,0.],# wheel
+    #     [0.,	        0.,	            0.,	            0.,	        0.,	    0.,	    -k1,	    k1*lw,	    0.,	        k1,     0.,             0.,0.,0.,0.,0.], # cart
+    #     [],# cart
+    #         [],# bogie
+    #         [],# bogie
+    #         [],# wheel
+    #         []] # wheel
+
+
+@pytest.fixture
 def set_up_cart():
     """
     Set up cart with 2 bogies and 2 wheel sets per bogie
@@ -314,3 +327,115 @@ def set_up_cart():
 
     return train
 
+
+@pytest.fixture
+def set_up_shared_bogie_train():
+    """
+    Set up train with 2 carts and 3 bogies. The middle bogie is shared between 2 carts. Each bogie has 2 wheel sets
+    :return:
+    """
+    # Setup parameters train
+    mass_wheel = 5750
+    mass_bogie = 3000
+    mass_cart = 2000
+    inertia_cart = 800
+    inertia_bogie = 700
+    prim_stiffness = 6000
+    sec_stiffness = 5000
+    prim_damping = 4000
+    sec_damping = 3000
+
+    length_cart = 10
+    length_bogie = 3
+
+    velocity = 100 / 3.6
+
+    # create carts and bogies
+    carts = [Cart(), Cart()]
+    bogies = [Bogie(), Bogie(), Bogie()]
+
+    train = TrainModel()
+    train.time = np.array([0, 1])
+    train.velocities = np.ones(len(train.time)) * velocity
+
+    # set up carts
+    train.cart_distances = [0, 10]
+    train.carts = carts
+
+    # set up bogies
+    train.carts[0].bogies = [bogies[0], bogies[1]]
+    train.carts[1].bogies = [bogies[1], bogies[2]]
+
+    train.carts[0].distribution_factor = [1,0.5]
+    train.carts[1].distribution_factor = [0.5, 1]
+
+    for cart in train.carts:
+        cart.bogie_distances = [-5, 5]
+        cart.mass = mass_cart
+        cart.length = length_cart
+        cart.stiffness = sec_stiffness
+        cart.damping = sec_damping
+        cart.inertia = inertia_cart
+
+        # setup bogies per cart
+        for bogie in cart.bogies:
+            bogie.wheel_distances = [-1.5, 1.5]
+            bogie.mass = mass_bogie
+            bogie.length = length_bogie
+            bogie.stiffness = prim_stiffness
+            bogie.damping = prim_damping
+            bogie.inertia = inertia_bogie
+
+            # setup wheels per bogie
+            bogie.wheels = [Wheel(), Wheel()]
+            for wheel in bogie.wheels:
+                wheel.mass = mass_wheel
+
+    # initialise train
+    train.calculate_distances()
+    train.set_mesh()
+    train.get_train_parts()
+    train.check_distribution_factors()
+    train.initialise_ndof()
+    train.get_contact_dofs()
+
+    train.reset_mesh()
+
+    return train
+
+
+@pytest.fixture
+def set_up_bogie_and_wheel():
+    # Setup parameters train
+    mass_wheel = 5750
+    mass_bogie = 3000
+
+    velocity = 100 / 3.6
+
+    # setup geometry train
+    wheel = Wheel()
+    wheel.mass = mass_wheel
+
+    bogie = Bogie()
+    bogie.wheels = [wheel]
+    bogie.wheel_distances = [0]
+    bogie.mass = mass_bogie
+
+    cart = Cart()
+    cart.bogies = [bogie]
+    cart.bogie_distances = [0]
+
+    train = TrainModel()
+    train.carts = [cart]
+    train.time = np.array([0, 1])
+
+    train.velocities = np.ones(len(train.time)) * velocity
+    train.cart_distances = [0]
+
+    # initialise train
+    train.calculate_distances()
+    train.set_mesh()
+    train.get_train_parts()
+    train.initialise_ndof()
+
+    return train

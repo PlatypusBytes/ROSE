@@ -263,8 +263,7 @@ class Bogie(ElementModelPart):
         bogie_dofs = self.nodes[0].index_dof
 
         # adds bogie contribution
-        # stiffness_matrix[bogie_dofs[1],bogie_dofs[1]] += len(self.wheels) * self.stiffness
-        stiffness_matrix[bogie_dofs[1], bogie_dofs[1]] +=  self.stiffness *sum(self.distribution_factor)
+        stiffness_matrix[bogie_dofs[1], bogie_dofs[1]] += self.stiffness *sum(self.distribution_factor)
 
         # set connected wheels part of the stiffness matrix
         for i in range(len(self.wheels)):
@@ -506,9 +505,6 @@ class Cart(ElementModelPart):
 
             stiffness_matrix[bogie_dofs[1], bogie_dofs[1]] += self.stiffness * self.distribution_factor[i]
 
-            # fill stiffness matrix with bogie contribution
-            self.bogies[i].fill_stiffness_matrix(stiffness_matrix)
-
     def fill_damping_matrix(self, damping_matrix):
         """
         Fills global damping matrix with cart contribution
@@ -521,7 +517,6 @@ class Cart(ElementModelPart):
         cart_dofs = self.nodes[0].index_dof
 
         # set cart part of damping matrix
-        # damping_matrix[cart_dofs[1], cart_dofs[1]] += len(self.bogies) * self.damping
         damping_matrix[cart_dofs[1], cart_dofs[1]] += self.damping * sum(self.distribution_factor)
 
         # set connected bogies part of the local damping matrix
@@ -538,9 +533,6 @@ class Cart(ElementModelPart):
             damping_matrix[bogie_dofs[1], cart_dofs[2]] += self.damping * self.bogie_distances[i] * self.distribution_factor[i]
 
             damping_matrix[bogie_dofs[1], bogie_dofs[1]] += self.damping * self.distribution_factor[i]
-
-            # fill damping matrix with bogie contribution
-            self.bogies[i].fill_damping_matrix(damping_matrix)
 
     def fill_static_force_vector(self, static_force_vector):
         """
@@ -718,6 +710,10 @@ class TrainModel(GlobalSystem):
         for cart in self.carts:
             cart.fill_stiffness_matrix(self.global_stiffness_matrix)
 
+        # set local stiffness matrices for each bogie and add to global stiffness matrix
+        for bogie in self.bogies:
+            bogie.fill_stiffness_matrix(self.global_stiffness_matrix)
+
     def set_global_damping_matrix(self):
         """
         Set global damping matrix of train
@@ -727,9 +723,13 @@ class TrainModel(GlobalSystem):
         # initialise global damping matrix
         self.global_damping_matrix = np.zeros((self.total_n_dof, self.total_n_dof))
 
-        # set local stiffness matrices for each cart and add to global stiffness matrix
+        # set local damping matrices for each cart and add to global stiffness matrix
         for cart in self.carts:
             cart.fill_damping_matrix(self.global_damping_matrix)
+
+        # set local damping matrices for each cart and add to global stiffness matrix
+        for bogie in self.bogies:
+            bogie.fill_damping_matrix(self.global_damping_matrix)
 
     def set_static_force_vector(self):
         """
