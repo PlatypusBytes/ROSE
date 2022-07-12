@@ -1,6 +1,4 @@
-import copy
 import os
-import pickle
 import json
 
 from pyproj import Transformer
@@ -8,7 +6,7 @@ from pyproj import Transformer
 from rose.model.model_part import Material, Section
 from rose.model.train_model import *
 from rose.model.train_track_interaction import *
-from rose.model import Varandas
+from rose.model import accumulation_model
 from solvers.newmark_solver import NewmarkSolver
 from dashboard import io_utils
 
@@ -324,19 +322,19 @@ def runner(input_data, path_results, calculation_time=50):
     from rose.utils.wolf_utils import create_layering_for_wolf, run_wolf_on_layering
 
     m_to_mm = 1e3   # meter to mm
-    Nm_to_kNmm = 1e-6 # N/m to kN/mm
+    Nm_to_kNmm = 1e-6  # N/m to kN/mm
 
     # check if path to save results exist
     if not os.path.isdir(os.path.join(path_results, input_data["project_name"])):
         os.makedirs(os.path.join(path_results, input_data["project_name"]))
 
     sos_data = input_data["sos_data"]
-    traffic_data =input_data["traffic_data"]
+    traffic_data = input_data["traffic_data"]
 
     # set embankment data
     E = 100e6
     v = 0.2
-    emb = ["embankment", E / (2 * (1 + v)), v, 2000, 0.05, 1]
+    emb = ["embankment", E / (2 * (1 + v)), v, 2000, 0.05, 0.8]
 
     features = {}
     # loop over segments
@@ -358,7 +356,7 @@ def runner(input_data, path_results, calculation_time=50):
 
                 # get wolf data
                 layering = create_layering_for_wolf(v2["soil_layers"], emb)
-                omega = 2*np.pi * train["velocity"]/ train["cart_length"]
+                omega = 2*np.pi * train["velocity"] / train["cart_length"]
                 wolf_data = run_wolf_on_layering(layering, np.array([omega]))
 
                 # determine dynamic soil stiffness and damping
@@ -376,7 +374,7 @@ def runner(input_data, path_results, calculation_time=50):
 
                 # get results from coupled model
                 output_interval = 10
-                time,vertical_force_soil_scenario = get_results_coupled_model(coupled_model, output_interval)
+                time, vertical_force_soil_scenario = get_results_coupled_model(coupled_model, output_interval)
 
                 # calculate dynamic stiffness track
                 dyn_stiffness_track = get_dynamic_stiffness_track(coupled_model)
@@ -403,7 +401,7 @@ def runner(input_data, path_results, calculation_time=50):
                 train["forces"] = forces[j][i,:][None,:]
 
             # calculate cumulative settlement
-            sett = Varandas.AccumulationModel()
+            sett = accumulation_model.AccumulationModel()
             sett.read_traffic(train_dicts, calculation_time)
             sett.settlement(idx=[0])
 
@@ -422,7 +420,7 @@ def runner(input_data, path_results, calculation_time=50):
             cumulative_settlements.append(np.array(sett.results["settlement"]['0'])[indices])
 
         # calculate mean and std cumulative settlement in mm
-        cumulative_settlement_mean,cumulative_settlement_std = calculate_weighted_mean_and_std(
+        cumulative_settlement_mean, cumulative_settlement_std = calculate_weighted_mean_and_std(
             np.array(cumulative_settlements)*m_to_mm, np.array(scenario_probabilities))
 
         # add feature to geo json

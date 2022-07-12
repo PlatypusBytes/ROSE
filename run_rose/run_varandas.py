@@ -1,5 +1,5 @@
 import json
-from rose.model import Varandas
+from rose.model import accumulation_model
 import numpy as np
 import matplotlib.pylab as plt
 import pickle
@@ -21,7 +21,7 @@ if __name__ == "__main__":
                                "nb-axles": 16},
                   }
 
-    sett = Varandas.AccumulationModel()
+    sett = accumulation_model.AccumulationModel()
     sett.read_traffic(train_info, 365)
     sett.settlement(idx=[100])
     print(time()-t)
