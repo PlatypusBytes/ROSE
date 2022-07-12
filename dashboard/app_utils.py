@@ -401,7 +401,7 @@ def runner(input_data, path_results, calculation_time=50):
                 train["forces"] = forces[j][i,:][None,:]
 
             # calculate cumulative settlement
-            sett = accumulation_model.AccumulationModel()
+            sett = accumulation_model.Varandas()
             sett.read_traffic(train_dicts, calculation_time)
             sett.settlement(idx=[0])
 

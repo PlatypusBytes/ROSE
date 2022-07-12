@@ -21,7 +21,7 @@ if __name__ == "__main__":
                                "nb-axles": 16},
                   }
 
-    sett = accumulation_model.AccumulationModel()
+    sett = accumulation_model.Varandas()
     sett.read_traffic(train_info, 365)
     sett.settlement(idx=[100])
     print(time()-t)

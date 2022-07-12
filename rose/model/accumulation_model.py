@@ -6,7 +6,7 @@ import pickle
 from tqdm import tqdm
 
 
-class AccumulationModel:
+class Varandas:
     def __init__(self, alpha: float = 0.6, beta: float = 0.82, gamma: float = 10, N0: float = 1e6, F0: float = 50):
         """
         Initialisation of the accumulation model of Varandas :cite:`varandas_2014`

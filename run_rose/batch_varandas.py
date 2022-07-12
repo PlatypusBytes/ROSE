@@ -68,7 +68,7 @@ def main():
             out_name = Path(intercity_file).name.strip("intercity.pickle")
 
             # perform varandas calculation
-            sett = accumulation_model.AccumulationModel()
+            sett = accumulation_model.Varandas()
             sett.read_traffic(train_info, 100)
             sett.settlement(idx=[100])
 

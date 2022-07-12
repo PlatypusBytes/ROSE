@@ -29,7 +29,7 @@ class TestVarandas(unittest.TestCase):
 
     def test_settlement_1(self):
 
-        sett = accumulation_model.AccumulationModel()
+        sett = accumulation_model.Varandas()
         sett.read_traffic(self.traininfo, 1)
         sett.settlement()
         sett.dump(os.path.join(TEST_PATH, "./example.pickle"))
@@ -46,7 +46,7 @@ class TestVarandas(unittest.TestCase):
         self.traininfo["dubbeldekker"]["forces"] = np.repeat(self.traininfo["dubbeldekker"]["forces"], 20, axis=0)
         self.traininfo["sprinter"]["forces"] = np.repeat(self.traininfo["sprinter"]["forces"], 20, axis=0)
 
-        sett = accumulation_model.AccumulationModel()
+        sett = accumulation_model.Varandas()
         sett.read_traffic(self.traininfo, 1)
         sett.settlement()
         sett.dump(os.path.join(TEST_PATH, "./example.pickle"))
@@ -63,7 +63,7 @@ class TestVarandas(unittest.TestCase):
         self.traininfo["dubbeldekker"]["forces"] = np.repeat(self.traininfo["dubbeldekker"]["forces"], 50, axis=0)
         self.traininfo["sprinter"]["forces"] = np.repeat(self.traininfo["sprinter"]["forces"], 50, axis=0)
 
-        sett = accumulation_model.AccumulationModel()
+        sett = accumulation_model.Varandas()
         sett.read_traffic(self.traininfo, 1)
         sett.settlement(idx=[40])
         sett.dump(os.path.join(TEST_PATH, "./example.pickle"))
