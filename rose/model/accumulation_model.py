@@ -207,3 +207,143 @@ class Varandas:
         with open(output_file, "wb") as f:
             pickle.dump(self.results, f)
         return
+
+
+class LiSelig:
+    def __init__(self, name, gamma, phi, cohesion, z_coord, last_layer_thickness=10):
+        r"""
+        Accumulation model for soil layer. Based on Li and Selig :cite:`Li_Selig_1996`.
+        Implementation based on Punetha et al. :cite:`Punetha_2020`.
+
+        @param name: name of soil layers
+        @param gamma: Volumetric weight
+        @param phi: friction angle
+        @param cohesion: cohesion
+        @param z_coord: Z coordinate top layer
+        @param last_layer_thickness: (optional) last layer thickness
+        """
+        self.name = name
+        self.gamma = np.array(gamma)
+        self.phi = np.array(phi) * (np.pi / 180)  # friction angle in rads
+        self.cohesion = np.array(cohesion)  # cohesion
+        self.z_coord = np.array(z_coord)  # layer thickness
+        self.z_last_layer = last_layer_thickness
+
+        self.a = []  # Li and Selig parameter
+        self.b = []  # Li and Selig parameter
+        self.m = []  # Li and Selig parameter
+        self.thickness = []  # Layer thickness
+        self.z_middle = []  # Z coordinate middle layer
+        self.sigma_s = []  # Static strength
+        self.sigma_v0 = []  # Initial effective vertical stress
+        self.sigma_deviatoric = []  # Deviatoric stress
+        self.settlement = []  # total settlement
+
+        # parameterise settlement model
+        self.classify()
+        # compute initial vertical stress
+        self.initial_stress()
+        # compute strength
+        self.strength()
+
+        # soil classes according to Li & Selig
+        self.other = ["a", "ht"]
+        self.sand = ["zg", "zm", "zf"]
+        self.silt = ["z&s", "zs", "s"]
+        self.silt_plas = ["z&h", "zk", "k&s"]
+        self.clay_low = ["kz", "k", "sd"]
+        self.clay_high = ["ko", "k&v", "vk", "v", "o&z"]
+
+    def initial_stress(self):
+        """
+        Computes initial vertical effective stress at the middle of the layer
+        """
+        thickness = np.abs(np.diff(self.z_coord))
+        self.thickness = np.append(thickness, self.z_last_layer)
+
+        self.z_middle = np.abs((self.z_coord - self.z_coord[0])) + self.thickness / 2
+        self.sigma_v0 = self.gamma * self.z_middle
+
+    def classify(self):
+        """
+        Parameterise soil layers for the Li and Selig model following the SOS name convention.
+        """
+        for name in self.name:
+            if name.split("_")[-1] in self.sand:
+                self.a.append(0.64)
+                self.b.append(0.10)
+                self.m.append(1.7)
+            elif name.split("_")[-1] in self.silt:
+                self.a.append(0.64)
+                self.b.append(0.10)
+                self.m.append(1.7)
+            elif name.split("_")[-1] in self.silt_plas:
+                self.a.append(0.84)
+                self.b.append(0.13)
+                self.m.append(2.0)
+            elif name.split("_")[-1] in self.clay_low:
+                self.a.append(1.1)
+                self.b.append(0.16)
+                self.m.append(2.0)
+            elif name.split("_")[-1] in self.clay_high:
+                self.a.append(1.2)
+                self.b.append(0.18)
+                self.m.append(2.4)
+            elif name.split("_")[-1] in self.other:
+                self.a.append(0)
+                self.b.append(0)
+                self.m.append(0)
+            else:
+                sys.exit(f"ERROR: Soil layer {name} not defined.")
+
+    def strength(self):
+        """
+        Computes shear strength resistance, assuming MC failure
+        """
+        self.sigma_s = self.sigma_v0 * np.tan(self.phi) + self.cohesion
+        return
+
+    def deviatoric_stress(self, force, width):
+        """
+        Computes deviatoric stress based on analytical solution from Flamant (see Verruijt 2018 pg 231-232).
+        ToDo: This can be improved for a layered soil.
+
+        @param force: distributed force for the strip load
+        @param width: width of the strip load
+        """
+
+        # Flamant's approximation
+        stress = force / width
+        a = width / 2
+        x = np.linspace(-10, 10, 100)
+
+        self.sigma_deviatoric = np.zeros(len(self.z_middle))
+
+        for i, z_mid in enumerate(self.z_middle):
+            theta1 = np.arctan(x / z_mid)
+            theta2 = np.arctan((x - a) / z_mid)
+
+            # stress_zz = 2 * stress / np.pi * (theta1 + np.sin(theta1) * np.cos(theta1))
+            # stress_xx = 2 * stress / np.pi * (theta1 - np.sin(theta1) * np.cos(theta1))
+            stress_xz = stress / np.pi * (np.cos(theta2)**2 - np.cos(theta1)**2)
+            self.sigma_deviatoric[i] = np.max(np.abs(stress_xz))
+
+    def calculate(self, force, width, N):
+        """
+        Calculate the settlement
+
+        @param force: Applied force
+        @param width: width of the stress distribution
+        @param N: Number of cycles
+        """
+
+        # deviatoric stress
+        self.deviatoric_stress(force, width)
+
+        # strain
+        sett = np.zeros((len(self.thickness), len(N)))
+        for i in range(len(self.thickness)):
+            strain = self.a[i] * (self.sigma_deviatoric[i] / self.sigma_s[i]) ** self.m[i] * N ** self.b[i]
+            sett[i, :] = strain * self.thickness[i]
+        # settlement
+        self.settlement = np.sum(sett, axis=0)
