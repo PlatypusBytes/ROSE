@@ -2,7 +2,7 @@ import sys
 import numpy as np
 from scipy.integrate import trapz
 import os
-import json
+import pickle
 from tqdm import tqdm
 
 
@@ -34,10 +34,12 @@ class AccumulationModel:
         # variables
         self.number_trains = []  # number of trains
         self.trains = []  # name of train types
-        self.number_cycles = []  # number of loading cycles
+        self.number_cycles = []  # number of total loading cycles
+        self.nb_cycles_day = []  # number of loading cycles / day
         self.force = []
         self.cumulative_time = []
         self.cumulative_nb_cycles = []
+        self.index_cumulative_distributed = []
         self.nodes = []
         self.displacement = []
         self.results = {}
@@ -65,9 +67,11 @@ class AccumulationModel:
         for t in trains:
             self.trains.append(t)
             # compute number of cycles
-            aux = time_days * trains[t]["nb-per-hour"] * trains[t]["nb-hours"] * trains[t]["nb-axles"]
-            # number cycles of train t
-            self.number_cycles.append(aux)
+            aux = trains[t]["nb-per-hour"] * trains[t]["nb-hours"] * trains[t]["nb-axles"]
+            # number axles a day
+            self.nb_cycles_day.append(aux)
+            # number cycles of train
+            self.number_cycles.append(aux * time_days)
             # force for train t
             self.force.append(trains[t]["forces"])
             # nb of nodes
@@ -76,9 +80,14 @@ class AccumulationModel:
         # number of trains
         self.number_trains = len(self.trains)
         # define cumulative time
-        self.cumulative_time = np.linspace(0, time_days, int(np.max(self.number_cycles) + 1))
+        self.cumulative_time = np.linspace(0, time_days-1, int(np.max(self.number_cycles)))
         # define cumulative nb cycles
-        self.cumulative_nb_cycles = np.linspace(0, int(np.sum(self.number_cycles)), int(np.max(self.number_cycles) + 1))
+        self.cumulative_nb_cycles = np.linspace(0, int(np.max(self.number_cycles)) - 1, int(np.max(self.number_cycles)))
+
+        # index for distributed loading
+        for nb in self.number_cycles:
+            self.index_cumulative_distributed.append(np.linspace(0, nb-1, int(np.max(self.number_cycles))) * (np.max(self.number_cycles) / nb))
+        self.index_cumulative_distributed = np.array(self.index_cumulative_distributed).astype(int)
 
         # check if number of nodes is the same for all the trains
         if all(nb_nodes[0] == x for x in nb_nodes):
@@ -123,59 +132,46 @@ class AccumulationModel:
         # assign nodes
         self.nodes = idx
 
+        # cumulative displacement
+        self.displacement = np.zeros((int(len(idx)), int(np.max(self.number_cycles))))
+        # displacement due to cycle n
+        disp = np.zeros((int(len(idx)), int(np.max(self.number_cycles))))
+
         # compute maximum force
         for j in range(self.number_trains):
             # histogram.extend(self.number_cycles[j] * [np.max(np.abs(self.force[j]), axis=1) / self.force_scl_fct])
             self.force_max.append(np.max(np.abs(self.force[j]), axis=1)[idx] / self.force_scl_fct)
-
-        # histogram
-        hist = np.ones((int(len(idx)), int(np.sum(self.number_cycles)))) * np.inf
-        # cumulative displacement
-        self.displacement = np.zeros((int(len(idx)), int(np.max(self.number_cycles))))
-        # displacement due to cycle n
-        disp = np.zeros((int(len(idx)), int(np.max(self.number_cycles)) + 1))
+        self.force_max = np.array(self.force_max)
         # Vector F for integration
         F = np.linspace(0, np.max(self.force_max, axis=0), self.nb_int_step)
 
-        # incremental number of cycles
-        nb_cycle = 0
-
         # progress bar
         pbar = tqdm(
-            total=int(np.max(self.number_cycles)),
+            total=len(self.cumulative_nb_cycles),
             unit_scale=True,
             unit="steps",
         )
 
-        # for the maximum number of cycles
-        for xx in range(int(np.max(self.number_cycles))):
+        h_f = np.zeros(len(self.nodes))
+        max_val_force = np.zeros((len(self.nodes), self.number_trains)).T
+
+        for n, nb_cyc in enumerate(self.cumulative_nb_cycles):
+            for tr in range(self.number_trains):
+                if nb_cyc <= self.number_cycles[tr]:
+                    h_f[self.force_max[tr, :] <= max_val_force[tr, :]] += 1
+                    max_val_force[tr, self.force_max[tr, :] > max_val_force[tr, :]] = self.force_max[tr, self.force_max[tr, :] > max_val_force[tr, :]]
+
+                    # compute integral: trapezoidal rule
+                    integral = F ** self.alpha * (1 / (h_f + 1)) ** self.beta
+                    val = trapz(integral, F, axis=0)
+                    # compute displacement on cycle N
+                    disp[:, n] += self.gamma / self.M_alpha_beta * val
+                    # disp[:, self.index_cumulative_distributed[tr][n]] += self.gamma / self.M_alpha_beta * val
             # update progress bar
             pbar.update(1)
-            # for each train
-            for j in range(self.number_trains):
 
-                # if the number of cycles > than number of cycles imposed by train j -> continue
-                if nb_cycle > self.number_cycles[j]:
-                    nb_cycle += 1
-                    continue
-
-                # add force to histogram
-                hist[:, nb_cycle] = self.force_max[j]
-
-                # find number of loads in histogram
-                h_f = np.where(self.force_max[j] >= hist[:, :nb_cycle + 1].T, 1, 0)
-                h_f = np.sum(h_f, axis=0)
-
-                # compute integral: trapezoidal rule
-                integral = F ** self.alpha * (1 / (h_f + 1)) ** self.beta
-                val = trapz(integral, F, axis=0)
-
-                # compute displacement
-                disp[:, nb_cycle] += self.gamma / self.M_alpha_beta * val
-
-                # increase nb cycle
-                nb_cycle += 1
-
+        # close progress bar
+        pbar.close()
         # compute displacements
         self.displacement = np.cumsum(disp, axis=1) / self.disp_scl_fct
         # create results dic
@@ -208,7 +204,6 @@ class AccumulationModel:
             os.makedirs(os.path.split(output_file)[0])
 
         # dump dict
-        with open(output_file, "w") as f:
-            json.dump(self.results, f, indent=2)
-
+        with open(output_file, "wb") as f:
+            pickle.dump(self.results, f)
         return
