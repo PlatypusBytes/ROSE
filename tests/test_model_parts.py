@@ -196,27 +196,49 @@ class TestTimoshenkoBeamElementModelPart:
         # assert
         np.testing.assert_array_almost_equal(beam_stiffness_matrix, expected_no_rigid_matrix)
 
-    @pytest.mark.parametrize("displacement, expected_strain",
-                              #[(np.array([0,0,0.1/8,0,0,-0.1/8]), [0,0]), # equal rotation to both sides of beam
-                              [(np.array([0.1,0,0.1/8,-0.1,0,-0.1/8]), [0,0]), # equal rotation to both sides of beam and normal disp
-                              ])
-    def test_calculate_strain(self,displacement, expected_strain, set_up_euler_beam):
+    def test_calculate_strain(self, set_up_euler_beam):
 
+        # set up euler beam
         beam = set_up_euler_beam
 
+        E = beam.material.youngs_modulus
+        A = beam.section.area
+        I = beam.section.sec_moment_of_inertia
+        L = beam.length_element
+
+        # get distance from neutral axis to top and bottom of beam
+        z_top = beam.section.height - beam.section.height_neutral_axis
+        z_bot = beam.section.height_neutral_axis
+
+        # initialize beam
         beam.initialize()
 
-        # add equal rotation to both sides of beam
-        u = np.array([0,0,0.1/8,0,0,-0.1/8])
-
+        # set displacement in beam
+        displacement = np.array([0.01 / 8,0.1/8,0,-0.01 / 8,-0.1/8,0])
         # calculate strain at middle beam
-        strain = beam.calculate_strain(5, displacement)
 
-        # assert strain is zero
-        np.testing.assert_array_almost_equal(expected_strain, strain)
+        # calculate reaction forces
+        reaction_N = E * A / L * (displacement[0] - displacement[3])
+        reaction_M = 6 * E * I/L**2 * (displacement[1] - displacement[4])
 
-        # add equal rotation to both sides of beam and normal displacement
-        # u = np.array([1,0,0.1/8,1,0,-0.1/8])
+        # loop over coordinates
+        x_coordinates = np.arange(0, 10.1, 0.1)
+        for x in x_coordinates:
+
+            # calculate expected normal force and moment
+            expected_N = reaction_N
+            expected_M = -(2 * reaction_M / L) * x + reaction_M
+
+            # calculate expected strain at top and bottom
+            expected_strain_top = expected_N/(E*A) + expected_M * z_top / (E * I)
+            expected_strain_bot = expected_N / (E * A) - expected_M * z_bot / (E * I)
+
+            # calculate strain in beam at x
+            strain = beam.calculate_strain(x, displacement)
+
+            # assert strain
+            np.testing.assert_array_almost_equal((expected_strain_top, expected_strain_bot), strain)
+
 
     def test_calculate_local_forces(self, set_up_euler_beam):
         """

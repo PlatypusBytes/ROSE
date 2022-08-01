@@ -816,8 +816,8 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
     def calculate_local_forces_at_x(self, x, u):
         """
         Calculates local internal forces at local x coordinate
-        :param x: local x coordinate
-        :param u: displacement array
+        :param x: local x coordinate on beam
+        :param u: displacement vector with 6 DOFS in local coordinate system
         :return:
         """
         n_nodes = 2
@@ -848,12 +848,8 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         :param u: displacement vector with 6 DOFS in local coordinate system
         :return:
         """
-        n_nodes = 2
-
-        # set shape functions at local x coord
-        self.set_normal_shape_functions(x)
-        self.set_y_shape_functions(x)
-        self.set_z_rot_shape_functions(x)
+        # calculate internal forces at x
+        (N, _, M) = self.calculate_local_forces_at_x(x, u)
 
         E = self.material.youngs_modulus
         A = self.section.area
@@ -862,28 +858,15 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         h = self.section.height
         y = self.section.height_neutral_axis
 
-        # calculate local force vector
-        # self.aux_stiffness_matrix[[[2, 2], [5, 2]], [[2, 5], [2, 2]]]
-        F_nodes = self.aux_stiffness_matrix.dot(u)
-        F_tmp = np.array_split(F_nodes, n_nodes, axis=0)
-        F_tmp[1] = -F_tmp[1]
-        F_el = np.concatenate(F_tmp)
-        # calculate normal force and bending moment at local x coord
-
-        #N = (1/self.normal_shape_functions).dot(F_el[[0, 3]]) / len(self.normal_shape_functions)
-        N = self.normal_shape_functions.dot(F_el[[0, 3]])
-        M = self.z_rot_shape_functions.dot(F_el[[1, 2, 4, 5]])
-        #M = (1/self.z_rot_shape_functions).dot(F_el[[1, 2, 4, 5]]) / len(self.z_rot_shape_functions)
         curvature_radius = (E*I)/M
+        strain_normal_force = N / (E * A)
 
         # calculate strain
         epsilon = np.zeros(2)
-        epsilon[0] = N / (E * A) + (h-y) / curvature_radius
-        epsilon[1] = N / (E * A) - y / curvature_radius
+        epsilon[0] = strain_normal_force + (h-y) / curvature_radius # strain at top of beam
+        epsilon[1] = strain_normal_force - y / curvature_radius # strain at bottom of beam
 
         return epsilon
-
-        # epsilon = F[0] / (E*A) + F[1] + F[2]/(W*E)
 
     def initialize(self):
         """
