@@ -1,8 +1,11 @@
 import pytest
+import numpy as np
 
 from rose.model.geometry import Element, Node
 
 from rose.model.model_part import *
+
+
 
 
 class TestRodElement:
@@ -193,6 +196,69 @@ class TestTimoshenkoBeamElementModelPart:
         # assert
         np.testing.assert_array_almost_equal(beam_stiffness_matrix, expected_no_rigid_matrix)
 
+    @pytest.mark.parametrize("displacement, expected_strain",
+                              #[(np.array([0,0,0.1/8,0,0,-0.1/8]), [0,0]), # equal rotation to both sides of beam
+                              [(np.array([0.1,0,0.1/8,-0.1,0,-0.1/8]), [0,0]), # equal rotation to both sides of beam and normal disp
+                              ])
+    def test_calculate_strain(self,displacement, expected_strain, set_up_euler_beam):
+
+        beam = set_up_euler_beam
+
+        beam.initialize()
+
+        # add equal rotation to both sides of beam
+        u = np.array([0,0,0.1/8,0,0,-0.1/8])
+
+        # calculate strain at middle beam
+        strain = beam.calculate_strain(5, displacement)
+
+        # assert strain is zero
+        np.testing.assert_array_almost_equal(expected_strain, strain)
+
+        # add equal rotation to both sides of beam and normal displacement
+        # u = np.array([1,0,0.1/8,1,0,-0.1/8])
+
+    def test_calculate_local_forces(self, set_up_euler_beam):
+        """
+        Tests calculate local internal forces of element at each coordinate
+        :param set_up_euler_beam:
+        :return:
+        """
+
+        # set up beam
+        beam = set_up_euler_beam
+
+        E = beam.material.youngs_modulus
+        A = beam.section.area
+        I = beam.section.sec_moment_of_inertia
+        L = beam.length_element
+
+        # set displacements
+        displacement = np.array([0.01 / 8, 0.1 / 8, 0, -0.01 / 8, -0.1 / 8, 0])
+
+        # initialize beam
+        beam.initialize()
+
+        # calculate reaction forces
+        reaction_N = E * A / L * (displacement[0] - displacement[3])
+        reaction_V = 12 * E * I/L**3 * (displacement[1] - displacement[4])
+        reaction_M = 6 * E * I/L**2 * (displacement[1] - displacement[4])
+
+        # loop over coordinates
+        x_coordinates = np.arange(0, 10.1, 0.1)
+        for x in x_coordinates:
+
+            # calculate expected internal forces at x
+            expected_N = reaction_N
+            expected_V = -(reaction_M/L)*x**2 + reaction_M*x + reaction_V
+            expected_M = -(2*reaction_M/L)*x + reaction_M
+
+            # calculate internal forces in element
+            (N, V, M) = beam.calculate_local_forces_at_x(x, displacement)
+
+            # assert internal forces
+            np.testing.assert_array_almost_equal((N, V, M), (expected_N, expected_V,expected_M))
+
 
 @pytest.fixture
 def set_up_material():
@@ -210,6 +276,10 @@ def set_up_euler_section():
     section.area = 1e-3
     section.sec_moment_of_inertia = 2e-5
     section.shear_factor = 0
+    section.height = 0.1
+    section.height_neutral_axis = 0.05
+    # section.height = 0.159
+    # section.height_neutral_axis = 0.0751
     return section
 
 

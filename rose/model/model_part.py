@@ -63,6 +63,8 @@ class Section:
         self.shear_factor: float = (
             0  # shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
         )
+        self.height = None
+        self.height_neutral_axis = None
 
     def validate_input(self):
         if self.area is None:
@@ -71,6 +73,13 @@ class Section:
             logging.error("Second moment of inertia not defined")
         if self.shear_factor is None:
             logging.error("Shear factor not defined")
+        if self.height is None:
+            logging.warning("height not defined, strain cannot be determined")
+        if self.height_neutral_axis is None:
+            logging.warning("height neutral axis not defined, strain cannot be determined")
+        if self.height is not None and self.height_neutral_axis is not None:
+            if self.height < self.height_neutral_axis:
+                logging.error("Section height cannot be smaller than height neutral axis")
 
 
 class ModelPart:
@@ -792,12 +801,89 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
             + 3 * x_l2
             + phi * x_l
         )
-        self._y_shape_functions[3] = constant * ((x3 / l ** 2)- (x2 / l)+ phi/ 2* (x_l2 - x_l)
-        )
+        self._y_shape_functions[3] = constant * ((x3 / l ** 2) - (x2 / l) + phi / 2 * (x_l2 - x_l))
 
     def set_z_rot_shape_functions(self, x):
-        # todo set z_rot shape functions
-        pass
+        l = self.length_element
+        phi = self.__timoshenko_factor
+        constant = 1 / (1 + phi)
+
+        self._z_rot_shape_functions[0] = constant * (6*x**2 / l**3 - 6*x / l**2 - phi/l)
+        self._z_rot_shape_functions[1] = constant * (1 + 3*x**2/l**2 - 4 * x/l + phi / 2 * (1/l - 2*x/l**2))
+        self._z_rot_shape_functions[2] = constant * (-6*x**2/l**3 + 6*x/l**2 + phi / l)
+        self._z_rot_shape_functions[3] = constant * (3 * x ** 2 / l ** 2 - 2 * x/l + phi / 2 * (2*x/l**2 - 1/l))
+
+    def calculate_local_forces_at_x(self, x, u):
+        """
+        Calculates local internal forces at local x coordinate
+        :param x: local x coordinate
+        :param u: displacement array
+        :return:
+        """
+        n_nodes = 2
+
+        # set shape functions at local x coord
+        self.set_normal_shape_functions(x)
+        self.set_y_shape_functions(x)
+        self.set_z_rot_shape_functions(x)
+
+        # calculate local force vector
+        F_nodes = self.aux_stiffness_matrix.dot(u)
+        F_tmp = np.array_split(F_nodes, n_nodes, axis=0)
+        F_tmp[1] = -F_tmp[1]
+        F_el = np.concatenate(F_tmp)
+
+        # calculate normal force, shear force and bending moment at local x coord
+        N = self.normal_shape_functions.dot(F_el[[0, 3]])
+        V = self.y_shape_functions.dot(F_el[[1, 2, 4, 5]])
+        M = self.z_rot_shape_functions.dot(F_el[[1, 2, 4, 5]])
+
+        return N, V, M
+
+    def calculate_strain(self, x, u):
+        """
+        Calculates strain on any point in beam
+
+        :param x: local coordinate on beam
+        :param u: displacement vector with 6 DOFS in local coordinate system
+        :return:
+        """
+        n_nodes = 2
+
+        # set shape functions at local x coord
+        self.set_normal_shape_functions(x)
+        self.set_y_shape_functions(x)
+        self.set_z_rot_shape_functions(x)
+
+        E = self.material.youngs_modulus
+        A = self.section.area
+        I = self.section.sec_moment_of_inertia
+
+        h = self.section.height
+        y = self.section.height_neutral_axis
+
+        # calculate local force vector
+        # self.aux_stiffness_matrix[[[2, 2], [5, 2]], [[2, 5], [2, 2]]]
+        F_nodes = self.aux_stiffness_matrix.dot(u)
+        F_tmp = np.array_split(F_nodes, n_nodes, axis=0)
+        F_tmp[1] = -F_tmp[1]
+        F_el = np.concatenate(F_tmp)
+        # calculate normal force and bending moment at local x coord
+
+        #N = (1/self.normal_shape_functions).dot(F_el[[0, 3]]) / len(self.normal_shape_functions)
+        N = self.normal_shape_functions.dot(F_el[[0, 3]])
+        M = self.z_rot_shape_functions.dot(F_el[[1, 2, 4, 5]])
+        #M = (1/self.z_rot_shape_functions).dot(F_el[[1, 2, 4, 5]]) / len(self.z_rot_shape_functions)
+        curvature_radius = (E*I)/M
+
+        # calculate strain
+        epsilon = np.zeros(2)
+        epsilon[0] = N / (E * A) + (h-y) / curvature_radius
+        epsilon[1] = N / (E * A) - y / curvature_radius
+
+        return epsilon
+
+        # epsilon = F[0] / (E*A) + F[1] + F[2]/(W*E)
 
     def initialize(self):
         """
