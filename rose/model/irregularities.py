@@ -7,6 +7,46 @@ seed = 99
 random_generator = np.random.default_rng(seed)
 
 
+class WheelFlat:
+    def __init__(self,x :np.ndarray, wheel_diameter: float, flatness_length: float ):
+        """
+        Creates an array with a wheel flat. where every circumference of the wheel, the wheel is indented
+
+        :param x: position of the node [m]
+        :param wheel_diameter: diameter of the wheel [m]
+        :param flatness_length: total flat length of the wheel [m]
+        """
+
+        wheel_circumference = np.pi * wheel_diameter
+
+        half_angle_wheel_flat = np.arcsin(flatness_length / wheel_diameter)
+        new_radius = (wheel_diameter / 2) * np.cos(half_angle_wheel_flat)
+
+        irregularity_height = wheel_diameter / 2 - new_radius
+
+        # apply a random start distance
+        random_start = random_generator.random(1)[0] * wheel_circumference
+
+        x = x+random_start
+
+        # an array is made which contains a value if the wheel has made a round, else the array contains zeros
+        n_circumferences = x / wheel_circumference
+
+        # create array which indicates the amount of rotations of the wheel as an integer
+        tmp_array = np.ceil(n_circumferences).astype(int)
+
+        # wheel flat index is located at every new wheel rotation
+        wheel_flat_indices = []
+        for i in range(1, len(tmp_array) - 1):
+            if (tmp_array[i] > tmp_array[i - 1]):
+                wheel_flat_indices.append(i)
+        wheel_flat_indices = np.array(wheel_flat_indices)
+
+        # generate irregularities array
+        self.irregularities = np.zeros_like(x)
+        self.irregularities[wheel_flat_indices] = -irregularity_height
+
+
 class RailIrregularities:
     def __init__(self, x: np.ndarray,
                  f_min: float = 2, f_max: float = 500, N: int = 2000, Av: float = 0.00003365, omega_c: float = 0.8242):
