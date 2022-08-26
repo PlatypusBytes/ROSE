@@ -323,6 +323,14 @@ class ElementModelPart(ModelPart):
         """
         pass
 
+    @abc.abstractmethod
+    def calculate_strain(self, x, u):
+        """
+        Calculates strain in the element. This function is meant as an abstract method
+        :return:
+        """
+        pass
+
 
 class RodElementModelPart(ElementModelPart):
     """
