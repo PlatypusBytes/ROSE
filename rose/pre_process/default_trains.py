@@ -209,7 +209,7 @@ def set_sprinter_slt_train(time, velocities, start_coord):
         if idx == 0:
             cart.distribution_factor = [1, 0.5]
         # left bogie is shared between 2 carts
-        elif idx == len(sprinter_train.carts):
+        elif idx == len(sprinter_train.carts)-1:
             cart.distribution_factor = [0.5, 1]
         # both bogies are shared between 2 carts
         else:
