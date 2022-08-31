@@ -361,6 +361,19 @@ class CoupledTrainTrack(GlobalSystem):
         # calculate rayleigh damping
         self.calculate_rayleigh_damping()
 
+    def __check_train_position(self, rail_nodes: List):
+        # get limits track
+        x_coords_track = [node.coordinates[0] for node in rail_nodes]
+        limits_track = np.min(x_coords_track), np.max(x_coords_track)
+
+        # get limits wheels
+        limits_wheel_distances = np.array([[min(wheel.distances), max(wheel.distances)] for wheel in self.train.wheels])
+
+        # check if train is on track at all times
+        if (limits_wheel_distances < limits_track[0]).any() or (limits_wheel_distances > limits_track[1]).any():
+            raise ValueError(
+                "At some point in time, one or more wheels of the train are located outside the track geometry")
+
     def initialize_wheel_loads(self):
         """
         Initialises wheel loads on track
@@ -377,6 +390,8 @@ class CoupledTrainTrack(GlobalSystem):
 
         rail_elements = [part.elements for part in rail_model_parts]
         rail_elements = list(itertools.chain.from_iterable(rail_elements))
+
+        self.__check_train_position(rail_nodes)
 
         self.wheel_loads = []
         # loop over the wheels
