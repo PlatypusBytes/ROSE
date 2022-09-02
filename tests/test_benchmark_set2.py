@@ -882,7 +882,7 @@ class TestBenchmarkSet2:
         # create_animation("temp_mov2.html", (coords),
         #                  (vertical_displacements_rail[:,:]))
 
-        plt.plot(coupled_model.solver.u[:,-1])
+        #plt.plot(coupled_model.solver.u[:,-1])
         # plt.plot(coupled_model.solver.u[:, -2])
         # # plt.plot(coupled_model.solver.u[:, -3])
         # # plt.plot(coords, vertical_displacements_rail[:,1000])
@@ -890,7 +890,7 @@ class TestBenchmarkSet2:
         # # plt.plot(coupled_model.solver.u[2000:10000, -1])
         # # plt.plot(coupled_model.solver.u[:, -1])
         # # plt.plot(coupled_model.solver.u[:, 1])
-        plt.show()
+        #plt.show()
         # coupled_model.wheel_loads = None
 
     @pytest.mark.parametrize("solver, n_timesteps, filename_expected",
@@ -1221,8 +1221,8 @@ class TestBenchmarkSet2:
         coords = np.array([node.coordinates[0] for node in rail_nodes])
 
         # recalculate analytical solution and compare with numerical solution
-        if True:
-        # if RENEW_BENCHMARKS:
+        # if True:
+        if RENEW_BENCHMARKS:
             # calculate analytical solution
             position = np.linspace(rail_model_part.nodes[0].coordinates[0],
                                    rail_model_part.nodes[-1].coordinates[0], calculation_time_steps)
