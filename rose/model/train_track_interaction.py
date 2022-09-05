@@ -369,8 +369,8 @@ class CoupledTrainTrack(GlobalSystem):
         # get limits wheels
         limits_wheel_distances = np.array([[min(wheel.distances), max(wheel.distances)] for wheel in self.train.wheels])
 
-        # precision is machine float64 precision * n time steps
-        precision = np.finfo(float).eps * len(self.train.wheels[0].distances)
+        # precision is machine float32 epsilon
+        precision = np.finfo(np.float32).eps
 
         # check if train is on track at all times
         if (limits_wheel_distances < limits_track[0] - precision).any() or \
