@@ -8,7 +8,7 @@ random_generator = np.random.default_rng(seed)
 
 
 class WheelFlat:
-    def __init__(self,x :np.ndarray, wheel_diameter: float, flatness_length: float ):
+    def __init__(self, x: np.ndarray, wheel_diameter: float, flatness_length: float, start_position=None):
         """
         Creates an array with a wheel flat. where every circumference of the wheel, the wheel is indented
 
@@ -24,10 +24,13 @@ class WheelFlat:
 
         irregularity_height = wheel_diameter / 2 - new_radius
 
-        # apply a random start distance
-        random_start = random_generator.random(1)[0] * wheel_circumference
-
-        x = x+random_start
+        # Apply a random start distance if no start position is chosen, else the wheel flat starts at the start
+        # position, note that also prior wheel rotations are taken into account
+        if start_position is None:
+            random_start = random_generator.random(1)[0] * wheel_circumference
+            x = x + random_start
+        else:
+            x = x - start_position
 
         # an array is made which contains a value if the wheel has made a round, else the array contains zeros
         n_circumferences = x / wheel_circumference
