@@ -69,10 +69,11 @@ def soil_parameters(sleeper_distance, stiffness, damping):
     return soil
 
 
-def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity, use_irregularities):
+def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity, use_irregularities,
+                 output_interval):
     # choose solver
     solver = solver_c.NewmarkExplicit()
-    solver.output_interval = 10
+    solver.output_interval = output_interval
 
     all_element_model_parts = []
     all_meshes = []
@@ -280,6 +281,8 @@ def main():
     output_dir = "./res"
     filename = "transition_demo"
 
+    output_time_interval=10
+
     # create geometry
     geom = geometry(nb_sleepers)
     # materials
@@ -289,7 +292,8 @@ def main():
     # soil parameters
     soil = soil_parameters(geom["sleeper_distance"], stiffness, damping)
     # define train-track mode model
-    coupled_model = create_model(train_type, train_start_coord, geom, mat, tim, soil, train_speed, use_irregularities)
+    coupled_model = create_model(train_type, train_start_coord, geom, mat, tim, soil, train_speed, use_irregularities,
+                                 output_time_interval)
     # calculate
     coupled_model.main()
     # write results
