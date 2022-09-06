@@ -72,6 +72,7 @@ def soil_parameters(sleeper_distance, stiffness, damping):
 def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity, use_irregularities):
     # choose solver
     solver = solver_c.NewmarkExplicit()
+    solver.output_interval = 10
 
     all_element_model_parts = []
     all_meshes = []
@@ -176,8 +177,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
     return coupled_model
 
 
-def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir: str,
-                  output_interval: int = 10):
+def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir: str):
     """
     Writes dynamic results of a couple model
 
@@ -194,19 +194,19 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
 
     # collect results
     vertical_displacements_rail = np.array(
-        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[0].nodes])
+        [node.displacements[:, 1] for node in coupled_model.track.model_parts[0].nodes])
     vertical_force_rail = np.array(
-        [element.force[0::output_interval, 1] for element in coupled_model.track.model_parts[0].elements])
+        [element.force[:, 1] for element in coupled_model.track.model_parts[0].elements])
     coords_rail = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[0].nodes])
 
     vertical_displacements_rail_pad = np.array(
-        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[1].nodes])
+        [node.displacements[:, 1] for node in coupled_model.track.model_parts[1].nodes])
     vertical_force_rail_pad = np.array(
-        [element.force[0::output_interval, 1] for element in coupled_model.track.model_parts[1].elements])
+        [element.force[:, 1] for element in coupled_model.track.model_parts[1].elements])
     coords_rail_pad = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[1].nodes])
 
     vertical_displacements_sleeper = np.array(
-        [node.displacements[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
+        [node.displacements[:, 1] for node in coupled_model.track.model_parts[2].nodes])
     # vertical_force_sleeper = np.array(
     #     [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
     # coords_sleeper = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[2].nodes])
@@ -221,19 +221,21 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
     soil_elements = list(itertools.chain.from_iterable(soil_elements))
 
     vertical_displacements_soil = np.array(
-        [node.displacements[0::output_interval, 1] for node in soil_nodes])
+        [node.displacements[:, 1] for node in soil_nodes])
     vertical_force_soil = np.array(
-        [element.force[0::output_interval, 0] for element in soil_elements])
+        [element.force[:, 0] for element in soil_elements])
     coords_soil = np.array([node.coordinates[0] for node in soil_nodes])
 
     vertical_displacements_train = np.array(
-        [node.displacements[0::output_interval, 1] for node in coupled_model.train.nodes])
-    vertical_force_train = np.array([node.force[0::output_interval, 1] for node in coupled_model.train.nodes])
+        [node.displacements[:, 1] for node in coupled_model.train.nodes])
+    vertical_force_train = np.array([node.force[:, 1] for node in coupled_model.train.nodes])
+
+    solver_output_indices = coupled_model.solver.output_time_indices
 
     result_track = {"name": segment_id,
                     # "omega": omega,
-                    "time": coupled_model.time[0::output_interval].tolist(),
-                    "velocity": coupled_model.train.velocities[0::output_interval].tolist(),
+                    "time": coupled_model.time_out[:].tolist(),
+                    "velocity": coupled_model.train.velocities[solver_output_indices].tolist(),
                     "vert_disp_rail": vertical_displacements_rail.tolist(),
                     "vert_force_rail": vertical_force_rail.tolist(),
                     "coords_rail": coords_rail.tolist(),
@@ -291,7 +293,7 @@ def main():
     # calculate
     coupled_model.main()
     # write results
-    write_results(coupled_model, filename, output_dir, output_interval=10)
+    write_results(coupled_model, filename, output_dir)
 
 
 if __name__ == "__main__":
