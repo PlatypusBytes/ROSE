@@ -7,7 +7,7 @@ from rose.pre_process.mesh_utils import *
 
 import numpy as np
 import itertools
-
+from copy import deepcopy
 
 class CoupledTrainTrack(GlobalSystem):
     """
@@ -448,7 +448,7 @@ class CoupledTrainTrack(GlobalSystem):
         """
         print("Initialising train")
 
-        self.train.solver = self.solver.__class__()
+        self.train.solver = deepcopy(self.solver)
         self.train.initialise()
 
     def clean_model(self):
@@ -481,7 +481,7 @@ class CoupledTrainTrack(GlobalSystem):
         self.track.mesh.reorder_element_ids()
         self.track.mesh.reorder_node_ids()
 
-        self.track.solver = self.solver.__class__()
+        self.track.solver = deepcopy(self.solver)
         self.initialize_wheel_loads()
         self.track.initialise()
 
