@@ -777,9 +777,10 @@ class TrainModel(GlobalSystem):
 
         if self.irregularities_at_wheels is None:
             self.irregularities_at_wheels = np.zeros((len(self.wheels), len(self.time)))
-            if self.use_irregularities is True:
-                self.irregularities_at_wheels += utils.generate_rail_irregularities(self.wheels, self.time,
-                                                                                    **self.irregularity_parameters)
+
+        if self.use_irregularities is True:
+            self.irregularities_at_wheels += utils.generate_rail_irregularities(self.wheels, self.time,
+                                                                                **self.irregularity_parameters)
 
 
     def get_contact_dofs(self):
