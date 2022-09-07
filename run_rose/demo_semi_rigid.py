@@ -89,7 +89,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
 
     # Setup global mesh and combine model parts of all segments
     rail_model_part, sleeper_model_part, rail_pad_model_part, soil_model_parts, all_mesh = \
-        combine_horizontal_tracks(all_element_model_parts, all_meshes)
+        combine_horizontal_tracks(all_element_model_parts, all_meshes, geometry["sleeper_distance"])
 
     rail_model_parts, all_mesh = add_semi_rigid_hinge_at_x(rail_model_part, hinge_coord, hinge_stiffness, all_mesh)
 
