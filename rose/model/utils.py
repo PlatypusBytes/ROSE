@@ -1,4 +1,5 @@
 from rose.model.geometry import Node, Element
+from rose.model.irregularities import RailIrregularities
 
 import numpy as np
 from shapely.geometry import LineString, Polygon, Point
@@ -412,3 +413,25 @@ def get_shapely_elements(elements: List[Element]):
     :return:
     """
     return [__create_shapely_element(element) for element in elements]
+
+
+def generate_rail_irregularities(wheels: List, time, **kwargs):
+    """
+    Generates rail irregularities at all wheels in a list
+
+    :param wheels: list of wheels if the train
+    :param time: all time steps
+    :param kwargs: key word arguments for RailIrregularities
+    :return:
+    """
+
+    # initialise irregularity matrix
+    irregularities_at_wheels = np.zeros((len(wheels), len(time)))
+
+    # generate rail irregularities for each wheel
+    for idx, wheel in enumerate(wheels):
+        irregularities = RailIrregularities(wheel.distances,**kwargs)
+        irregularities_at_wheels[idx, :] = irregularities.irregularities
+
+    return irregularities_at_wheels
+

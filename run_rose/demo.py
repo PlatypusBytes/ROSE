@@ -147,14 +147,12 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
                   + soil_model_parts + bottom_boundaries
     track.model_parts = model_parts
 
-    # set up train
-    train = TrainModel()
-    train.use_irregularities = use_irregularities
-    train.time = time
-    train.velocities = velocities
-
     # create train
     train = set_train(time, velocities, train_start_coord, train_type)
+    train.use_irregularities = use_irregularities
+    train.irregularity_parameters = {"Av": 0.00003365}
+    train.time = time
+    train.velocities = velocities
 
     # setup coupled train track system
     coupled_model = CoupledTrainTrack()
@@ -279,7 +277,7 @@ def main():
     train_type = TrainType.DOUBLEDEKKER
 
     output_dir = "./res"
-    filename = "transition_demo"
+    filename = "transition_demo2"
 
     output_time_interval=10
 

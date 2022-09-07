@@ -602,6 +602,7 @@ class TrainModel(GlobalSystem):
 
         self.irregularities_at_wheels: np.ndarray = None
         self.use_irregularities = False
+        self.irregularity_parameters = {}
         self.total_static_load: float = None
 
         self.contact_dofs: List = None
@@ -777,9 +778,9 @@ class TrainModel(GlobalSystem):
         if self.irregularities_at_wheels is None:
             self.irregularities_at_wheels = np.zeros((len(self.wheels), len(self.time)))
             if self.use_irregularities is True:
-                for idx, wheel in enumerate(self.wheels):
-                    irregularities = RailIrregularities(wheel.distances)
-                    self.irregularities_at_wheels[idx,:] = irregularities.irregularities
+                self.irregularities_at_wheels += utils.generate_rail_irregularities(self.wheels, self.time,
+                                                                                    **self.irregularity_parameters)
+
 
     def get_contact_dofs(self):
         """
