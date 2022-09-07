@@ -260,7 +260,7 @@ def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     )
 
 
-def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes: List[Mesh]):
+def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes: List[Mesh], sleeper_distance):
     """
     Combines multiple horizontal track parts. This function takes a list of tracks and connects the track parts to a
     model. The tracks in the list need to be ordered from left to right. Coordinates of the track parts
@@ -270,6 +270,7 @@ def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes:
 
     :param tracks: Ordered list of dictionaries of model parts belonging to a horizontal track part
     :param meshes: list of meshes belonging to the track parts
+    :param sleeper_distance: horizontal distance between sleepers
     :return:
     """
 
@@ -280,8 +281,7 @@ def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes:
         if idx>0:
             # move coordinates to the right
             last_node = max(meshes[idx - 1].nodes, key=lambda item: item.coordinates[0])
-            dx = utils.distance_np(np.array(meshes[idx - 1].nodes[-1].coordinates),
-                                   np.array(meshes[idx - 1].nodes[-2].coordinates))
+            dx = sleeper_distance
 
             for node in mesh.nodes:
                 node.coordinates[0] += last_node.coordinates[0] + dx

@@ -102,7 +102,7 @@ def set_base_model():
 
     # Setup global mesh and combine model parts of all segments
     rail_model_part, sleeper_model_part, rail_pad_model_part, soil_model_parts, all_mesh = \
-        combine_horizontal_tracks(all_element_model_parts, all_meshes)
+        combine_horizontal_tracks(all_element_model_parts, all_meshes, sleeper_distance)
 
     # Fixate the bottom boundary
     bottom_boundaries = [add_no_displacement_boundary_to_bottom(soil_model_part)["bottom_boundary"] for soil_model_part in soil_model_parts]

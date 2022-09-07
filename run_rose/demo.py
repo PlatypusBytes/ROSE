@@ -14,7 +14,7 @@ def geometry(nb_sleeper, fact=1):
     geometry["n_segments"] = len(nb_sleeper)  # number of segments
     geometry["n_sleepers"] = [int(n / fact) for n in nb_sleeper]  # number of sleepers per segment
     geometry["sleeper_distance"] = 0.6 * fact  # distance between sleepers, equal for each segment
-    geometry["depth_soil"] = [1, 1]  # depth of the soil [m] per segment
+    geometry["depth_soil"] = [1] * len(nb_sleeper) # depth of the soil [m] per segment
 
     return geometry
 
@@ -72,7 +72,7 @@ def soil_parameters(sleeper_distance, stiffness, damping):
 def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity, use_irregularities,
                  output_interval):
     # choose solver
-    solver = solver_c.NewmarkExplicit()
+    solver = solver_c.NewmarkImplicitForce()
     solver.output_interval = output_interval
 
     all_element_model_parts = []
@@ -89,7 +89,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
 
     # Setup global mesh and combine model parts of all segments
     rail_model_part, sleeper_model_part, rail_pad_model_part, soil_model_parts, all_mesh = \
-        combine_horizontal_tracks(all_element_model_parts, all_meshes)
+        combine_horizontal_tracks(all_element_model_parts, all_meshes, geometry["sleeper_distance"])
 
     # Fixate the bottom boundary
     bottom_boundaries = [add_no_displacement_boundary_to_bottom(soil_model_part)["bottom_boundary"] for soil_model_part
@@ -263,9 +263,9 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
 
 
 def main():
-    nb_sleepers = [100, 100]
-    stiffness = [158e7, 180e6]
-    damping = [30e3, 20e3]
+    nb_sleepers = [100, 1, 100]
+    stiffness = [158e7, 180e0, 180e7]
+    damping = [30e3, 20e0, 30e3]
     train_speed = 100 / 3.6  # [m/s]
 
     # starting coordinate of the middle of the train. Note that the whole train should be within the geometry at all
