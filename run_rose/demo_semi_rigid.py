@@ -54,8 +54,8 @@ def time_integration():
     time["tot_ini_time"] = 0.5  # total initalisation time  [s]
     time["n_t_ini"] = 5000  # number of time steps initialisation time  [-]
 
-    time["tot_calc_time"] = 10  # total time during calculation phase   [s]
-    time["n_t_calc"] = 200000  # number of time steps during calculation phase [-]
+    time["tot_calc_time"] = 5  # total time during calculation phase   [s]
+    time["n_t_calc"] = 20000  # number of time steps during calculation phase [-]
 
     return time
 
@@ -71,8 +71,7 @@ def soil_parameters(sleeper_distance, stiffness, damping):
 def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity, hinge_coord, hinge_stiffness,
                  use_irregularities, output_interval):
     # choose solver
-    solver = solver_c.NewmarkExplicit()
-    # solver = solver_c.ZhaiSolver()
+    solver = solver_c.NewmarkImplicitForce()
     solver.output_interval = output_interval
 
     all_element_model_parts = []
@@ -277,7 +276,7 @@ def main():
     nb_sleepers = [400]  # number of sleepers per segment
     stiffness = [214e7]  # stiffness per segment
     damping = [30e3]  # damping per segment
-    hinge_coord = 200*.6  # x-coordinate of the hinge, should be a multiple of the sleeper distance i.e. 0.6 m
+    hinge_coord = 200 * .6  # x-coordinate of the hinge, should be a multiple of the sleeper distance i.e. 0.6 m
     hinge_stiffness = 2000000  # stiffness of the hinge
 
     # starting coordinate of the middle of the train. Note that the whole train should be within the geometry at all
@@ -289,7 +288,7 @@ def main():
 
     # write results every n steps
     output_time_interval = 10
-    output_dir = "./results_TZ"
+    output_dir = "./results_hinge"
 
     # Trains
     trains = [TrainType.DOUBLEDEKKER, TrainType.SPRINTER_SLT, TrainType.SPRINTER_SGM,
@@ -312,7 +311,9 @@ def main():
         soil = soil_parameters(geom["sleeper_distance"], stiffness, damping)
         # define train-track mode model
         coupled_model = create_model(train_type, train_start_coord, geom, mat, tim, soil, train_speed[i],
+                                     hinge_coord, hinge_stiffness,
                                      use_irregularities, output_time_interval)
+
         # calculate
         coupled_model.main()
         # write results

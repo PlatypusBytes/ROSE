@@ -56,7 +56,7 @@ def time_integration():
     time["n_t_ini"] = 5000  # number of time steps initialisation time  [-]
 
     time["tot_calc_time"] = 13  # total time during calculation phase   [s]
-    time["n_t_calc"] = 20000  # number of time steps during calculation phase [-]
+    time["n_t_calc"] = 50000  # number of time steps during calculation phase [-]
 
     return time
 
