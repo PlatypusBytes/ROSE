@@ -185,26 +185,23 @@ class GlobalSystem:
         :param condition: Load condition
         :return:
         """
-        self.global_force_vector = self.global_force_vector.toarray()
+        #self.global_force_vector = self.global_force_vector.toarray()
         for i, node in enumerate(condition.nodes):
             # add load condition on normal displacement dof
             if condition.x_disp_dof:
                 self.global_force_vector[
-                    node.index_dof[0], :
-                ] += condition.x_force_matrix[i, :]
+                    node.index_dof[0]
+                ] += condition.x_force_vector[i]
 
             # add load condition on y displacement dof
             if condition.y_disp_dof:
-                self.global_force_vector[node.index_dof[1], :] += condition.y_force_matrix[
-                    i, :
-                ]
+                self.global_force_vector[node.index_dof[1]] += condition.y_force_vector[i]
 
             # add load condition on z rotation dof
             if condition.z_rot_dof:
-                self.global_force_vector[node.index_dof[2], :] += condition.z_moment_matrix[
-                    i, :
-                ]
-        self.global_force_vector = sparse.lil_matrix(self.global_force_vector)
+                self.global_force_vector[node.index_dof[2]] += condition.z_moment_vector[i]
+
+        #self.global_force_vector = sparse.lil_matrix(self.global_force_vector)
 
     def trim_global_matrices_on_indices(self, row_indices: List, col_indices: List):
         """
@@ -351,7 +348,9 @@ class GlobalSystem:
 
         # transfer matrices to compressed sparse column matrices
         K = sparse.csc_matrix(self.global_stiffness_matrix.copy(), dtype=float)
-        F = sparse.csc_matrix(self.global_force_vector[:, :3].copy(), dtype=float)
+       # F = sparse.csc_matrix(self.global_force_vector[:, :3].copy(), dtype=float)
+
+        F = self.global_force_vector
 
         # calculate system with static solver
         ini_solver = StaticSolver()
@@ -380,7 +379,8 @@ class GlobalSystem:
             (self.total_n_dof, self.total_n_dof), dtype=float
         )
 
-        self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)),dtype=float)
+        #self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)),dtype=float)
+        self.global_force_vector = np.zeros(self.total_n_dof)
 
     def __calculate_rayleigh_damping_factors(self):
         """
@@ -496,6 +496,13 @@ class GlobalSystem:
         # update solver
         self.solver.update(start_time_id)
 
+    def update_time_step(self,t):
+        for model_part in self.model_parts:
+            if isinstance(model_part, LoadCondition):
+                model_part.update_force(t)
+                self.__add_condition_to_global(model_part)
+
+
     def calculate_stage(self, start_time_id, end_time_id):
         """
         Calculates a stage of the global system
@@ -510,7 +517,7 @@ class GlobalSystem:
         M = self.global_mass_matrix.tocsc()
         C = self.global_damping_matrix.tocsc()
         K = self.global_stiffness_matrix.tocsc()
-        self.global_force_vector = self.global_force_vector.tocsc()
+        #self.global_force_vector = self.global_force_vector.tocsc()
         F = self.global_force_vector
 
         # run_stages with Zhai solver if required

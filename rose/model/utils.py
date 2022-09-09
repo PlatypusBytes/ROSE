@@ -162,6 +162,21 @@ def delete_from_lil(mat: sparse.lil_matrix, row_indices=[], col_indices=[]):
         return mat
 
 
+def calculate_point_rotation(coord1: np.ndarray, coord2: np.ndarray):
+    rot = 0
+    is_x_equal = np.isclose(coord2[ 0] - coord1[ 0], 0)
+
+    if is_x_equal:
+        return np.pi / 2 * np.sign((coord2[1] - coord1[1]))
+    if coord2[0] < coord1[0]:
+        rot += np.pi
+
+    rot += np.arctan((coord2[1] - coord1[1]) / (coord2[0] - coord1[0]))
+
+    return rot
+
+
+
 def calculate_rotation(coord1: np.ndarray, coord2: np.ndarray):
     """
     Calculates rotation between 2 coordinate arrays in a 2d space.
@@ -198,6 +213,16 @@ def rotate_point_around_z_axis(rotation: np.ndarray, point_vector: np.ndarray):
     :return:
     """
 
+    if isinstance(rotation, float):
+        rot_matrix = np.zeros((3, 3))
+        rot_matrix[ 0, 0] = np.cos(rotation)
+        rot_matrix[1, 1] = np.cos(rotation)
+        rot_matrix[0, 1] = np.sin(rotation)
+        rot_matrix[1, 0] = -rot_matrix[0, 1]
+        rot_matrix[2, 2] = 1
+
+        return rot_matrix.dot(point_vector)
+
     # set rotation matrix
     rot_matrix = np.zeros((len(rotation), 3, 3))
     rot_matrix[:, 0, 0] = np.cos(rotation)
@@ -211,6 +236,7 @@ def rotate_point_around_z_axis(rotation: np.ndarray, point_vector: np.ndarray):
     # rotate each time step
     for idx, (mat, point) in enumerate(zip(rot_matrix,point_vector)):
         rotated_point[idx] = mat.dot(point)
+
     return rotated_point
 
 

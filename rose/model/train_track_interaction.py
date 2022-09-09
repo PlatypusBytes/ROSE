@@ -268,7 +268,7 @@ class CoupledTrainTrack(GlobalSystem):
             self.track.global_stiffness_matrix
         self.global_damping_matrix[:self.track.total_n_dof, :self.track.total_n_dof] = self.track.global_damping_matrix
         self.global_mass_matrix[:self.track.total_n_dof, :self.track.total_n_dof] = self.track.global_mass_matrix
-        self.global_force_vector[:self.track.total_n_dof, :] = self.track.global_force_vector
+        self.global_force_vector[:self.track.total_n_dof] = self.track.global_force_vector
 
         # add track displacement and velocity to global system
         self.solver.u[:, :self.track.total_n_dof] = self.track.solver.u[:, :]
