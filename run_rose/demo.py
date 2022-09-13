@@ -55,8 +55,8 @@ def time_integration():
     time["tot_ini_time"] = 0.5  # total initalisation time  [s]
     time["n_t_ini"] = 5000  # number of time steps initialisation time  [-]
 
-    time["tot_calc_time"] = 1.2  # total time during calculation phase   [s]
-    time["n_t_calc"] = 8000  # number of time steps during calculation phase [-]
+    time["tot_calc_time"] = 13  # total time during calculation phase   [s]
+    time["n_t_calc"] = 50000  # number of time steps during calculation phase [-]
 
     return time
 
@@ -183,8 +183,6 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
     :param coupled_model: current coupled model
     :param segment_id: id of the current segment
     :param output_dir: output directory
-    :param output_interval: interval of how many timesteps should be written in output
-    :return:
     """
 
     # check if output folder exists
@@ -221,6 +219,14 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
 
     vertical_displacements_soil = np.array(
         [node.displacements[:, 1] for node in soil_nodes])
+
+    id_s = 0
+    soil_id = []
+    for i, p in enumerate(coupled_model.track.model_parts):
+        if isinstance(p, Soil):
+            soil_id.extend(len(coupled_model.track.model_parts[i].elements) * [id_s])
+            id_s += 1
+
     vertical_force_soil = np.array(
         [element.force[:, 0] for element in soil_elements])
     coords_soil = np.array([node.coordinates[0] for node in soil_nodes])
@@ -249,10 +255,11 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
                     "coords_soil": coords_soil.tolist(),
                     "vertical_displacements_train": vertical_displacements_train.tolist(),
                     "vertical_force_train": vertical_force_train.tolist(),
+                    "soil_ID": soil_id,
                     }
 
     # filename
-    file_name = f'res_{segment_id}.pickle'
+    file_name = f'{segment_id}.pickle'
     # dump pickle
     with open(os.path.join(output_dir, file_name), "wb") as f:
         pickle.dump(result_track, f)
@@ -261,41 +268,47 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
 
 
 def main():
-    nb_sleepers = [100, 1, 100]
-    stiffness = [158e7, 180e0, 180e7]
-    damping = [30e3, 20e0, 30e3]
-    train_speed = 100 / 3.6  # [m/s]
+    nb_sleepers = [500, 500]
+    stiffness = [214e7, 132e6]
+    damping = [30e3, 20e3]
 
     # starting coordinate of the middle of the train. Note that the whole train should be within the geometry at all
     # time steps.
-    train_start_coord = 40
+    train_start_coord = 30
 
     # choose if train and track irregularities
-    use_irregularities = True
+    use_irregularities = False
+
+    # write results every n steps
+    output_time_interval = 10
+    output_dir = "./results_TZ"
 
     # Trains
-    train_type = TrainType.DOUBLEDEKKER
+    trains = [TrainType.DOUBLEDEKKER, TrainType.SPRINTER_SLT, TrainType.SPRINTER_SGM,
+              TrainType.CARGO_TAPPS, TrainType.TRAXX, TrainType.BR189]
 
-    output_dir = "./res"
-    filename = "transition_demo2"
+    train_speed = [140/3.6, 140/3.6, 140/3.6,
+                   80/3.6, 80/3.6, 80/3.6]
 
-    output_time_interval=10
+    for i, train_type in enumerate(trains):
 
-    # create geometry
-    geom = geometry(nb_sleepers)
-    # materials
-    mat = materials()
-    # time integration
-    tim = time_integration()
-    # soil parameters
-    soil = soil_parameters(geom["sleeper_distance"], stiffness, damping)
-    # define train-track mode model
-    coupled_model = create_model(train_type, train_start_coord, geom, mat, tim, soil, train_speed, use_irregularities,
-                                 output_time_interval)
-    # calculate
-    coupled_model.main()
-    # write results
-    write_results(coupled_model, filename, output_dir)
+        filename = train_type.name
+
+        # create geometry
+        geom = geometry(nb_sleepers)
+        # materials
+        mat = materials()
+        # time integration
+        tim = time_integration()
+        # soil parameters
+        soil = soil_parameters(geom["sleeper_distance"], stiffness, damping)
+        # define train-track mode model
+        coupled_model = create_model(train_type, train_start_coord, geom, mat, tim, soil, train_speed[i],
+                                     use_irregularities, output_time_interval)
+        # calculate
+        coupled_model.main()
+        # write results
+        write_results(coupled_model, filename, output_dir)
 
 
 if __name__ == "__main__":
