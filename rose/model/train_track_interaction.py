@@ -67,7 +67,7 @@ class CoupledTrainTrack(GlobalSystem):
 
         # set wheel load on track
         mask = global_indices != np.array(None)
-        track_global_force_vector = self.track.global_force_vector[:, t].toarray()[:,0]
+        track_global_force_vector = self.track.global_force_vector
         track_global_force_vector[global_indices[mask].astype(int)] = force_vector[mask]
         return track_global_force_vector
 
@@ -245,7 +245,17 @@ class CoupledTrainTrack(GlobalSystem):
 
         return F
 
-    def update_force_vector(self, u: np.ndarray, t: int) -> np.ndarray:
+    def update_non_linear_iteration(self, t: int, u: np.ndarray):
+        #return self.global_force_vector
+        return self.update_force_vector_contact(u, t, np.copy(self.global_force_vector))
+
+    def update_time_step_rhs(self, t, **kwargs):
+
+        #todo add update left hand side in case of non-linear matrices
+        self.track.update_time_step_rhs(t, **kwargs)
+        self.combine_rhs()
+
+    def update_force_vector(self,t: int,  u: np.ndarray) -> np.ndarray:
         """
         Updates the complete force vector at time t
 
@@ -255,7 +265,12 @@ class CoupledTrainTrack(GlobalSystem):
         """
 
         # Update force vector due to contact force between rail and wheels
-        return self.update_force_vector_contact(u, t, self.global_force_vector[:, t].toarray()[:, 0])
+        return self.update_force_vector_contact(u, t, self.global_force_vector)
+
+    def combine_rhs(self):
+        self.global_force_vector[:self.track.total_n_dof] = self.track.global_force_vector
+        self.global_force_vector[self.track.total_n_dof:self.total_n_dof] = self.train.global_force_vector
+
 
     def combine_global_matrices(self):
         """
@@ -268,7 +283,7 @@ class CoupledTrainTrack(GlobalSystem):
             self.track.global_stiffness_matrix
         self.global_damping_matrix[:self.track.total_n_dof, :self.track.total_n_dof] = self.track.global_damping_matrix
         self.global_mass_matrix[:self.track.total_n_dof, :self.track.total_n_dof] = self.track.global_mass_matrix
-        self.global_force_vector[:self.track.total_n_dof] = self.track.global_force_vector
+
 
         # add track displacement and velocity to global system
         self.solver.u[:, :self.track.total_n_dof] = self.track.solver.u[:, :]
@@ -281,11 +296,13 @@ class CoupledTrainTrack(GlobalSystem):
             = self.train.global_damping_matrix
         self.global_mass_matrix[self.track.total_n_dof:self.total_n_dof, self.track.total_n_dof:self.total_n_dof] \
             = self.train.global_mass_matrix
-        self.global_force_vector[self.track.total_n_dof:self.total_n_dof, :] = self.train.global_force_vector
+
 
         # add train displacement and velocity to global system
         self.solver.u[:, self.track.total_n_dof:self.total_n_dof] = self.train.solver.u[:, :]
         self.solver.v[:, self.track.total_n_dof:self.total_n_dof] = self.train.solver.v[:, :]
+
+        self.combine_rhs()
 
     def initialise_ndof(self):
         """
@@ -507,7 +524,9 @@ class CoupledTrainTrack(GlobalSystem):
 
         # initialise solver
         self.solver.initialise(self.total_n_dof, self.time)
-        self.solver.load_func = self.update_force_vector
+        self.solver.update_time_step_func = self.update_time_step_rhs
+        self.solver.update_non_linear_iteration_rhs_func = self.update_non_linear_iteration
+
 
     def calculate_stage(self, start_time_id, end_time_id):
         """
@@ -517,7 +536,7 @@ class CoupledTrainTrack(GlobalSystem):
         :return:
         """
 
-        self.track.global_force_vector = self.track.global_force_vector.tocsc()
+        # self.track.global_force_vector = self.track.global_force_vector
         super(CoupledTrainTrack, self).calculate_stage(start_time_id, end_time_id)
 
     def finalise(self):

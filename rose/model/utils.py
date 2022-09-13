@@ -5,6 +5,7 @@ import numpy as np
 from shapely.geometry import LineString, Polygon, Point
 from scipy.spatial import KDTree
 from scipy import sparse, interpolate
+import math
 
 from typing import List
 import copy
@@ -164,14 +165,14 @@ def delete_from_lil(mat: sparse.lil_matrix, row_indices=[], col_indices=[]):
 
 def calculate_point_rotation(coord1: np.ndarray, coord2: np.ndarray):
     rot = 0
-    is_x_equal = np.isclose(coord2[ 0] - coord1[ 0], 0)
+    is_x_equal = math.isclose(coord2[0],coord1[0])
 
     if is_x_equal:
         return np.pi / 2 * np.sign((coord2[1] - coord1[1]))
     if coord2[0] < coord1[0]:
         rot += np.pi
 
-    rot += np.arctan((coord2[1] - coord1[1]) / (coord2[0] - coord1[0]))
+    rot += math.atan((coord2[1] - coord1[1]) / (coord2[0] - coord1[0]))
 
     return rot
 
@@ -215,9 +216,9 @@ def rotate_point_around_z_axis(rotation: np.ndarray, point_vector: np.ndarray):
 
     if isinstance(rotation, float):
         rot_matrix = np.zeros((3, 3))
-        rot_matrix[ 0, 0] = np.cos(rotation)
-        rot_matrix[1, 1] = np.cos(rotation)
-        rot_matrix[0, 1] = np.sin(rotation)
+        rot_matrix[0, 0] = math.cos(rotation)
+        rot_matrix[1, 1] = rot_matrix[0, 0]
+        rot_matrix[0, 1] = math.sin(rotation)
         rot_matrix[1, 0] = -rot_matrix[0, 1]
         rot_matrix[2, 2] = 1
 

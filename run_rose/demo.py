@@ -58,6 +58,12 @@ def time_integration():
     time["tot_calc_time"] = 1.2  # total time during calculation phase   [s]
     time["n_t_calc"] = 8000  # number of time steps during calculation phase [-]
 
+    # time["tot_ini_time"] = 0.1  # total initalisation time  [s]
+    # time["n_t_ini"] = 1000  # number of time steps initialisation time  [-]
+    #
+    # time["tot_calc_time"] = 0.012  # total time during calculation phase   [s]
+    # time["n_t_calc"] = 800  # number of time steps during calculation phase [-]
+
     return time
 
 
@@ -73,6 +79,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
                  output_interval):
     # choose solver
     solver = solver_c.NewmarkImplicitForce()
+    # solver = solver_c.NewmarkExplicit()
     solver.output_interval = output_interval
 
     all_element_model_parts = []
@@ -271,7 +278,7 @@ def main():
     train_start_coord = 40
 
     # choose if train and track irregularities
-    use_irregularities = True
+    use_irregularities = False
 
     # Trains
     train_type = TrainType.DOUBLEDEKKER
@@ -299,4 +306,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import cProfile
+    cProfile.run('main()',
+                 'demo_profile')
+
+    #main()

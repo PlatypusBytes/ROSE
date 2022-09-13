@@ -57,7 +57,7 @@ class Wheel(ElementModelPart):
 
         wheel_dofs = self.nodes[0].index_dof
 
-        static_force_vector[wheel_dofs[1],0] = -self.mass * g
+        static_force_vector[wheel_dofs[1]] = -self.mass * g
 
     def set_static_force_vector(self):
         """
@@ -65,7 +65,7 @@ class Wheel(ElementModelPart):
         -mass * gravity constant
         :return:
         """
-        self.static_force_vector = np.zeros((1, 1))
+        self.static_force_vector = np.zeros(1)
         self.static_force_vector[0,0] = -self.mass * g
 
     def set_mesh(self,mesh, y=0, z=0):
@@ -312,7 +312,7 @@ class Bogie(ElementModelPart):
         # get degrees of freedom of the bogie
         bogie_dofs = self.nodes[0].index_dof
 
-        static_force_vector[bogie_dofs[1],0] = -self.mass * g
+        static_force_vector[bogie_dofs[1]] = -self.mass * g
 
         # set connected bogies part of the static force vector
         for i in range(len(self.wheels)):
@@ -329,7 +329,7 @@ class Bogie(ElementModelPart):
         # internal force
         bogie_dofs = self.nodes[0].index_dof
         if self.total_static_load is None:
-            self.total_static_load = static_force_vector[bogie_dofs[1],0]
+            self.total_static_load = static_force_vector[bogie_dofs[1]]
 
         # calculate static load on the bogie itself
         self.total_static_load = self.total_static_load + external_load
@@ -546,7 +546,7 @@ class Cart(ElementModelPart):
         cart_dofs = self.nodes[0].index_dof
 
         # add static force of cart to the static force vector
-        static_force_vector[cart_dofs[1],0] = -self.mass * g
+        static_force_vector[cart_dofs[1]] = -self.mass * g
 
         # fill static force vector for all bogies connected to the cart
         for i in range(len(self.bogies)):
@@ -564,7 +564,7 @@ class Cart(ElementModelPart):
         cart_dofs = self.nodes[0].index_dof
 
         if not all(cart_dofs == None):
-            self.total_static_load = static_force_vector[cart_dofs[1],0] + external_load
+            self.total_static_load = static_force_vector[cart_dofs[1]] + external_load
         else:
             self.total_static_load = external_load
 
@@ -739,7 +739,7 @@ class TrainModel(GlobalSystem):
         """
 
         # initialise global static force vector
-        self.static_force_vector = np.zeros((self.total_n_dof, 1))
+        self.static_force_vector = np.zeros(self.total_n_dof)
 
         # set static force vector for each cart and add to global static force vector
         for cart in self.carts:
@@ -762,7 +762,7 @@ class TrainModel(GlobalSystem):
         # todo note that static force vector is not used, instead first time index of global force vector is used for the
         # static force, because the obsolete indices are not reduced from the static force vector
         for cart in self.carts:
-            cart.calculate_total_static_load(distributed_load, self.global_force_vector[:,0,None])
+            cart.calculate_total_static_load(distributed_load, self.global_force_vector[:])
 
         # secondly distribute loads on wheels
         for bogie in self.bogies:
@@ -808,7 +808,7 @@ class TrainModel(GlobalSystem):
         :return:
         """
 
-        self.global_force_vector = np.zeros((self.total_n_dof, len(self.time)))
+        self.global_force_vector = np.zeros(self.total_n_dof)
 
         # add static force vector to global force vector
         self.set_static_force_vector()
@@ -940,7 +940,7 @@ class TrainModel(GlobalSystem):
 
         # transform matrices to sparse lil matrices
         K = sparse.lil_matrix(np.copy(self.global_stiffness_matrix))
-        F = sparse.lil_matrix(np.copy(self.global_force_vector))
+        F = np.copy(self.global_force_vector)
 
         # get the vertical degree of freedom of the wheels
         wheel_dofs = [wheel.nodes[0].index_dof[1] - shift_in_ndof for wheel in self.wheels]
@@ -953,7 +953,7 @@ class TrainModel(GlobalSystem):
         K = utils.delete_from_lil(
             K, row_indices=wheel_dofs, col_indices=wheel_dofs).tocsc()
         F = utils.delete_from_lil(
-            F, row_indices=wheel_dofs).tocsc()
+            F, row_indices=wheel_dofs)
 
         # calculate initial displacement of the train, excluding the wheels
         ini_solver.calculate(K, F, 0, 1)
@@ -980,7 +980,7 @@ class TrainModel(GlobalSystem):
         M = sparse.csc_matrix(self.global_mass_matrix)
         C = sparse.csc_matrix(self.global_damping_matrix)
         K = sparse.csc_matrix(self.global_stiffness_matrix)
-        F = sparse.csc_matrix(self.global_force_vector)
+        F = self.global_force_vector
 
         # run_stage with Zhai solver
         if isinstance(self.solver, ZhaiSolver):
