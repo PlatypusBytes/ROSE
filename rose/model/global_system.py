@@ -215,7 +215,7 @@ class GlobalSystem:
         # combined_mask_matrix = ([node.index_dof==None for node in condition.nodes]+mask_matrix).T
         #pass
 
-        cond_force_vector = np.array([condition.x_force_vector, condition.y_force_vector, condition.z_moment_vector]).flatten()
+        cond_force_vector = np.array([condition.x_force_vector, condition.y_force_vector, condition.z_moment_vector]).T.flatten()
 
         self.global_force_vector[new_indices] += cond_force_vector[mask_no_dof][mask_none]
         #cond_force_vector = [condition.x_force_vector, condition.y_force_vector, condition.z_moment_vector]
@@ -584,6 +584,7 @@ class GlobalSystem:
         self.set_stage_time_ids()
 
         self.solver.initialise(self.total_n_dof, self.time)
+        self.solver.update_time_step_func = self.update_time_step_rhs
 
     def update(self, start_time_id, end_time_id):
         """
@@ -600,6 +601,7 @@ class GlobalSystem:
         self.solver.update(start_time_id)
 
     def update_time_step_rhs(self, t, **kwargs):
+        self.global_force_vector = np.zeros_like(self.global_force_vector)
         for model_part in self.model_parts:
             if isinstance(model_part, LoadCondition):
 
@@ -612,8 +614,10 @@ class GlobalSystem:
                 #     pickle.dump(model_part, f)
 
                 model_part.update_force(t)
-                self.global_force_vector = np.zeros_like(self.global_force_vector)
+
                 self.__add_condition_to_global(model_part)
+
+        return self.global_force_vector
 
 
     def calculate_stage(self, start_time_id, end_time_id):

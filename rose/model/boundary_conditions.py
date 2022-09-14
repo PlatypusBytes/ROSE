@@ -686,12 +686,12 @@ class MovingPointLoad(LineLoadCondition):
 
         # get nodal shear force and z-moment force vectors
         if math.isclose(rotated_force[1], 0):
-            shear_force_vector_v, z_mom_vector_v = np.zeros(int(len(self.contact_model_part.y_shape_functions)/2))
+            shear_force_vector_v = z_mom_vector_v = np.zeros(int(len(self.contact_model_part.y_shape_functions)/2))
         else:
             shear_force_vector_v, z_mom_vector_v = self.__distribute_shear_force(self.distances[t], rotated_force)
 
         if math.isclose(rotated_force[2], 0):
-            shear_force_vector_z, z_mom_vector_z = np.zeros(int(len(self.contact_model_part.z_rot_shape_functions)/2))
+            shear_force_vector_z = z_mom_vector_z = np.zeros(int(len(self.contact_model_part.z_rot_shape_functions)/2))
         else:
             shear_force_vector_z, z_mom_vector_z = self.__distribute_z_moment(self.distances[t], rotated_force)
 

@@ -254,6 +254,7 @@ class CoupledTrainTrack(GlobalSystem):
         #todo add update left hand side in case of non-linear matrices
         self.track.update_time_step_rhs(t, **kwargs)
         self.combine_rhs()
+        return self.global_force_vector
 
     def update_force_vector(self,t: int,  u: np.ndarray) -> np.ndarray:
         """
