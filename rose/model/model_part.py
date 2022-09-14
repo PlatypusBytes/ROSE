@@ -100,6 +100,7 @@ class ModelPart:
         self.nodes = np.array([])
         self.elements = np.array([])
         self.total_n_dof = None
+        self.dof_indices = np.array([])
 
     @property
     def normal_dof(self):
