@@ -159,7 +159,7 @@ class GlobalSystem:
         if model_part.aux_stiffness_matrix is not None:
             model_part.aux_stiffness_matrix = utils.reshape_aux_matrix(
                 n_nodes_element,
-                [model_part.normal_dof, model_part.y_disp_dof, model_part.z_rot_dof],
+                [model_part.x_disp_dof, model_part.y_disp_dof, model_part.z_rot_dof],
                 model_part.aux_stiffness_matrix,
             )
 
@@ -167,7 +167,7 @@ class GlobalSystem:
         if model_part.aux_mass_matrix is not None:
             model_part.aux_mass_matrix = utils.reshape_aux_matrix(
                 n_nodes_element,
-                [model_part.normal_dof, model_part.y_disp_dof, model_part.z_rot_dof],
+                [model_part.x_disp_dof, model_part.y_disp_dof, model_part.z_rot_dof],
                 model_part.aux_mass_matrix,
             )
 
@@ -175,15 +175,14 @@ class GlobalSystem:
         if model_part.aux_damping_matrix is not None:
             model_part.aux_damping_matrix = utils.reshape_aux_matrix(
                 n_nodes_element,
-                [model_part.normal_dof, model_part.y_disp_dof, model_part.z_rot_dof],
+                [model_part.x_disp_dof, model_part.y_disp_dof, model_part.z_rot_dof],
                 model_part.aux_damping_matrix,
             )
 
     def __add_condition_to_global(self, condition: LoadCondition):
-        self.add_condition_to_global(condition)
-
-
-    def add_condition_to_global(self, condition: LoadCondition):
+    #     self.add_condition_to_global(condition)
+    #
+    # def add_condition_to_global(self, condition: LoadCondition):
 
         """
         Adds load condition to the global force vector
@@ -192,141 +191,14 @@ class GlobalSystem:
         :return:
         """
 
-        method = 1
+        dof_indices = condition.dof_indices
 
-        if method == 1:
+        # combine condition forces in a 1d vector
+        cond_force_vector = np.array(
+            [condition.x_force_vector, condition.y_force_vector, condition.z_moment_vector]).T.flatten()
 
-            mask_node_dof = (
-                        np.ones((len(condition.nodes), 3)).astype(bool) * [condition.x_disp_dof, condition.y_disp_dof,
-                                                                           condition.z_rot_dof]).flatten()
-
-            indices = condition.dof_indices[mask_node_dof]
-
-            mask_none = indices != None
-
-            new_indices = indices[mask_none].astype(np.intp)
-
-            cond_force_vector = np.array(
-                [condition.x_force_vector, condition.y_force_vector, condition.z_moment_vector]).T.flatten()
-
-
-            self.global_force_vector[new_indices] += cond_force_vector[mask_node_dof][mask_none]
-
-        if method ==2:
-            cond_force_vector = np.array(
-                [condition.x_force_vector, condition.y_force_vector, condition.z_moment_vector])
-
-            for i, node in enumerate(condition.nodes):
-                for j, dof in enumerate(node.index_dof):
-                    if dof is not None:
-                        self.global_force_vector[dof] += cond_force_vector[j][i]
-
-        #self.global_force_vector = self.global_force_vector.toarray()
-
-        # indices = []
-        # for node in condition.nodes:
-        #     indices.extend(node.index_dof)
-
-        #[indices.extend(node.index_dof) for node in condition.nodes]
-
-
-
-
-
-        #combined_mask_matrix = ([node.index_dof!=None for node in condition.nodes]+mask_matrix).T
-
-        # mask_matrix = np.ones((len(condition.nodes),3)).astype(bool)*[not condition.x_disp_dof,not  condition.y_disp_dof, not condition.z_rot_dof]
-        # combined_mask_matrix = ([node.index_dof==None for node in condition.nodes]+mask_matrix).T
-        #pass
-
-
-        #cond_force_vector = [condition.x_force_vector, condition.y_force_vector, condition.z_moment_vector]
-
-        #indices = []
-
-        # glob_indices, cond_force = zip(*[(dof, cond_force_vector[j][i])
-        #                                  for i, node in enumerate(condition.nodes)
-        #                                  for j, dof in enumerate(node.index_dof) if dof is not None])
-
-        #data = np.array([(dof, cond_force_vector[j][i])  for i,node in enumerate(condition.nodes) for j, dof in enumerate(node.index_dof) if dof is not None])
-        #
-        #cond_force = [cond_force_vector[j][i] for i, node in enumerate(condition.nodes) for j, dof in enumerate(node.index_dof) if dof is not None]
-        #
-        #np.array(glob_indices)
-
-        #glob_indices = data[:,0].astype(np.intp)
-        #cond_force = data[:,1]
-
-        # self.global_force_vector[list(glob_indices)] = cond_force
-        #a=1+1
-        #self.global_force_vector[glob_indices] += cond_force
-        #
-        # loc_indices = [cond_force_vector[j][node] for node in range(condition.nodes) for j, dof in enumerate(node.index_dof) if dof is not None]
-        #
-        # # for i, node in enumerate(condition.nodes):
-        # #     for j, dof in enumerate(node.index_dof):
-        # #         if dof is not None:
-        # #             indices.append(dof)
-        #
-        #
-        #
-
-        # for i, node in enumerate(condition.nodes):
-        #     for j, dof in enumerate(node.index_dof):
-        #         if dof is not None:
-        #             self.global_force_vector[dof] += cond_force_vector[j][i]
-
-                   # indices.append(dof)
-
-       # indices = np.array([node.index_dof[node.index_dof != None] for node in condition.nodes], dtype = np.intp).T
-
-        # try:
-        #     indices = np.array(node.index_dof[node.index_dof!=None] for node in condition.nodes], dtype=np.intp).T
-        # except:
-        #     a=1+1
-        #cond_force_vector = np.array([condition.x_force_vector, condition.y_force_vector, condition.z_moment_vector])
-
-
-
-        # conditions_list = [condition.x_disp_dof, condition.y_disp_dof, condition.z_rot_dof]
-        #
-        # tmp = ma.masked_where(combined_mask_matrix,cond_force_vector)
-        #
-        # masked_indices = ma.masked_where(combined_mask_matrix,indices )
-        #
-        # try:
-        #     self.global_force_vector[masked_indices] = tmp
-        # except:
-        #     a=1+1
-        # #for condition_it in cond_force_vector:
-
-        #
-        # for i, node in enumerate(condition.nodes):
-        #
-        #     new_mask = list((node.index_dof!=None)*1)
-        #     #
-        #     # #self.global_force_vector[list(node.index_dof[mask_list])]
-        #     #
-        #     # try:
-        #     #     self.global_force_vector[list(node.index_dof[new_mask])] += cond_force_vector[new_mask,i]
-        #     #
-        #     # except:
-        #     #     a=1+1
-        #     # add load condition on normal displacement dof
-        #     if condition.x_disp_dof and new_mask[0]:
-        #         self.global_force_vector[
-        #             node.index_dof[0]
-        #         ] += condition.x_force_vector[i]
-        #
-        #     # add load condition on y displacement dof
-        #     if condition.y_disp_dof and new_mask[1]:
-        #         self.global_force_vector[node.index_dof[1]] += condition.y_force_vector[i]
-        #
-        #     # add load condition on z rotation dof
-        #     if condition.z_rot_dof and new_mask[2]:
-        #         self.global_force_vector[node.index_dof[2]] += condition.z_moment_vector[i]
-        #
-        # #self.global_force_vector = sparse.lil_matrix(self.global_force_vector)
+        # add condition force vector to global
+        self.global_force_vector[dof_indices] += cond_force_vector[condition.mask_dof]
 
     def trim_global_matrices_on_indices(self, row_indices: List, col_indices: List):
         """
@@ -389,7 +261,7 @@ class GlobalSystem:
 
         # add dof indices to model part
         for model_part in self.model_parts:
-            model_part.dof_indices = np.array([dof for node in model_part.nodes for dof in node.index_dof])
+            model_part.update_dof_indices()
 
     def __get_constrained_indices(self):
         """
@@ -572,7 +444,7 @@ class GlobalSystem:
 
         # add dof indices to model part
         for model_part in self.model_parts:
-            model_part.dof_indices = np.array([dof for node in model_part.nodes for dof in node.index_dof])
+            model_part.update_dof_indices()
 
         self.total_n_dof = ndof
 
@@ -698,7 +570,7 @@ class GlobalSystem:
             for model_part in element.model_parts:
                 if isinstance(model_part, ElementModelPart):
                     aux_matrix = model_part.aux_stiffness_matrix
-                    mask = [model_part.normal_dof, model_part.y_disp_dof, model_part.z_rot_dof]
+                    mask = [model_part.x_disp_dof, model_part.y_disp_dof, model_part.z_rot_dof]
                     break
             else:
                 model_part = None

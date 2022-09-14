@@ -77,7 +77,7 @@ class Sleeper(ElementModelPart):
         self.aux_damping_matrix = np.zeros((1, 1))
 
     def set_aux_mass_matrix(self):
-        self.aux_mass_matrix = np.ones((1, 1)) * self.mass
+        self.aux_mass_matrix = np.array([[self.mass]])
 
 
 class RailPad(RodElementModelPart):

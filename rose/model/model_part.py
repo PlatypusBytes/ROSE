@@ -101,9 +101,10 @@ class ModelPart:
         self.elements = np.array([])
         self.total_n_dof = None
         self.dof_indices = np.array([])
+        self.mask_dof = np.array([])
 
     @property
-    def normal_dof(self):
+    def x_disp_dof(self):
         """
 
         :return: is normal degree of freedom activated
@@ -186,8 +187,21 @@ class ModelPart:
         :return:
         """
         self.total_n_dof = len(self.nodes) * (
-            self.normal_dof + self.y_disp_dof + self.z_disp_dof + self.x_rot_dof + self.y_rot_dof + self.z_rot_dof
+                self.x_disp_dof + self.y_disp_dof + self.z_disp_dof + self.x_rot_dof + self.y_rot_dof + self.z_rot_dof
         )
+
+    def update_dof_indices(self):
+        dof_indices = np.array([dof for node in self.nodes for dof in node.index_dof])
+
+        mask_node_dof = (
+                np.ones((len(self.nodes), 3)).astype(bool) * [self.x_disp_dof, self.y_disp_dof,
+                                                                   self.z_rot_dof]).flatten()
+
+        mask_none = dof_indices  != None
+
+        self.mask_dof = mask_node_dof * mask_none
+
+        self.dof_indices = dof_indices[self.mask_dof].astype(np.intp)
 
 
 class ElementModelPart(ModelPart):
@@ -353,7 +367,7 @@ class RodElementModelPart(ElementModelPart):
         self.length_element = None
 
     @property
-    def normal_dof(self):
+    def x_disp_dof(self):
         """
 
         :return: is normal degree of freedom activated
@@ -488,7 +502,7 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         self.spring_stiffness2 = np.inf
 
     @property
-    def normal_dof(self):
+    def x_disp_dof(self):
         """
 
         :return: is normal degree of freedom activated
@@ -785,6 +799,8 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         l = self.length_element
         phi = self.__timoshenko_factor
         constant = 1 / (1 + phi)
+
+        # precalculate for efficiency
         x_l = x/l
         x_l2 = x_l**2
 

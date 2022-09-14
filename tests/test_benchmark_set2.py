@@ -622,7 +622,7 @@ class TestBenchmarkSet2:
         velocities[0:len(initialisation_time)] = 0
         #
 
-        load = MovingPointLoad(x_disp_dof=rail_model_part.normal_dof, y_disp_dof=rail_model_part.y_disp_dof,
+        load = MovingPointLoad(x_disp_dof=rail_model_part.x_disp_dof, y_disp_dof=rail_model_part.y_disp_dof,
                                z_rot_dof=rail_model_part.z_rot_dof)
         load.time = time
         load.contact_model_part = rail_model_part
@@ -1165,7 +1165,7 @@ class TestBenchmarkSet2:
         velocities[0:len(initialisation_time)] = 0
         #
 
-        load = MovingPointLoad(x_disp_dof=rail_model_part.normal_dof, y_disp_dof=rail_model_part.y_disp_dof,
+        load = MovingPointLoad(x_disp_dof=rail_model_part.x_disp_dof, y_disp_dof=rail_model_part.y_disp_dof,
                                z_rot_dof=rail_model_part.z_rot_dof)
         load.time = time
         load.contact_model_part = rail_model_part

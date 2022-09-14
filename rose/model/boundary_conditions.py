@@ -444,12 +444,12 @@ class MovingPointLoad(LineLoadCondition):
 
         # add normal_load_to_nodes
         self.contact_model_part.set_normal_shape_functions(distance)
-        normal_interp_factors = np.array([
-            self.contact_model_part.normal_shape_functions[0],
-            self.contact_model_part.normal_shape_functions[1],
+        normal_force_vector = np.array([
+            force[0] * self.contact_model_part.normal_shape_functions[0],
+            force[0] * self.contact_model_part.normal_shape_functions[1],
         ])
 
-        return force[0] * normal_interp_factors
+        return normal_force_vector
 
     def __distribute_shear_force(self, distance, force):
         """
@@ -461,18 +461,16 @@ class MovingPointLoad(LineLoadCondition):
         """
 
         self.contact_model_part.set_y_shape_functions(distance)
-        shear_interp_factors = np.array([
-            self.contact_model_part.y_shape_functions[0],
-            self.contact_model_part.y_shape_functions[2],
+
+        shear_force_vector = np.array([
+            force[1] * self.contact_model_part.y_shape_functions[0],
+            force[1] * self.contact_model_part.y_shape_functions[2],
         ])
 
-        z_mom_interp_factors = np.array([
-            self.contact_model_part.y_shape_functions[1],
-            self.contact_model_part.y_shape_functions[3],
+        z_mom_vector = np.array([
+            force[1] * self.contact_model_part.y_shape_functions[1],
+            force[1] * self.contact_model_part.y_shape_functions[3],
         ])
-
-        shear_force_vector = force[1] * shear_interp_factors
-        z_mom_vector = force[1] * z_mom_interp_factors
 
         return shear_force_vector, z_mom_vector
 
@@ -486,17 +484,14 @@ class MovingPointLoad(LineLoadCondition):
         """
 
         self.contact_model_part.set_z_rot_shape_functions(distance)
-        shear_interp_factors = np.array([
-            self.contact_model_part.z_rot_shape_functions[0],
-            self.contact_model_part.z_rot_shape_functions[2],
+        shear_force_vector = np.array([
+            force[2] * self.contact_model_part.z_rot_shape_functions[0],
+            force[2] * self.contact_model_part.z_rot_shape_functions[2],
         ])
-        z_mom_interp_factors = np.array([
-            self.contact_model_part.z_rot_shape_functions[1],
-            self.contact_model_part.z_rot_shape_functions[3],
+        z_mom_vector = np.array([
+            force[2] * self.contact_model_part.z_rot_shape_functions[1],
+            force[2] * self.contact_model_part.z_rot_shape_functions[3],
         ])
-
-        shear_force_vector = force[2] * shear_interp_factors
-        z_mom_vector = force[2] * z_mom_interp_factors
 
         return shear_force_vector, z_mom_vector
 
@@ -624,7 +619,7 @@ class MovingPointLoad(LineLoadCondition):
         self.z_moment_vector = np.zeros(len(self.nodes))
         self.y_force_vector = np.zeros(len(self.nodes))
 
-        if t==0:
+        if t == 0:
 
             # find contact element indices
             element_idxs = self.active_elements.nonzero()[0].astype(int)
@@ -637,6 +632,7 @@ class MovingPointLoad(LineLoadCondition):
             # calculate distances between first element coord and moving load at time t
             coordinates = np.array([np.array(element.nodes[0].coordinates) for element in contact_elements])
             sq_diff_coords = np.power(coordinates - self.moving_coords, 2)
+
             self.distances = np.sqrt(np.sum(sq_diff_coords, axis=1))
 
             # find first and last index of node in nodes list for efficiency
@@ -664,6 +660,7 @@ class MovingPointLoad(LineLoadCondition):
 
             # get all nodal coordinates
             self.np_nodes = np.array(self.nodes)
+
         np_nodes = self.np_nodes
 
         # calculate rotation for each element
@@ -703,9 +700,9 @@ class MovingPointLoad(LineLoadCondition):
 
         # calculate global forces at a single timestep
         global_force_vector = utils.rotate_point_around_z_axis(-element_rot, local_force_matrix[:, :])
+
         for idx, node_idx in enumerate(self.node_indices[t,:]):
 
-            #self.nodes[node_idx].index_dof
             self.x_force_vector[node_idx] += global_force_vector[0, idx]
             self.y_force_vector[node_idx] += global_force_vector[1, idx]
             self.z_moment_vector[node_idx] += global_force_vector[2, idx]

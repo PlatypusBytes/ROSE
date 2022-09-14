@@ -12,7 +12,7 @@ class TestRodElement:
     def test_initialize_rod_element(self):
         rod_element = RodElementModelPart()
 
-        assert rod_element.normal_dof == True
+        assert rod_element.x_disp_dof == True
         assert rod_element.y_disp_dof == False
         assert rod_element.z_disp_dof == False
 

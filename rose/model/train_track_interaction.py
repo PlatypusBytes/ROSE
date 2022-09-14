@@ -421,7 +421,7 @@ class CoupledTrainTrack(GlobalSystem):
             # todo set y and z start coords, currently wheels are placed at y = z = 0
 
             # initialise wheel load as a moving point load
-            load = MovingPointLoad(x_disp_dof=rail_model_parts[0].normal_dof, y_disp_dof=rail_model_parts[0].y_disp_dof,
+            load = MovingPointLoad(x_disp_dof=rail_model_parts[0].x_disp_dof, y_disp_dof=rail_model_parts[0].y_disp_dof,
                                    z_rot_dof=rail_model_parts[0].z_rot_dof, start_distance=wheel.distances[0])
             load.time = self.time
 
