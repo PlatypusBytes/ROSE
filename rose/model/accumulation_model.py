@@ -6,7 +6,66 @@ import pickle
 from tqdm import tqdm
 
 
-class Varandas:
+def train_info(data, trains, time_days):
+    nb_nodes = []
+    # determine number of loading cycles
+    for t in trains:
+        data.trains.append(t)
+        # compute number of cycles
+        aux = trains[t]["nb-per-hour"] * trains[t]["nb-hours"] * trains[t]["nb-axles"]
+        # number axles a day
+        data.nb_cycles_day.append(aux)
+        # number cycles of train
+        data.number_cycles.append(aux * time_days)
+        # force for train t
+        data.force.append(trains[t]["forces"])
+        # nb of nodes
+        nb_nodes.append(len(trains[t]["forces"]))
+
+    # number of trains
+    data.number_trains = len(data.trains)
+    # define cumulative time
+    data.cumulative_time = np.linspace(0, time_days - 1, int(np.max(data.number_cycles)))
+    # define cumulative nb cycles
+    data.cumulative_nb_cycles = np.linspace(0, int(np.max(data.number_cycles)) - 1, int(np.max(data.number_cycles)))
+    # index for distributed loading
+    for nb in data.number_cycles:
+        data.index_cumulative_distributed.append(
+            np.linspace(0, nb - 1, int(np.max(data.number_cycles))) * (np.max(data.number_cycles) / nb))
+    data.index_cumulative_distributed = np.array(data.index_cumulative_distributed).astype(int)
+
+    # check if number of nodes is the same for all the trains
+    if all(nb_nodes[0] == x for x in nb_nodes):
+        data.nb_nodes = nb_nodes[0]
+    else:
+        sys.exit("Error: number of nodes is not the same for the different trains")
+
+    return data
+
+
+class Results:
+    def __init__(self):
+        self.time = []
+        self.displacement = []
+        self.nodes = []
+
+
+class BaseModel:
+    def __init__(self):
+        self.trains = []
+        self.number_trains = []  # number of trains
+        self.trains = []  # name of train types
+        self.number_cycles = []  # number of total loading cycles
+        self.nb_cycles_day = []  # number of loading cycles / day
+        self.force = []
+        self.cumulative_time = []
+        self.cumulative_nb_cycles = []
+        self.index_cumulative_distributed = []
+        self.nodes = []
+        self.results = Results()
+
+
+class Varandas(BaseModel):
     def __init__(self, alpha: float = 0.6, beta: float = 0.82, gamma: float = 10, N0: float = 1e6, F0: float = 50):
         """
         Initialisation of the accumulation model of Varandas :cite:`varandas_2014`
@@ -19,6 +78,8 @@ class Varandas:
         :param N0: (optional, default 1e6) reference number of cycles
         :param F0: (optional, default 50) reference load amplitude
         """
+        super().__init__()
+
         # material parameters
         self.alpha = alpha
         self.beta = beta
@@ -32,17 +93,7 @@ class Varandas:
         self.M_alpha_beta = self.F0 ** (self.alpha + 1) / (self.alpha + 1) * np.sum(summation)
 
         # variables
-        self.number_trains = []  # number of trains
-        self.trains = []  # name of train types
-        self.number_cycles = []  # number of total loading cycles
-        self.nb_cycles_day = []  # number of loading cycles / day
-        self.force = []
-        self.cumulative_time = []
-        self.cumulative_nb_cycles = []
-        self.index_cumulative_distributed = []
-        self.nodes = []
         self.displacement = []
-        self.results = {}
         self.nb_nodes = []  # number of nodes
         self.histogram_force = []  # force histogram
         self.force_max = []  # maximum force / train
@@ -62,40 +113,8 @@ class Varandas:
         :param trains: Dictionary with train information
         :param time_days: Time in days of the analysis
         """
-        nb_nodes = []
-        # determine number of loading cycles
-        for t in trains:
-            self.trains.append(t)
-            # compute number of cycles
-            aux = trains[t]["nb-per-hour"] * trains[t]["nb-hours"] * trains[t]["nb-axles"]
-            # number axles a day
-            self.nb_cycles_day.append(aux)
-            # number cycles of train
-            self.number_cycles.append(aux * time_days)
-            # force for train t
-            self.force.append(trains[t]["forces"])
-            # nb of nodes
-            nb_nodes.append(len(trains[t]["forces"]))
-
-        # number of trains
-        self.number_trains = len(self.trains)
-        # define cumulative time
-        self.cumulative_time = np.linspace(0, time_days-1, int(np.max(self.number_cycles)))
-        # define cumulative nb cycles
-        self.cumulative_nb_cycles = np.linspace(0, int(np.max(self.number_cycles)) - 1, int(np.max(self.number_cycles)))
-
-        # index for distributed loading
-        for nb in self.number_cycles:
-            self.index_cumulative_distributed.append(np.linspace(0, nb-1, int(np.max(self.number_cycles))) * (np.max(self.number_cycles) / nb))
-        self.index_cumulative_distributed = np.array(self.index_cumulative_distributed).astype(int)
-
-        # check if number of nodes is the same for all the trains
-        if all(nb_nodes[0] == x for x in nb_nodes):
-            self.nb_nodes = nb_nodes[0]
-        else:
-            sys.exit("Error: number of nodes is not the same for the different trains")
-
-        return
+        # read train info
+        train_info(self, trains, time_days)
 
     def settlement(self, idx: list = None):
         """
@@ -183,13 +202,14 @@ class Varandas:
         Creates the results dictionary
         """
         # collect displacements
-        aux = {}
-        for i, n in enumerate(self.nodes):
-            aux.update({str(n): self.displacement[i].tolist()})
+        aux = []
+        for i, _ in enumerate(self.nodes):
+            aux.append(self.displacement[i])
 
-        # create results dict
-        self.results = {"time": self.cumulative_time.tolist(),
-                        "settlement": aux}
+        # create results struct
+        self.results.nodes = self.nodes
+        self.results.time = self.cumulative_time.tolist()
+        self.results.displacement = aux
         return
 
     def dump(self, output_file: str):
@@ -209,35 +229,179 @@ class Varandas:
         return
 
 
-class LiSelig:
-    def __init__(self, name, gamma, phi, cohesion, z_coord, last_layer_thickness=10):
+class LiSelig(BaseModel):
+    def __init__(self, t_ini=0, last_layer_thickness=10):
         r"""
         Accumulation model for soil layer. Based on Li and Selig :cite:`Li_Selig_1996`.
         Implementation based on Punetha et al. :cite:`Punetha_2020`.
+        The model has been improved with :cite:`Charoenwong_2022`.
 
-        @param name: name of soil layers
-        @param gamma: Volumetric weight
-        @param phi: friction angle
-        @param cohesion: cohesion
-        @param z_coord: Z coordinate top layer
+        @param t_ini: (optional) initial time (default 0)
         @param last_layer_thickness: (optional) last layer thickness
         """
-        self.name = name
-        self.gamma = np.array(gamma)
-        self.phi = np.array(phi) * (np.pi / 180)  # friction angle in rads
-        self.cohesion = np.array(cohesion)  # cohesion
-        self.z_coord = np.array(z_coord)  # layer thickness
+        super().__init__()
+        # soil classes according to Li & Selig
+        self.other = ["a", "ht"]
+        self.sand = ["zg", "zm", "zf"]
+        self.silt = ["z&s", "zs", "s"]
+        self.silt_plas = ["z&h", "zk", "k&s", "z&k"]
+        self.clay_low = ["kz", "k", "sd"]
+        self.clay_high = ["ko", "k&v", "vk", "v", "o&z"]
+
+        # variables
+        self.name = []  # layer name
+        self.gamma = []  # volumetric weight
+        self.phi = []  # friction angle
+        self.cohesion = []  # cohesion
+        self.z_coord = []  # coordinate
+        self.nb_soils = []
+        self.nb_nodes = []  # number of nodes
         self.z_last_layer = last_layer_thickness
 
         self.a = []  # Li and Selig parameter
         self.b = []  # Li and Selig parameter
         self.m = []  # Li and Selig parameter
+        self.soil_id = []  # ID of the soil
         self.thickness = []  # Layer thickness
         self.z_middle = []  # Z coordinate middle layer
         self.sigma_s = []  # Static strength
         self.sigma_v0 = []  # Initial effective vertical stress
         self.sigma_deviatoric = []  # Deviatoric stress
         self.settlement = []  # total settlement
+        self.force_scl_fct = 1000  # N -> kN
+        self.t_ini = t_ini
+
+    def read_traffic(self, trains: dict, time_days: int):
+        """
+        Reads the train traffic information
+
+        Parameters
+        ----------
+        :param trains: Dictionary with train information
+        :param time_days: Time in days of the analysis
+        """
+        # read train info
+        train_info(self, trains, time_days)
+
+    def read_SoS(self, soil_sos, soil_id):
+        """
+        Parses data from SOS json file into the structure for the Li & Selig model.
+
+        @param soil_sos: SOS dictionary
+        @param soil_id: ID of each node
+        """
+
+        self.nb_soils = len(soil_sos)
+        self.soil_id = soil_id
+        for s in range(self.nb_soils):
+            self.name.append(soil_sos[s]['soil_layers']["soil_name"])
+            self.gamma.append(np.array(soil_sos[s]['soil_layers']["gamma_wet"]))
+            self.phi.append(np.array(np.array(soil_sos[s]['soil_layers']["friction_angle"])) * (np.pi / 180))  # friction angle in rads
+            self.cohesion.append(np.array(soil_sos[s]['soil_layers']["cohesion"]))  # cohesion
+            self.z_coord.append(np.array(soil_sos[s]['soil_layers']['top_level']))  # layer thickness
+
+    def initial_stress(self):
+        """
+        Computes initial vertical effective stress at the middle of the layer
+        """
+        for i in range(self.nb_soils):
+            thickness = np.abs(np.diff(self.z_coord[i]))
+            self.thickness.append(np.append(thickness, self.z_last_layer))
+
+            self.z_middle = np.abs((self.z_coord[i] - self.z_coord[i][0])) + self.thickness[i] / 2
+            self.sigma_v0.append(self.gamma[i] * self.z_middle[i])
+
+    def classify(self):
+        """
+        Parameterise soil layers for the Li and Selig model following the SOS name convention.
+        """
+        for i in range(self.nb_soils):
+            a = []
+            b = []
+            m = []
+            for name in self.name[i]:
+                if name.split("_")[-1] in self.sand:
+                    a.append(0.64)
+                    b.append(0.10)
+                    m.append(1.7)
+                elif name.split("_")[-1] in self.silt:
+                    a.append(0.64)
+                    b.append(0.10)
+                    m.append(1.7)
+                elif name.split("_")[-1] in self.silt_plas:
+                    a.append(0.84)
+                    b.append(0.13)
+                    m.append(2.0)
+                elif name.split("_")[-1] in self.clay_low:
+                    a.append(1.1)
+                    b.append(0.16)
+                    m.append(2.0)
+                elif name.split("_")[-1] in self.clay_high:
+                    a.append(1.2)
+                    b.append(0.18)
+                    m.append(2.4)
+                elif name.split("_")[-1] in self.other:
+                    a.append(0)
+                    b.append(0)
+                    m.append(0)
+                else:
+                    sys.exit(f"ERROR: Soil layer {name} not defined.")
+            self.a.append(a)
+            self.b.append(b)
+            self.m.append(m)
+
+    def strength(self):
+        """
+        Computes shear strength resistance, assuming MC failure
+        """
+        for i in range(self.nb_soils):
+            self.sigma_s.append(self.sigma_v0[i] * np.tan(self.phi[i]) + self.cohesion[i])
+
+    def dev_stress(self, width, length):
+        """
+        Computes deviatoric stress based on analytical solution from Flamant (see Verruijt 2018 pg 231-232).
+        ToDo: This can be improved for a layered soil.
+
+        @param width: width of the strip load
+        @param length: length of the stress distribution
+        """
+
+        self.sigma_deviatoric = np.zeros((len(self.nodes), len(self.z_middle), len(self.force)))
+
+        for f, force in enumerate(self.force):
+            # Flamant's approximation
+            stress = np.max(np.abs(force), axis=1) / (length * width) / self.force_scl_fct
+            a = width / 2
+            x = np.linspace(-10 * a, 10 * a, 100)
+
+            # for each layer
+            for i, z_mid in enumerate(self.z_middle):
+                for k, nod in enumerate(self.nodes):
+                    theta1 = np.arctan((x + a) / z_mid)
+                    theta2 = np.arctan((x - a) / z_mid)
+
+                    stress_zz = stress[nod] / np.pi * ((theta1 - theta2) + np.sin(theta1) * np.cos(theta1) - np.sin(theta2) * np.cos(theta2))
+                    stress_xx = stress[nod] / np.pi * ((theta1 - theta2) - np.sin(theta1) * np.cos(theta1) + np.sin(theta2) * np.cos(theta2))
+                    stress_xz = stress[nod] / np.pi * (np.cos(theta2)**2 - np.cos(theta1)**2)
+                    # principal stress directions
+                    sigma_1 = (stress_xx + stress_zz) / 2 + np.sqrt(((stress_xx - stress_zz) / 2)**2 + stress_xz**2)
+                    sigma_2 = (stress_xx + stress_zz) / 2 - np.sqrt(((stress_xx - stress_zz) / 2)**2 + stress_xz**2)
+                    self.sigma_deviatoric[k, i, f] = np.max((sigma_1 - sigma_2)/2)
+
+    def calculate(self, width, length, idx=None):
+        """
+        Calculate the settlement
+
+        @param width: width of the stress distribution
+        @param length: length of the stress distribution
+        """
+
+        # if index is None compute for all nodes
+        if not idx:
+            idx = range(int(self.nb_nodes))
+
+        # assign nodes
+        self.nodes = idx
 
         # parameterise settlement model
         self.classify()
@@ -245,105 +409,64 @@ class LiSelig:
         self.initial_stress()
         # compute strength
         self.strength()
+        # deviatoric stress
+        self.dev_stress(width, length)
+        # strain
+        self.settlement = np.zeros((len(self.nodes), len(self.cumulative_nb_cycles)))
 
-        # soil classes according to Li & Selig
-        self.other = ["a", "ht"]
-        self.sand = ["zg", "zm", "zf"]
-        self.silt = ["z&s", "zs", "s"]
-        self.silt_plas = ["z&h", "zk", "k&s"]
-        self.clay_low = ["kz", "k", "sd"]
-        self.clay_high = ["ko", "k&v", "vk", "v", "o&z"]
+        fii = open("./data.txt", "w")
+        fii.write("simga_dev;sigma_s;a;b;m;N\n")
 
-    def initial_stress(self):
-        """
-        Computes initial vertical effective stress at the middle of the layer
-        """
-        thickness = np.abs(np.diff(self.z_coord))
-        self.thickness = np.append(thickness, self.z_last_layer)
+        for k, val in enumerate(self.nodes):
+            # id soil for the node
+            id_s = self.soil_id[val]
+            for t in range(len(self.trains)):
+                # N = np.linspace(1 + self.t_ini, self.number_cycles[t], len(self.cumulative_nb_cycles))
+                # new version from David
+                N = np.linspace(1 + np.max(self.number_cycles) * np.max((self.cumulative_time) / 365) * self.t_ini,
+                                np.max(self.number_cycles) * (np.max(self.cumulative_time) / 365) * self.t_ini +
+                                self.number_cycles[t],
+                                len(self.cumulative_nb_cycles))
 
-        self.z_middle = np.abs((self.z_coord - self.z_coord[0])) + self.thickness / 2
-        self.sigma_v0 = self.gamma * self.z_middle
+                for i in range(len(self.thickness[id_s])):
+                    # # basic model
+                    # strain = self.a[id_s][i] * (self.sigma_deviatoric[k, i, t] / self.sigma_s[id_s][i]) ** self.m[id_s][i] * N ** self.b[id_s][i]
+                    strain = self.a[id_s][i] * (self.sigma_deviatoric[k, i, t] / self.sigma_s[id_s][i]) ** self.m[id_s][i] * N ** self.b[id_s][i]
+                    self.settlement[k, :] += strain * self.thickness[id_s][i]
 
-    def classify(self):
-        """
-        Parameterise soil layers for the Li and Selig model following the SOS name convention.
-        """
-        for name in self.name:
-            if name.split("_")[-1] in self.sand:
-                self.a.append(0.64)
-                self.b.append(0.10)
-                self.m.append(1.7)
-            elif name.split("_")[-1] in self.silt:
-                self.a.append(0.64)
-                self.b.append(0.10)
-                self.m.append(1.7)
-            elif name.split("_")[-1] in self.silt_plas:
-                self.a.append(0.84)
-                self.b.append(0.13)
-                self.m.append(2.0)
-            elif name.split("_")[-1] in self.clay_low:
-                self.a.append(1.1)
-                self.b.append(0.16)
-                self.m.append(2.0)
-            elif name.split("_")[-1] in self.clay_high:
-                self.a.append(1.2)
-                self.b.append(0.18)
-                self.m.append(2.4)
-            elif name.split("_")[-1] in self.other:
-                self.a.append(0)
-                self.b.append(0)
-                self.m.append(0)
-            else:
-                sys.exit(f"ERROR: Soil layer {name} not defined.")
+                    fii.write(f"{self.sigma_deviatoric[k, i, t]};{self.sigma_s[id_s][i]};{self.a[id_s][i]};{self.b[id_s][i]};{self.m[id_s][i]};{N[-1]}\n")
+            self.settlement[k, :] -= self.settlement[k, 0]
 
-    def strength(self):
+        fii.close()
+        self.create_results()
+
+    def create_results(self):
         """
-        Computes shear strength resistance, assuming MC failure
+        Creates the results dictionary
         """
-        self.sigma_s = self.sigma_v0 * np.tan(self.phi) + self.cohesion
+        # collect displacements
+        aux = []
+        for i, _ in enumerate(self.nodes):
+            aux.append(self.settlement[i])
+
+        # create results struct
+        self.results.nodes = self.nodes
+        self.results.time = self.cumulative_time.tolist()
+        self.results.displacement = aux
         return
 
-    def deviatoric_stress(self, force, width):
+    def dump(self, output_file: str):
         """
-        Computes deviatoric stress based on analytical solution from Flamant (see Verruijt 2018 pg 231-232).
-        ToDo: This can be improved for a layered soil.
+        Writes results to json file
 
-        @param force: distributed force for the strip load
-        @param width: width of the strip load
+        :param output_file: filename of the results
         """
 
-        # Flamant's approximation
-        stress = force / width
-        a = width / 2
-        x = np.linspace(-10, 10, 100)
+        # check if path to output file exists. if not creates
+        if not os.path.isdir(os.path.split(output_file)[0]):
+            os.makedirs(os.path.split(output_file)[0])
 
-        self.sigma_deviatoric = np.zeros(len(self.z_middle))
-
-        for i, z_mid in enumerate(self.z_middle):
-            theta1 = np.arctan(x / z_mid)
-            theta2 = np.arctan((x - a) / z_mid)
-
-            # stress_zz = 2 * stress / np.pi * (theta1 + np.sin(theta1) * np.cos(theta1))
-            # stress_xx = 2 * stress / np.pi * (theta1 - np.sin(theta1) * np.cos(theta1))
-            stress_xz = stress / np.pi * (np.cos(theta2)**2 - np.cos(theta1)**2)
-            self.sigma_deviatoric[i] = np.max(np.abs(stress_xz))
-
-    def calculate(self, force, width, N):
-        """
-        Calculate the settlement
-
-        @param force: Applied force
-        @param width: width of the stress distribution
-        @param N: Number of cycles
-        """
-
-        # deviatoric stress
-        self.deviatoric_stress(force, width)
-
-        # strain
-        sett = np.zeros((len(self.thickness), len(N)))
-        for i in range(len(self.thickness)):
-            strain = self.a[i] * (self.sigma_deviatoric[i] / self.sigma_s[i]) ** self.m[i] * N ** self.b[i]
-            sett[i, :] = strain * self.thickness[i]
-        # settlement
-        self.settlement = np.sum(sett, axis=0)
+        # dump dict
+        with open(output_file, "wb") as f:
+            pickle.dump(self.results, f)
+        return
