@@ -152,6 +152,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
     # set up train
     train = TrainModel()
     train.use_irregularities = use_irregularities
+    train.irregularity_parameters = {"Av": 0.00003365}
     train.time = time
     train.velocities = velocities
 
@@ -273,10 +274,10 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
 
 def main():
 
-    nb_sleepers = [400]  # number of sleepers per segment
+    nb_sleepers = [1000]  # number of sleepers per segment
     stiffness = [214e7]  # stiffness per segment
     damping = [30e3]  # damping per segment
-    hinge_coord = 200 * .6  # x-coordinate of the hinge, should be a multiple of the sleeper distance i.e. 0.6 m
+    hinge_coord = 500 * .6  # x-coordinate of the hinge, should be a multiple of the sleeper distance i.e. 0.6 m
     hinge_stiffness = 2000000  # stiffness of the hinge
 
     # starting coordinate of the middle of the train. Note that the whole train should be within the geometry at all
