@@ -321,6 +321,7 @@ class TestBenchmarkSet1:
 
 
     @pytest.mark.workinprogress
+    @pytest.mark.skip
     def test_moving_load_on_cantilever_beam(self, set_up_material, set_up_euler_section):
         nodes_beam = [Node(0.0,0.0,0.0), Node(1.0, 0.0, 0.0)]
         elements_beam = [Element(nodes_beam)]

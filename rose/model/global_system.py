@@ -549,7 +549,7 @@ class GlobalSystem:
 
         # run_stages with Static solver if required
         if isinstance(self.solver, StaticSolver):
-            self.solver.calculate(K, F, start_time_id, end_time_id)
+            self.solver.calculate(K, F, start_time_id, end_time_id,F_ini=self.global_force_vector)
 
         # assign the solver results to the nodes.
         self.assign_results_to_nodes()

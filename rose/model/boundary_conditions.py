@@ -88,23 +88,31 @@ class LoadCondition(ConditionModelPart):
         """
         return self.__z_rot_dof
 
+    def initialize(self):
+        super().initialize()
+
+        self.initialize_matrices()
+
     def initialize_matrices(self):
         """
         Initialises force matrices as sparse lil matrices with dimension [number of nodes, number of time steps]
 
         :return:
         """
-        super().initialize()
 
-        if self.x_disp_dof:
+        # if self.x_disp_dof:
+
+        if self.x_force_matrix is None:
             self.x_force_matrix = sparse.lil_matrix((len(self.nodes), len(self.time)))
-            self.x_force_vector = np.zeros(len(self.nodes))
-        if self.z_rot_dof:
+        self.x_force_vector = np.zeros(len(self.nodes))
+        # if self.z_rot_dof:
+        if self.z_moment_matrix is None:
             self.z_moment_matrix = sparse.lil_matrix((len(self.nodes), len(self.time)))
-            self.z_moment_vector = np.zeros(len(self.nodes))
-        if self.y_disp_dof:
+        self.z_moment_vector = np.zeros(len(self.nodes))
+        # if self.y_disp_dof:
+        if self.y_force_matrix is None:
             self.y_force_matrix = sparse.lil_matrix((len(self.nodes), len(self.time)))
-            self.y_force_vector = np.zeros(len(self.nodes))
+        self.y_force_vector = np.zeros(len(self.nodes))
 
     def set_load_vector_as_function_of_time(self, load: float, build_up_idxs: int) -> np.ndarray:
         """
@@ -123,6 +131,11 @@ class LoadCondition(ConditionModelPart):
         )
         return time_load
 
+    def update_force(self,t):
+        for idx, node in enumerate(self.nodes):
+            self.x_force_vector[idx] = self.x_force_matrix[idx,t]
+            self.y_force_vector[idx] = self.y_force_matrix[idx, t]
+            self.z_moment_vector[idx] = self.z_moment_matrix[idx, t]
 
 class LineLoadCondition(LoadCondition):
     """
@@ -676,7 +689,7 @@ class MovingPointLoad(LineLoadCondition):
 
         # todo make calling of shapefunctions more general, for now it only works on a beam with normal, y and z-rot dof
         # get nodal normal force vector
-        if math.isclose(rotated_force[0],0):
+        if math.isclose(rotated_force[0], 0):
             normal_force_vector = np.zeros(len(self.contact_model_part.normal_shape_functions))
         else:
             normal_force_vector = self.__distribute_normal_force(self.distances[t], rotated_force)
