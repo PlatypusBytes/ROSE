@@ -152,7 +152,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
     # set up train
     train = TrainModel()
     train.use_irregularities = use_irregularities
-    train.irregularity_parameters = {"Av": 0.00003365}
+    train.irregularity_parameters = {"Av": 0.00002095}
     train.time = time
     train.velocities = velocities
 
