@@ -204,10 +204,10 @@ class Varandas(BaseModel):
         # collect displacements
         aux = []
         for i, _ in enumerate(self.nodes):
-            aux.append(self.displacement[i])
+            aux.append(self.displacement[i].tolist())
 
         # create results struct
-        self.results.nodes = self.nodes
+        self.results.nodes = list(self.nodes)
         self.results.time = self.cumulative_time.tolist()
         self.results.displacement = aux
         return
@@ -414,9 +414,6 @@ class LiSelig(BaseModel):
         # strain
         self.settlement = np.zeros((len(self.nodes), len(self.cumulative_nb_cycles)))
 
-        fii = open("./data.txt", "w")
-        fii.write("simga_dev;sigma_s;a;b;m;N\n")
-
         for k, val in enumerate(self.nodes):
             # id soil for the node
             id_s = self.soil_id[val]
@@ -427,17 +424,12 @@ class LiSelig(BaseModel):
                                 np.max(self.number_cycles) * (np.max(self.cumulative_time) / 365) * self.t_ini +
                                 self.number_cycles[t],
                                 len(self.cumulative_nb_cycles))
-
                 for i in range(len(self.thickness[id_s])):
                     # # basic model
                     # strain = self.a[id_s][i] * (self.sigma_deviatoric[k, i, t] / self.sigma_s[id_s][i]) ** self.m[id_s][i] * N ** self.b[id_s][i]
                     strain = self.a[id_s][i] * (self.sigma_deviatoric[k, i, t] / self.sigma_s[id_s][i]) ** self.m[id_s][i] * N ** self.b[id_s][i]
                     self.settlement[k, :] += strain * self.thickness[id_s][i]
-
-                    fii.write(f"{self.sigma_deviatoric[k, i, t]};{self.sigma_s[id_s][i]};{self.a[id_s][i]};{self.b[id_s][i]};{self.m[id_s][i]};{N[-1]}\n")
             self.settlement[k, :] -= self.settlement[k, 0]
-
-        fii.close()
         self.create_results()
 
     def create_results(self):
@@ -447,13 +439,12 @@ class LiSelig(BaseModel):
         # collect displacements
         aux = []
         for i, _ in enumerate(self.nodes):
-            aux.append(self.settlement[i])
+            aux.append(self.settlement[i].tolist())
 
         # create results struct
-        self.results.nodes = self.nodes
+        self.results.nodes = list(self.nodes)
         self.results.time = self.cumulative_time.tolist()
         self.results.displacement = aux
-        return
 
     def dump(self, output_file: str):
         """
