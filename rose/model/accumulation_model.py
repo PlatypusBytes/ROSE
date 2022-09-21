@@ -164,6 +164,7 @@ class Varandas(BaseModel):
         # Vector F for integration
         F = np.linspace(0, np.max(self.force_max, axis=0), self.nb_int_step)
 
+        print("Running Varandas model")
         # progress bar
         pbar = tqdm(
             total=len(self.cumulative_nb_cycles),
@@ -403,6 +404,14 @@ class LiSelig(BaseModel):
         # assign nodes
         self.nodes = idx
 
+        # progress bar
+        print("Running Li & Selig model")
+        pbar = tqdm(
+            total=len(self.nodes),
+            unit_scale=True,
+            unit="steps",
+        )
+
         # parameterise settlement model
         self.classify()
         # compute initial vertical stress
@@ -429,7 +438,9 @@ class LiSelig(BaseModel):
                     # strain = self.a[id_s][i] * (self.sigma_deviatoric[k, i, t] / self.sigma_s[id_s][i]) ** self.m[id_s][i] * N ** self.b[id_s][i]
                     strain = self.a[id_s][i] * (self.sigma_deviatoric[k, i, t] / self.sigma_s[id_s][i]) ** self.m[id_s][i] * N ** self.b[id_s][i]
                     self.settlement[k, :] += strain * self.thickness[id_s][i]
+            pbar.update()
             self.settlement[k, :] -= self.settlement[k, 0]
+        pbar.close()
         self.create_results()
 
     def create_results(self):
