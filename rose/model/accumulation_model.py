@@ -309,7 +309,7 @@ class LiSelig(BaseModel):
             thickness = np.abs(np.diff(self.z_coord[i]))
             self.thickness.append(np.append(thickness, self.z_last_layer))
 
-            self.z_middle = np.abs((self.z_coord[i] - self.z_coord[i][0])) + self.thickness[i] / 2
+            self.z_middle.append(np.abs((self.z_coord[i] - self.z_coord[i][0])) + self.thickness[i] / 2)
             self.sigma_v0.append(self.gamma[i] * self.z_middle[i])
 
     def classify(self):
@@ -367,7 +367,8 @@ class LiSelig(BaseModel):
         @param length: length of the stress distribution
         """
 
-        self.sigma_deviatoric = np.zeros((len(self.nodes), len(self.z_middle), len(self.force)))
+        for i in range(self.nb_soils):
+            self.sigma_deviatoric.append(np.zeros((len(self.nodes), len(self.z_middle[i]), len(self.force))))
 
         for f, force in enumerate(self.force):
             # Flamant's approximation
@@ -376,8 +377,10 @@ class LiSelig(BaseModel):
             x = np.linspace(-10 * a, 10 * a, 100)
 
             # for each layer
-            for i, z_mid in enumerate(self.z_middle):
-                for k, nod in enumerate(self.nodes):
+            for k, nod in enumerate(self.nodes):
+                id_soil = self.soil_id[k]
+                for i, z_mid in enumerate(self.z_middle[id_soil]):
+
                     theta1 = np.arctan((x + a) / z_mid)
                     theta2 = np.arctan((x - a) / z_mid)
 
@@ -387,7 +390,7 @@ class LiSelig(BaseModel):
                     # principal stress directions
                     sigma_1 = (stress_xx + stress_zz) / 2 + np.sqrt(((stress_xx - stress_zz) / 2)**2 + stress_xz**2)
                     sigma_2 = (stress_xx + stress_zz) / 2 - np.sqrt(((stress_xx - stress_zz) / 2)**2 + stress_xz**2)
-                    self.sigma_deviatoric[k, i, f] = np.max((sigma_1 - sigma_2)/2)
+                    self.sigma_deviatoric[id_soil][k, i, f] = np.max((sigma_1 - sigma_2)/2)
 
     def calculate(self, width, length, idx=None):
         """
@@ -435,8 +438,8 @@ class LiSelig(BaseModel):
                                 len(self.cumulative_nb_cycles))
                 for i in range(len(self.thickness[id_s])):
                     # # basic model
-                    # strain = self.a[id_s][i] * (self.sigma_deviatoric[k, i, t] / self.sigma_s[id_s][i]) ** self.m[id_s][i] * N ** self.b[id_s][i]
-                    strain = self.a[id_s][i] * (self.sigma_deviatoric[k, i, t] / self.sigma_s[id_s][i]) ** self.m[id_s][i] * N ** self.b[id_s][i]
+                    # strain = self.a[id_s][i] * (self.sigma_deviatoric[id_s][k, i, t] / self.sigma_s[id_s][i]) ** self.m[id_s][i] * N ** self.b[id_s][i]
+                    strain = self.a[id_s][i] * (self.sigma_deviatoric[id_s][k, i, t] / self.sigma_s[id_s][i]) ** self.m[id_s][i] * N ** self.b[id_s][i]
                     self.settlement[k, :] += strain * self.thickness[id_s][i]
             pbar.update()
             self.settlement[k, :] -= self.settlement[k, 0]
