@@ -383,7 +383,7 @@ class MovingPointLoad(LineLoadCondition):
             )
         if self.moving_z_moment is not None:
             self.moving_z_moment = utils.filter_data_outside_range(
-                self.moving_x_force,
+                self.moving_z_moment,
                 self.cum_distances_force,
                 self.cum_distances_nodes[0],
                 self.cum_distances_nodes[-1]

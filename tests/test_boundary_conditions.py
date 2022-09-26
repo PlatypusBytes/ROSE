@@ -67,23 +67,18 @@ class TestBoundaryConditions:
                                    [False, False,False, False,True, True, True]])
 
         force.moving_coords = moving_coords
-        force.moving_y_force =  np.array([1, 1, 1, 1, 1, 1, 1])
+        force.moving_y_force = np.array([1, 1, 1, 1, 1, 1, 1])
         force.time = time
         force.model_part_at_t = [beam for t in range(len(force.time))]
 
         force.active_elements = active_elements
 
-        force.set_moving_point_load()
+        y_force_matrix = []
+        for t in range(len(time)):
+            force.update_force(t)
+            y_force_matrix.append(force.y_force_vector)
 
-        # self.distribute_point_load_on_nodes(
-        #     int(element_idxs[time_idx]),
-        #     time_idx,
-        #     self.moving_coords[time_idx],
-        #     self.moving_x_force,
-        #     self.moving_z_moment,
-        #     self.moving_y_force,
-        # # sets moving load on timoshenko beam
-        # force.set_moving_point_load(beam, moving_coords, time, y_force=np.array([1, 1, 1, 1, 1, 1, 1]))
+        y_force_matrix = np.array(y_force_matrix).T
 
         # set expected values
         expected_y_force_matrix = [
@@ -95,7 +90,7 @@ class TestBoundaryConditions:
         # assert each value in force matrix
         for i in range(len(expected_y_force_matrix)):
             for j in range(len(expected_y_force_matrix[i])):
-                assert force.y_force_matrix[i, j] == pytest.approx(
+                assert y_force_matrix[i, j] == pytest.approx(
                     expected_y_force_matrix[i][j]
                 )
 
@@ -142,15 +137,6 @@ class TestBoundaryConditions:
         force.initialize_matrices()
 
         # set coordinate of moving load per timestep
-        moving_coords = [
-            [0.0, 0.0, 0.0],
-            [np.sqrt(3)/8, 0.125, 0.0], #0.25
-            [np.sqrt(3)/4, 0.25, 0.0], # 0.5
-            [np.sqrt(3)*3/8, 0.375, 0.0], # 0.75
-            [np.sqrt(3)/2, 0.5, 0.0], # 1.0
-            [np.sqrt(3)*5/8, 0.625, 0.0], # 1.25
-            [np.sqrt(3)*6/8, 0.75, 0.0], # 1.5
-        ]
 
         moving_coords = [
             [0.0, 0.0, 0.0],
@@ -172,8 +158,6 @@ class TestBoundaryConditions:
 
         force.active_elements = active_elements
 
-        force.set_moving_point_load()
-
         # set expected values
         expected_y_force_matrix = [
             [1, 0.796875, 0.5, 0.203125, 0.0, 0.0, 0.0],
@@ -187,16 +171,26 @@ class TestBoundaryConditions:
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.046875, 0.0],
         ]
 
+        x_force_matrix = []
+        y_force_matrix = []
+        for t in range(len(time)):
+            force.update_force(t)
+            x_force_matrix.append(force.x_force_vector)
+            y_force_matrix.append(force.y_force_vector)
+
+        x_force_matrix = np.array(x_force_matrix).T
+        y_force_matrix = np.array(y_force_matrix).T
+
         # assert each value in force matrix
         for i in range(len(expected_y_force_matrix)):
             for j in range(len(expected_y_force_matrix[i])):
                 # assert horizontal force
-                assert force.x_force_matrix[i, j] == pytest.approx(
+                assert x_force_matrix[i, j] == pytest.approx(
                     expected_x_force_matrix[i][j]
                 )
 
                 # assert vertical force
-                assert force.y_force_matrix[i, j] == pytest.approx(
+                assert y_force_matrix[i, j] == pytest.approx(
                     expected_y_force_matrix[i][j]
                 )
 
