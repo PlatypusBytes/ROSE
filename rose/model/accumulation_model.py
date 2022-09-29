@@ -7,6 +7,13 @@ from tqdm import tqdm
 
 
 def train_info(data, trains, time_days):
+    """
+    Read train info
+
+    @param data: object
+    @param trains: trains dictionary containing information
+    @param time_days: time of analysis in days
+    """
     nb_nodes = []
     # determine number of loading cycles
     for t in trains:
@@ -25,9 +32,12 @@ def train_info(data, trains, time_days):
     # number of trains
     data.number_trains = len(data.trains)
     # define cumulative time
-    data.cumulative_time = np.linspace(0, time_days - 1, int(np.max(data.number_cycles)))
+    data.cumulative_time = np.linspace(0, time_days - 1, int(np.max(data.number_cycles) / data.steps))
     # define cumulative nb cycles
     data.cumulative_nb_cycles = np.linspace(0, int(np.max(data.number_cycles)) - 1, int(np.max(data.number_cycles)))
+    # index to save results
+    data.steps_index = np.linspace(0, int(np.max(data.number_cycles)) - 1, int(np.max(data.number_cycles) / data.steps)).astype(int)
+
     # index for distributed loading
     for nb in data.number_cycles:
         data.index_cumulative_distributed.append(
@@ -63,10 +73,12 @@ class BaseModel:
         self.index_cumulative_distributed = []
         self.nodes = []
         self.results = Results()
+        self.steps = []
+        self.steps_index = []
 
 
 class Varandas(BaseModel):
-    def __init__(self, alpha: float = 0.6, beta: float = 0.82, gamma: float = 10, N0: float = 1e6, F0: float = 50):
+    def __init__(self, alpha: float = 0.6, beta: float = 0.82, gamma: float = 10, N0: float = 1e6, F0: float = 50, steps: int=1):
         """
         Initialisation of the accumulation model of Varandas :cite:`varandas_2014`
 
@@ -77,6 +89,7 @@ class Varandas(BaseModel):
         :param gamma: (optional, default 10) accumulated settlement in reference test (with F0, N0)
         :param N0: (optional, default 1e6) reference number of cycles
         :param F0: (optional, default 50) reference load amplitude
+        :param steps: (optional, default 1) step interval to save results
         """
         super().__init__()
 
@@ -87,6 +100,8 @@ class Varandas(BaseModel):
         # model parameters
         self.N0 = N0
         self.F0 = F0
+        # step to save results
+        self.steps = steps
 
         # M alpha beta
         summation = [(1 / n) ** self.beta for n in range(1, int(self.N0))]
@@ -152,9 +167,9 @@ class Varandas(BaseModel):
         self.nodes = idx
 
         # cumulative displacement
-        self.displacement = np.zeros((int(len(idx)), int(np.max(self.number_cycles))))
+        self.displacement = np.zeros((int(len(idx)), int(np.max(self.number_cycles) / self.steps)))
         # displacement due to cycle n
-        disp = np.zeros((int(len(idx)), int(np.max(self.number_cycles))))
+        disp = np.zeros((int(len(idx)), int(np.max(self.number_cycles) / self.steps)))
 
         # compute maximum force
         for j in range(self.number_trains):
@@ -175,6 +190,8 @@ class Varandas(BaseModel):
         h_f = np.zeros(len(self.nodes))
         max_val_force = np.zeros((len(self.nodes), self.number_trains)).T
 
+        i = 0
+        aux = np.zeros(len(self.nodes))
         for n, nb_cyc in enumerate(self.cumulative_nb_cycles):
             for tr in range(self.number_trains):
                 if nb_cyc <= self.number_cycles[tr]:
@@ -184,9 +201,14 @@ class Varandas(BaseModel):
                     # compute integral: trapezoidal rule
                     integral = F ** self.alpha * (1 / (h_f + 1)) ** self.beta
                     val = trapz(integral, F, axis=0)
-                    # compute displacement on cycle N
-                    disp[:, n] += self.gamma / self.M_alpha_beta * val
-                    # disp[:, self.index_cumulative_distributed[tr][n]] += self.gamma / self.M_alpha_beta * val
+
+                    aux += self.gamma / self.M_alpha_beta * val
+
+                    if n in self.steps_index:
+                        # compute displacement on cycle N
+                        disp[:, i] = aux
+                        aux = np.zeros(len(self.nodes))
+                        i += 1
             # update progress bar
             pbar.update(1)
 
@@ -231,7 +253,7 @@ class Varandas(BaseModel):
 
 
 class LiSelig(BaseModel):
-    def __init__(self, t_ini=0, last_layer_thickness=10):
+    def __init__(self, t_ini=0, last_layer_thickness=10, steps=1):
         r"""
         Accumulation model for soil layer. Based on Li and Selig :cite:`Li_Selig_1996`.
         Implementation based on Punetha et al. :cite:`Punetha_2020`.
@@ -271,6 +293,8 @@ class LiSelig(BaseModel):
         self.settlement = []  # total settlement
         self.force_scl_fct = 1000  # N -> kN
         self.t_ini = t_ini
+        self.steps = steps
+
 
     def read_traffic(self, trains: dict, time_days: int):
         """
@@ -280,6 +304,7 @@ class LiSelig(BaseModel):
         ----------
         :param trains: Dictionary with train information
         :param time_days: Time in days of the analysis
+        @param step:
         """
         # read train info
         train_info(self, trains, time_days)
@@ -424,7 +449,7 @@ class LiSelig(BaseModel):
         # deviatoric stress
         self.dev_stress(width, length)
         # strain
-        self.settlement = np.zeros((len(self.nodes), len(self.cumulative_nb_cycles)))
+        self.settlement = np.zeros((len(self.nodes), len(self.cumulative_time)))
 
         for k, val in enumerate(self.nodes):
             # id soil for the node
@@ -432,10 +457,10 @@ class LiSelig(BaseModel):
             for t in range(len(self.trains)):
                 # N = np.linspace(1 + self.t_ini, self.number_cycles[t], len(self.cumulative_nb_cycles))
                 # new version from David
-                N = np.linspace(1 + np.max(self.number_cycles) * np.max((self.cumulative_time) / 365) * self.t_ini,
+                N = np.linspace(1 + np.max(self.number_cycles) * np.max(self.cumulative_time / 365) * self.t_ini,
                                 np.max(self.number_cycles) * (np.max(self.cumulative_time) / 365) * self.t_ini +
                                 self.number_cycles[t],
-                                len(self.cumulative_nb_cycles))
+                                len(self.cumulative_time))
                 for i in range(len(self.thickness[id_s])):
                     # # basic model
                     # strain = self.a[id_s][i] * (self.sigma_deviatoric[id_s][k, i, t] / self.sigma_s[id_s][i]) ** self.m[id_s][i] * N ** self.b[id_s][i]
