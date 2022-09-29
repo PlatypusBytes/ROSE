@@ -556,6 +556,8 @@ class CoupledTrainTrack(GlobalSystem):
         :return:
         """
 
+        self.print_initial_message()
+
         self.validate_input()
         self.initialise()
         self.calculate_initial_state()
@@ -566,3 +568,5 @@ class CoupledTrainTrack(GlobalSystem):
             self.calculate_stage(self.stage_time_ids[i], self.stage_time_ids[i + 1])
 
         self.finalise()
+
+        self.print_end_message()

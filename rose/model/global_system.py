@@ -653,6 +653,13 @@ class GlobalSystem:
         vec_f = np.vectorize(self._assign_result_to_node)
         self.mesh.nodes = vec_f(self.mesh.nodes)
 
+    def print_initial_message(self):
+        print(open(r'../docs/static/Initial_message.txt', "r").read())
+
+    def print_end_message(self):
+        print("\n\x1B[3m" + "  There is no value in anything until it is finished. " + "\x1B[0m")
+        print("\x1B[3m" + "--- Genghis Khan" + "\x1B[0m")
+
     def main(self):
         """
         Main function of the class. Input is validated, then the system is initialised. Each stage is calculated and the
@@ -660,6 +667,7 @@ class GlobalSystem:
 
         :return:
         """
+        self.print_initial_message()
 
         self.validate_input()
         self.initialise()
@@ -670,3 +678,5 @@ class GlobalSystem:
             self.calculate_stage(self.stage_time_ids[i], self.stage_time_ids[i + 1])
 
         self.finalise()
+
+        self.print_end_message()
