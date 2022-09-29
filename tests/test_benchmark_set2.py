@@ -8,8 +8,10 @@ from rose.post_processing.plot_utils import *
 from rose.model.train_model import *
 from rose.model.train_track_interaction import *
 
-from solvers.newmark_solver import NewmarkExplicit
+from solvers.newmark_solver import NewmarkExplicit, NewmarkImplicitForce
 from solvers.zhai_solver import ZhaiSolver
+from solvers.central_difference_solver import CentralDifferenceSolver
+from solvers.HHT_solver import HHTExplicit, HHTImplicitForce
 
 from analytical_solutions.analytical_wave_prop import OneDimWavePropagation
 from analytical_solutions.simple_supported import \
@@ -875,24 +877,6 @@ class TestBenchmarkSet2:
 
         coupled_model.main()
 
-        # vertical_displacements_rail = np.array(
-        #     [node.displacements[0::10, 1] for node in coupled_model.track.model_parts[0].nodes])
-        # coords = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[0].nodes])
-
-        # create_animation("temp_mov2.html", (coords),
-        #                  (vertical_displacements_rail[:,:]))
-
-        #plt.plot(coupled_model.solver.u[:,-1])
-        # plt.plot(coupled_model.solver.u[:, -2])
-        # # plt.plot(coupled_model.solver.u[:, -3])
-        # # plt.plot(coords, vertical_displacements_rail[:,1000])
-        # # plt.plot(coords, vertical_displacements_rail[:, -1])
-        # # plt.plot(coupled_model.solver.u[2000:10000, -1])
-        # # plt.plot(coupled_model.solver.u[:, -1])
-        # # plt.plot(coupled_model.solver.u[:, 1])
-        #plt.show()
-        # coupled_model.wheel_loads = None
-
     @pytest.mark.parametrize("solver, n_timesteps, filename_expected",
                              [(NewmarkExplicit(), 2000, "train_on_beam_newmark.json"),
                               (ZhaiSolver(), 20000, "train_on_beam_zhai.json")
@@ -1046,6 +1030,10 @@ class TestBenchmarkSet2:
             ss.beam(E, I, rho, A, 50)
             ss.compute()
 
+            # retrieve results from file
+            with open(os.path.join(TEST_PATH, 'test_data', filename_expected)) as f:
+                res_numerical2 = json.load(f)
+
             # plot numerical and analytical solution
             fig = plt.figure()
             gs = fig.add_gridspec(2, 2)
@@ -1053,9 +1041,13 @@ class TestBenchmarkSet2:
             ax.plot(ss.time, ss.displacement[:, 0], color='b', label="beam")
             ax.plot(ss.time, ss.displacement[:, 1], color='r', label="vehicle")
             ax.plot(coupled_model.time, -coupled_model.solver.u[:, int(2 + (3 * n_nodes - 3) / 2 - 3)], color='b',
-                    linestyle='dashed', label="beam_num")
+                    linestyle='dashed', label="beam_num_new")
+            ax.plot(np.array(res_numerical2["time"]), -np.array(res_numerical2["u_beam"]), color='b',
+                    linestyle='dotted', label="beam_num_old")
             ax.plot(coupled_model.time, -coupled_model.solver.u[:, -2], color='r', linestyle='dashed',
-                    label="vehicle_num_2")
+                    label="vehicle_num_new")
+            ax.plot(np.array(res_numerical2["time"]), -np.array(res_numerical2["u_vehicle"]), color='r', linestyle='dotted',
+                    label="vehicle_num_old")
             ax.set_xlabel("Time [s]")
             ax.set_ylabel("Vertical displacement [m]")
             ax.grid()
