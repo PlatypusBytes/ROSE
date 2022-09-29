@@ -3,6 +3,8 @@ from rose.model.boundary_conditions import LoadCondition
 from rose.model.geometry import Mesh
 from rose.model.exceptions import *
 
+from solvers.central_difference_solver import CentralDifferenceSolver
+from solvers.HHT_solver import HHTSolver
 from solvers.newmark_solver import NewmarkSolver
 from solvers.static_solver import StaticSolver
 from solvers.zhai_solver import ZhaiSolver
@@ -486,7 +488,7 @@ class GlobalSystem:
         self.set_stage_time_ids()
 
         self.solver.initialise(self.total_n_dof, self.time)
-        self.solver.update_time_step_func = self.update_time_step_rhs
+        self.solver.update_rhs_at_time_step_func = self.update_time_step_rhs
 
     def update(self, start_time_id, end_time_id):
         """
@@ -545,6 +547,14 @@ class GlobalSystem:
 
         # run_stages with Newmark solver if required
         if isinstance(self.solver, NewmarkSolver):
+            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
+
+        # run_stages with Newmark solver if required
+        if isinstance(self.solver, CentralDifferenceSolver):
+            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
+
+        # run_stages with Newmark solver if required
+        if isinstance(self.solver, HHTSolver):
             self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
 
         # run_stages with Static solver if required

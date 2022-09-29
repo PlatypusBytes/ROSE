@@ -246,7 +246,6 @@ class CoupledTrainTrack(GlobalSystem):
         return F
 
     def update_non_linear_iteration(self, t: int, u: np.ndarray):
-        #return self.global_force_vector
         return self.update_force_vector_contact(u, t, np.copy(self.global_force_vector))
 
     def update_time_step_rhs(self, t, **kwargs):
@@ -525,8 +524,8 @@ class CoupledTrainTrack(GlobalSystem):
 
         # initialise solver
         self.solver.initialise(self.total_n_dof, self.time)
-        self.solver.update_time_step_func = self.update_time_step_rhs
-        self.solver.update_non_linear_iteration_rhs_func = self.update_non_linear_iteration
+        self.solver.update_rhs_at_time_step_func = self.update_time_step_rhs
+        self.solver.update_rhs_at_non_linear_iteration_func = self.update_non_linear_iteration
 
 
     def calculate_stage(self, start_time_id, end_time_id):
