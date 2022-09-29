@@ -204,11 +204,11 @@ class Varandas(BaseModel):
 
                     aux += self.gamma / self.M_alpha_beta * val
 
-                    if n in self.steps_index:
-                        # compute displacement on cycle N
-                        disp[:, i] = aux
-                        aux = np.zeros(len(self.nodes))
-                        i += 1
+            if n in self.steps_index:
+                # compute displacement on cycle N
+                disp[:, i] = aux
+                aux = np.zeros(len(self.nodes))
+                i += 1
             # update progress bar
             pbar.update(1)
 
@@ -253,7 +253,7 @@ class Varandas(BaseModel):
 
 
 class LiSelig(BaseModel):
-    def __init__(self, t_ini=0, last_layer_thickness=10, steps=1):
+    def __init__(self, t_ini: int = 0, last_layer_thickness: int = 10, steps: int = 1):
         r"""
         Accumulation model for soil layer. Based on Li and Selig :cite:`Li_Selig_1996`.
         Implementation based on Punetha et al. :cite:`Punetha_2020`.
@@ -294,7 +294,6 @@ class LiSelig(BaseModel):
         self.force_scl_fct = 1000  # N -> kN
         self.t_ini = t_ini
         self.steps = steps
-
 
     def read_traffic(self, trains: dict, time_days: int):
         """
