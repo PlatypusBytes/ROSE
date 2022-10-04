@@ -657,8 +657,8 @@ class GlobalSystem:
         print(open(r'../docs/static/Initial_message.txt', "r").read())
 
     def print_end_message(self):
-        print("\n\x1B[3m" + "  There is no value in anything until it is finished. " + "\x1B[0m")
-        print("\x1B[3m" + "--- Genghis Khan" + "\x1B[0m")
+        print("\n\x1B[3m" + "  Your focus determines your reality. " + "\x1B[0m")
+        print("\x1B[3m" + "--- Qui - Gon Jinn" + "\x1B[0m")
 
     def main(self):
         """
