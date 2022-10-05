@@ -60,6 +60,10 @@ class LoadCondition(ConditionModelPart):
         self.y_force: float = None
         self.z_moment: float = None
 
+        self.x_force_vector: np.ndarray = None
+        self.y_force_vector: np.ndarray = None
+        self.z_moment_vector: np.ndarray = None
+
         self.x_force_matrix: spmatrix = None
         self.y_force_matrix: spmatrix = None
         self.z_moment_matrix: spmatrix = None
@@ -163,6 +167,7 @@ class LineLoadCondition(LoadCondition):
         self.active_elements: np.ndarray = None
         self.contact_model_part: ElementModelPart = None
         self.contact_model_parts: List[ElementModelPart] = None
+        self.node_indices: np.ndarray = None
 
     def validate(self):
         """
@@ -214,6 +219,7 @@ class MovingPointLoad(LineLoadCondition):
 
         self.cum_distances_force = None
         self.cum_distances_nodes = None
+        self.local_distances = None
 
         self.moving_coords = None
         self.moving_x_force = None
@@ -571,7 +577,7 @@ class MovingPointLoad(LineLoadCondition):
         coordinates = np.array([np.array(element.nodes[0].coordinates) for element in contact_elements])
         sq_diff_coords = np.power(coordinates - self.moving_coords, 2)
 
-        self.distances = np.sqrt(np.sum(sq_diff_coords, axis=1))
+        self.local_distances = np.sqrt(np.sum(sq_diff_coords, axis=1))
 
         # find first and last index of node in nodes list for efficiency
         first_idx = self.nodes.index(np_elements[element_idxs][0].nodes[0])
@@ -594,6 +600,7 @@ class MovingPointLoad(LineLoadCondition):
                 if element == unique_contact_elements[i]:
                     i += 1
             new_node_indices.append(node_indices[i - 1])
+
         self.node_indices = np.array(new_node_indices)
 
         # update force at timestep 0
@@ -623,19 +630,19 @@ class MovingPointLoad(LineLoadCondition):
         if math.isclose(rotated_force[0], 0):
             normal_force_vector = np.zeros(len(self.contact_model_part.normal_shape_functions))
         else:
-            normal_force_vector = self.__distribute_normal_force(self.distances[t], rotated_force)
+            normal_force_vector = self.__distribute_normal_force(self.local_distances[t], rotated_force)
 
         # get nodal shear force and z-moment force vectors
         if math.isclose(rotated_force[1], 0):
             shear_force_vector_v = z_mom_vector_v = np.zeros(int(len(self.contact_model_part.y_shape_functions) / 2))
         else:
-            shear_force_vector_v, z_mom_vector_v = self.__distribute_shear_force(self.distances[t], rotated_force)
+            shear_force_vector_v, z_mom_vector_v = self.__distribute_shear_force(self.local_distances[t], rotated_force)
 
         if math.isclose(rotated_force[2], 0):
             shear_force_vector_z = z_mom_vector_z = np.zeros(
                 int(len(self.contact_model_part.z_rot_shape_functions) / 2))
         else:
-            shear_force_vector_z, z_mom_vector_z = self.__distribute_z_moment(self.distances[t], rotated_force)
+            shear_force_vector_z, z_mom_vector_z = self.__distribute_z_moment(self.local_distances[t], rotated_force)
 
         shear_force_vector = shear_force_vector_v + shear_force_vector_z
         z_mom_vector = z_mom_vector_v + z_mom_vector_z
