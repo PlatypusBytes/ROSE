@@ -346,8 +346,6 @@ class GlobalSystem:
 
         # transfer matrices to compressed sparse column matrices
         K = sparse.csc_matrix(self.global_stiffness_matrix.copy(), dtype=float)
-       # F = sparse.csc_matrix(self.global_force_vector[:, :3].copy(), dtype=float)
-
         F = self.global_force_vector
 
         # calculate system with static solver
@@ -377,7 +375,6 @@ class GlobalSystem:
             (self.total_n_dof, self.total_n_dof), dtype=float
         )
 
-        #self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)),dtype=float)
         self.global_force_vector = np.zeros(self.total_n_dof)
 
     def __calculate_rayleigh_damping_factors(self):
