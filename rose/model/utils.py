@@ -2,7 +2,6 @@ from rose.model.geometry import Node, Element
 from rose.model.irregularities import RailIrregularities
 
 import numpy as np
-from shapely.geometry import LineString, Polygon, Point
 from scipy.spatial import KDTree
 from scipy import sparse, interpolate
 import math
