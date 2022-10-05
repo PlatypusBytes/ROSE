@@ -4,3 +4,7 @@ class ParameterNotDefinedException(Exception):
 
 class TimeException(Exception):
     pass
+
+
+class SizeException(Exception):
+    pass

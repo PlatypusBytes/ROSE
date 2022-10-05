@@ -164,19 +164,32 @@ def delete_from_lil(mat: sparse.lil_matrix, row_indices=[], col_indices=[]):
 
 
 def calculate_point_rotation(coord1: np.ndarray, coord2: np.ndarray):
+    """
+    Calculates rotation between 2 points
+
+    :param coord1: coordinates point 1
+    :param coord2: coordinates point 2
+    :return:
+    """
+
+    # initialise rotation
     rot = 0
+
+    # check if both x coordinates are equal
     is_x_equal = math.isclose(coord2[0],coord1[0])
 
+    # apply a 90 degree rotation if x coordinates are equal
     if is_x_equal:
         return np.pi / 2 * np.sign((coord2[1] - coord1[1]))
+
+    # apply a 180 degree rotation if first x coord is smaller than the second
     if coord2[0] < coord1[0]:
         rot += np.pi
 
+    # calculate rotation between the coordinates if the x coordinates are not equal
     rot += math.atan((coord2[1] - coord1[1]) / (coord2[0] - coord1[0]))
 
     return rot
-
-
 
 def calculate_rotation(coord1: np.ndarray, coord2: np.ndarray):
     """
@@ -353,93 +366,6 @@ def distance_np(coordinates_array1: np.array, coordinates_array2: np.array, axis
     :return:
     """
     return np.sqrt(np.sum((coordinates_array1 - coordinates_array2) ** 2, axis=axis))
-
-
-def centeroid_np(arr):
-    """
-    Calculate centroid of numpy array
-    :param arr: numpy array
-    :return: centroid
-    """
-    length = arr.shape[0]
-    sum_x = np.sum(arr[:, 0])
-    sum_y = np.sum(arr[:, 1])
-    sum_z = np.sum(arr[:, 2])
-    return sum_x / length, sum_y / length, sum_z / length
-
-
-def find_intersecting_point_element(
-    elements, point_coordinates, intersection_tolerance=1e-6
-):
-    """
-    Finds index of the element in an element array which intersects with a given point
-
-    :param elements:
-    :param point_coordinates:
-    :param intersection_tolerance:
-    :return:
-    """
-
-    # convert elements to shapely elements for intersection
-    shapely_elements = get_shapely_elements(elements)
-
-    # calculate centroids
-    centroids = np.array(
-        [
-            centeroid_np(np.array([node.coordinates for node in element.nodes]))
-            for element in elements
-        ]
-    )
-
-    # set kdtree to quickly search nearest element of the point
-    tree = KDTree(centroids)
-
-    # set shapely point for intersection
-    point = Point(point_coordinates)
-    element_idx = None
-
-    # loop is required because the closest element centroid to the point is not always the centroid of the
-    # intersecting element
-    for i in range(len(elements)):
-        nr_nearest_neighbours = i + 1
-        # find nearest neighbour element of point coordinates
-        nearest_neighbours = tree.query(point_coordinates, k=nr_nearest_neighbours)
-        element_idx = (
-            nearest_neighbours[1]
-            if isinstance(nearest_neighbours[1], (np.int32, np.int64))
-            else nearest_neighbours[1][-1]
-        )
-
-        # check if coordinate is in element
-        if (
-            shapely_elements[element_idx]
-            .buffer(intersection_tolerance)
-            .intersection(point)
-        ):
-            return element_idx
-
-    return element_idx
-
-
-def __create_shapely_element(element: Element):
-    """
-    Convert element to shapely element
-    :param element:
-    :return:
-    """
-    if len(element.nodes) == 2:
-        return LineString([node.coordinates for node in element.nodes])
-    elif len(element.nodes) > 2:
-        return Polygon([node.coordinates for node in element.nodes])
-
-
-def get_shapely_elements(elements: List[Element]):
-    """
-    Convert elements to shapely elements for intersection
-    :param elements:
-    :return:
-    """
-    return [__create_shapely_element(element) for element in elements]
 
 
 def generate_rail_irregularities(wheels: List, time, **kwargs):

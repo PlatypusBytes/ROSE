@@ -181,10 +181,6 @@ class GlobalSystem:
             )
 
     def __add_condition_to_global(self, condition: LoadCondition):
-    #     self.add_condition_to_global(condition)
-    #
-    # def add_condition_to_global(self, condition: LoadCondition):
-
         """
         Adds load condition to the global force vector
 
@@ -504,24 +500,26 @@ class GlobalSystem:
         self.solver.update(start_time_id)
 
     def update_time_step_rhs(self, t, **kwargs):
+        """
+        Updates the rhs at time step t
+
+        :param t: time index
+        :param kwargs: key word arguments, this is required, as this whole function is added to the solver
+        :return:
+        """
+
+        # regenerate global force vector
         self.global_force_vector = np.zeros_like(self.global_force_vector)
+
+        # update all loads at time step t
         for model_part in self.model_parts:
             if isinstance(model_part, LoadCondition):
-
-                # import pickle
-                #
-                # with open("self.p","wb") as f:
-                #     pickle.dump(self, f)
-                #
-                # with open("model_part.p","wb") as f:
-                #     pickle.dump(model_part, f)
-
                 model_part.update_force(t)
 
+                # add load to global force vector
                 self.__add_condition_to_global(model_part)
 
         return self.global_force_vector
-
 
     def calculate_stage(self, start_time_id, end_time_id):
         """
@@ -537,7 +535,7 @@ class GlobalSystem:
         M = self.global_mass_matrix.tocsc()
         C = self.global_damping_matrix.tocsc()
         K = self.global_stiffness_matrix.tocsc()
-        #self.global_force_vector = self.global_force_vector.tocsc()
+
         F = self.global_force_vector
 
         # run_stages with Zhai solver if required
@@ -652,13 +650,25 @@ class GlobalSystem:
         vec_f = np.vectorize(self._assign_result_to_node)
         self.mesh.nodes = vec_f(self.mesh.nodes)
 
-    def print_initial_message(self):
+    @staticmethod
+    def print_initial_message():
+        """
+        Prints message which is to be shown at the start of the calculation
+
+        :return:
+        """
         import os
         print(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),r'../../docs/static/Initial_message.txt'),
                    "r").read())
 
-    def print_end_message(self):
-        print("\n\x1B[3m" + "  Your focus determines your reality. " + "\x1B[0m")
+    @staticmethod
+    def print_end_message():
+        """
+        Prints message which is to be shown at the end of the calculation
+
+        :return:
+        """
+        print("\n\n\n\x1B[3m" + "  Your focus determines your reality. " + "\x1B[0m")
         print("\x1B[3m" + "--- Qui - Gon Jinn" + "\x1B[0m")
 
     def main(self):

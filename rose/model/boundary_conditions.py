@@ -1,6 +1,7 @@
 from rose.model.model_part import ConditionModelPart, ElementModelPart
 import rose.model.utils as utils
 import rose.pre_process.mesh_utils as mu
+from rose.model.exceptions import *
 
 import numpy as np
 from scipy import sparse
@@ -11,20 +12,6 @@ from scipy.sparse.base import spmatrix
 from typing import List
 
 INTERSECTION_TOLERANCE = 1e-6
-
-
-class SizeException(Exception):
-    pass
-
-
-class NoDispRotCondition(ConditionModelPart):
-    """
-    Class which contains a no rotation and no displacement boundary condition.
-
-    """
-
-    def __init__(self):
-        super().__init__()
 
 
 class LoadCondition(ConditionModelPart):
@@ -137,6 +124,11 @@ class LoadCondition(ConditionModelPart):
         return time_load
 
     def update_force(self, t):
+        """
+        Retrieves the force vectors from the force matrices at time t
+        :param t: time index
+        :return:
+        """
         for idx, node in enumerate(self.nodes):
             self.x_force_vector[idx] = self.x_force_matrix[idx, t]
             self.y_force_vector[idx] = self.y_force_matrix[idx, t]
@@ -608,7 +600,13 @@ class MovingPointLoad(LineLoadCondition):
         self.update_force(t)
 
     def update_force(self, t):
+        """
+        Calculates the force vectors of the moving load at time t
+        :param t: time index
+        :return:
+        """
 
+        # initialises force vectors
         self.x_force_vector = np.zeros(len(self.nodes))
         self.z_moment_vector = np.zeros(len(self.nodes))
         self.y_force_vector = np.zeros(len(self.nodes))
@@ -653,6 +651,7 @@ class MovingPointLoad(LineLoadCondition):
         # calculate global forces at a single timestep
         global_force_vector = utils.rotate_point_around_z_axis(-element_rot, local_force_matrix[:, :])
 
+        # fill force vectors at time t
         for idx, node_idx in enumerate(self.node_indices[t, :]):
             self.x_force_vector[node_idx] += global_force_vector[0, idx]
             self.y_force_vector[node_idx] += global_force_vector[1, idx]

@@ -268,9 +268,12 @@ class CoupledTrainTrack(GlobalSystem):
         return self.update_force_vector_contact(u, t, self.global_force_vector)
 
     def combine_rhs(self):
+        """
+        Combines right hand side of the track and the train in the global force vector
+        :return:
+        """
         self.global_force_vector[:self.track.total_n_dof] = self.track.global_force_vector
         self.global_force_vector[self.track.total_n_dof:self.total_n_dof] = self.train.global_force_vector
-
 
     def combine_global_matrices(self):
         """
@@ -284,7 +287,6 @@ class CoupledTrainTrack(GlobalSystem):
         self.global_damping_matrix[:self.track.total_n_dof, :self.track.total_n_dof] = self.track.global_damping_matrix
         self.global_mass_matrix[:self.track.total_n_dof, :self.track.total_n_dof] = self.track.global_mass_matrix
 
-
         # add track displacement and velocity to global system
         self.solver.u[:, :self.track.total_n_dof] = self.track.solver.u[:, :]
         self.solver.v[:, :self.track.total_n_dof] = self.track.solver.v[:, :]
@@ -296,7 +298,6 @@ class CoupledTrainTrack(GlobalSystem):
             = self.train.global_damping_matrix
         self.global_mass_matrix[self.track.total_n_dof:self.total_n_dof, self.track.total_n_dof:self.total_n_dof] \
             = self.train.global_mass_matrix
-
 
         # add train displacement and velocity to global system
         self.solver.u[:, self.track.total_n_dof:self.total_n_dof] = self.train.solver.u[:, :]
@@ -379,6 +380,12 @@ class CoupledTrainTrack(GlobalSystem):
         self.calculate_rayleigh_damping()
 
     def __check_train_position(self, rail_nodes: List):
+        """
+        Checks if the train is within the limits of the track at all times
+
+        :param rail_nodes: nodes of the rail
+        :return:
+        """
         # get limits track
         x_coords_track = [node.coordinates[0] for node in rail_nodes]
         limits_track = np.min(x_coords_track), np.max(x_coords_track)
@@ -398,6 +405,7 @@ class CoupledTrainTrack(GlobalSystem):
     def initialize_wheel_loads(self):
         """
         Initialises wheel loads on track
+
         :return:
         """
 
@@ -524,9 +532,10 @@ class CoupledTrainTrack(GlobalSystem):
 
         # initialise solver
         self.solver.initialise(self.total_n_dof, self.time)
+
+        # sets functions to alter rhs at each time step and at each non linear iteration
         self.solver.update_rhs_at_time_step_func = self.update_time_step_rhs
         self.solver.update_rhs_at_non_linear_iteration_func = self.update_non_linear_iteration
-
 
     def calculate_stage(self, start_time_id, end_time_id):
         """

@@ -9,7 +9,6 @@ from rose.model.global_system import GlobalSystem
 from solvers.newmark_solver import NewmarkSolver
 from solvers.static_solver import StaticSolver
 from solvers.zhai_solver import ZhaiSolver
-from rose.model.irregularities import RailIrregularities
 
 g = 9.81
 
@@ -59,14 +58,6 @@ class Wheel(ElementModelPart):
 
         static_force_vector[wheel_dofs[1]] = -self.mass * g
 
-    def set_static_force_vector(self):
-        """
-        Calculates the static load of the wheel and adds to the static force vector. Static load is calculated as
-        -mass * gravity constant
-        :return:
-        """
-        self.static_force_vector = np.zeros(1)
-        self.static_force_vector[0,0] = -self.mass * g
 
     def set_mesh(self,mesh, y=0, z=0):
         """
@@ -967,43 +958,7 @@ class TrainModel(GlobalSystem):
         self.solver.u[0, mask] = ini_solver.u[1, :] + max(wheel_displacements)
         self.solver.u[0, wheel_dofs] = wheel_displacements
 
-    def calculate_stage(self, start_time_id, end_time_id):
-        """
-        Calculates a stage of the train system
-
-        :param start_time_id: first time index of the stage
-        :param end_time_id: final time index of the stage
-        :return:
-        """
-
-        # transform matrices to sparse column matrices
-        M = sparse.csc_matrix(self.global_mass_matrix)
-        C = sparse.csc_matrix(self.global_damping_matrix)
-        K = sparse.csc_matrix(self.global_stiffness_matrix)
-        F = self.global_force_vector
-
-        # run_stage with Zhai solver
-        if isinstance(self.solver, ZhaiSolver):
-            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
-
-        # run_stage with Newmark solver
-        if isinstance(self.solver, NewmarkSolver):
-            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
-
-        # run_stage with Static solver
-        if isinstance(self.solver, StaticSolver):
-            self.solver.calculate(K, F, start_time_id, end_time_id)
-
-    def set_stage_time_ids(self):
-        """
-        Find indices of unique time steps
-        :return:
-        """
-        diff = np.diff(self.time)
-        new_dt_idxs = sorted(np.unique(diff.round(decimals=15), return_index=True)[1])
-        self.stage_time_ids = np.append(new_dt_idxs, len(self.time) - 1)
-
-    def update_stage(self, start_time_id, end_time_id):
+    def update(self, start_time_id, end_time_id):
         """
         Updates solver
 
@@ -1024,5 +979,5 @@ class TrainModel(GlobalSystem):
 
         # calculate stages
         for i in range(len(self.stage_time_ids) - 1):
-            self.update_stage(self.stage_time_ids[i], self.stage_time_ids[i + 1])
+            self.update(self.stage_time_ids[i], self.stage_time_ids[i + 1])
             self.calculate_stage(self.stage_time_ids[i], self.stage_time_ids[i + 1])
