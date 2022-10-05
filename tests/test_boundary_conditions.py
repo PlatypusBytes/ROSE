@@ -73,6 +73,7 @@ class TestBoundaryConditions:
 
         force.active_elements = active_elements
 
+        force.set_moving_point_load()
         y_force_matrix = []
         for t in range(len(time)):
             force.update_force(t)
@@ -170,6 +171,8 @@ class TestBoundaryConditions:
             [0.0, 0.046875, 0.0, -0.046875, 0.0, -0.046875, 0.0],
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.046875, 0.0],
         ]
+
+        force.set_moving_point_load()
 
         x_force_matrix = []
         y_force_matrix = []
