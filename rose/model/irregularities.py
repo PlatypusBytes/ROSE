@@ -52,7 +52,7 @@ class WheelFlat:
 
 class RailIrregularities:
     def __init__(self, x: np.ndarray,
-                 f_min: float = 2, f_max: float = 500, N: int = 2000, Av: float = 0.00003365, omega_c: float = 0.8242):
+                 f_min: float = 2, f_max: float = 500, N: int = 2000, Av: float = 0.00002095, omega_c: float = 0.8242):
         """
         Creates rail unevenness following :cite: `zhang_2001`.
 
@@ -64,7 +64,7 @@ class RailIrregularities:
         @param f_min: (default 2 Hz) minimum frequency for the PSD of the unevenness
         @param f_max: (default 500 Hz) maximum frequency for the PSD of the unevenness
         @param N: (default 2000) number of frequency increments
-        @param Av: (default 0.003365 m rad/m) vertical track irregularity parameters
+        @param Av: (default 0.00002095 m2 rad/m) vertical track irregularity parameters
         @param omega_c: (default 0.8242 rad/m) critical wave number
         """
 

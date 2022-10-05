@@ -150,7 +150,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
     # create train
     train = set_train(time, velocities, train_start_coord, train_type)
     train.use_irregularities = use_irregularities
-    train.irregularity_parameters = {"Av": 0.00003365}
+    train.irregularity_parameters = {"Av": 0.00002095}
     train.time = time
     train.velocities = velocities
 
@@ -259,7 +259,6 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
                     "vertical_force_train": vertical_force_train.tolist(),
                     "soil_ID": soil_id,
                     }
-
     # filename
     file_name = f'{segment_id}.pickle'
     # dump pickle
