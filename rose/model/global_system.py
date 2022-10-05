@@ -625,7 +625,7 @@ class GlobalSystem:
         self.velocities_out = self.solver.v
         self.accelerations_out = self.solver.a
 
-        self.time_out = self.solver.time_out
+        self.time_out = self.solver.output_time
 
     def _assign_result_to_node(self, node):
         """

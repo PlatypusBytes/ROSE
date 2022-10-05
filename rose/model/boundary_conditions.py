@@ -9,6 +9,7 @@ import math
 # typing
 from scipy.sparse.base import spmatrix
 from typing import List
+
 INTERSECTION_TOLERANCE = 1e-6
 
 
@@ -21,6 +22,7 @@ class NoDispRotCondition(ConditionModelPart):
     Class which contains a no rotation and no displacement boundary condition.
 
     """
+
     def __init__(self):
         super().__init__()
 
@@ -41,6 +43,7 @@ class LoadCondition(ConditionModelPart):
         - :self.time:               array of each time step
         - :self.initalisation_time: array of each time step where the force is gradually increase from 0 to the final value
     """
+
     def __init__(self, x_disp_dof: bool = False, y_disp_dof: bool = False, z_rot_dof: bool = False):
         """
         :param x_disp_dof: true if x displacement degree of freedom is active
@@ -105,11 +108,9 @@ class LoadCondition(ConditionModelPart):
         if self.x_force_matrix is None:
             self.x_force_matrix = sparse.lil_matrix((len(self.nodes), len(self.time)))
         self.x_force_vector = np.zeros(len(self.nodes))
-        # if self.z_rot_dof:
         if self.z_moment_matrix is None:
             self.z_moment_matrix = sparse.lil_matrix((len(self.nodes), len(self.time)))
         self.z_moment_vector = np.zeros(len(self.nodes))
-        # if self.y_disp_dof:
         if self.y_force_matrix is None:
             self.y_force_matrix = sparse.lil_matrix((len(self.nodes), len(self.time)))
         self.y_force_vector = np.zeros(len(self.nodes))
@@ -131,11 +132,12 @@ class LoadCondition(ConditionModelPart):
         )
         return time_load
 
-    def update_force(self,t):
+    def update_force(self, t):
         for idx, node in enumerate(self.nodes):
-            self.x_force_vector[idx] = self.x_force_matrix[idx,t]
+            self.x_force_vector[idx] = self.x_force_matrix[idx, t]
             self.y_force_vector[idx] = self.y_force_matrix[idx, t]
             self.z_moment_vector[idx] = self.z_moment_matrix[idx, t]
+
 
 class LineLoadCondition(LoadCondition):
     """
@@ -149,6 +151,7 @@ class LineLoadCondition(LoadCondition):
         - :self.contact_model_part: Element model part which is in contact with the line load condition
 
     """
+
     def __init__(self, x_disp_dof=False, y_disp_dof=False, z_rot_dof=False):
         """
         :param x_disp_dof: true if x displacement degree of freedom is active
@@ -190,6 +193,7 @@ class MovingPointLoad(LineLoadCondition):
         - :self.moving_z_moment:    Numpy array of the moment around the z-axis at each time step
 
     """
+
     def __init__(self, x_disp_dof=False, y_disp_dof=False, z_rot_dof=False, start_distance=None):
         """
         :param x_disp_dof: true if x displacement degree of freedom is active
@@ -217,6 +221,7 @@ class MovingPointLoad(LineLoadCondition):
         self.moving_z_moment = None
 
         self.model_part_at_t = None
+
     @property
     def moving_force_vector(self):
         """
@@ -255,12 +260,8 @@ class MovingPointLoad(LineLoadCondition):
 
         self.set_contact_model_part_as_function_of_time()
 
-        self.np_nodes = np.array(self.nodes)
-
         # set the moving load
         self.set_moving_point_load()
-
-
 
     def initialize_matrices(self):
         """
@@ -297,7 +298,7 @@ class MovingPointLoad(LineLoadCondition):
             for t in range(len(self.time)):
 
                 # get index of contact element at time t
-                active_element = self.active_elements[:,t]
+                active_element = self.active_elements[:, t]
                 active_el_idx = np.where(active_element)[0]
 
                 # check if active element is outside current model part, if it is outside, increment contact model part
@@ -327,14 +328,14 @@ class MovingPointLoad(LineLoadCondition):
         # set y force vector as a function of time
         if self.y_force is not None:
             self.moving_y_force = self.set_load_vector_as_function_of_time(
-                 self.y_force, len(self.initialisation_time))
+                self.y_force, len(self.initialisation_time))
         else:
             self.moving_y_force = np.zeros(len(self.time))
 
         # set z moment vector as a function of time
         if self.z_moment is not None:
-            self.moving_z_moment= self.set_load_vector_as_function_of_time(
-                 self.z_moment, len(self.initialisation_time))
+            self.moving_z_moment = self.set_load_vector_as_function_of_time(
+                self.z_moment, len(self.initialisation_time))
         else:
             self.moving_z_moment = np.zeros(len(self.time))
 
@@ -509,12 +510,12 @@ class MovingPointLoad(LineLoadCondition):
         return shear_force_vector, z_mom_vector
 
     def distribute_point_load_on_nodes(
-        self,
-        node_indices: np.ndarray,
-        time_idx: int,
-        distance: float,
-        rotated_force: np.ndarray,
-        element_rot: float,
+            self,
+            node_indices: np.ndarray,
+            time_idx: int,
+            distance: float,
+            rotated_force: np.ndarray,
+            element_rot: float,
     ):
         """
         Distribute point load on surrounding nodes at timestep t
@@ -542,10 +543,11 @@ class MovingPointLoad(LineLoadCondition):
         z_mom_vector = z_mom_vector_v + z_mom_vector_z
 
         # combine all local forces in array
-        local_force_matrix = np.array([normal_force_vector,shear_force_vector,z_mom_vector])
+        local_force_matrix = np.array([normal_force_vector, shear_force_vector, z_mom_vector])
 
         # calculate global forces at a single timestep
-        global_force_matrix = utils.rotate_point_around_z_axis(np.array([-element_rot]), local_force_matrix[None,:,:])[0]
+        global_force_matrix = \
+        utils.rotate_point_around_z_axis(np.array([-element_rot]), local_force_matrix[None, :, :])[0]
         for idx, node_idx in enumerate(node_indices):
             self.x_force_matrix[node_idx, time_idx] += global_force_matrix[0, idx]
             self.y_force_matrix[node_idx, time_idx] += global_force_matrix[1, idx]
@@ -556,75 +558,47 @@ class MovingPointLoad(LineLoadCondition):
         Sets a moving point load on the condition elements.
         :return:
         """
-        t=0
+
+        # find contact element indices
+        element_idxs = self.active_elements.nonzero()[0].astype(int)
+
+        # get contact elements
+        np_elements = np.array(self.elements)
+        unique_contact_elements = np_elements[list((dict.fromkeys(element_idxs)))]
+        contact_elements = np_elements[element_idxs]
+
+        # calculate distances between first element coord and moving load at time t
+        coordinates = np.array([np.array(element.nodes[0].coordinates) for element in contact_elements])
+        sq_diff_coords = np.power(coordinates - self.moving_coords, 2)
+
+        self.distances = np.sqrt(np.sum(sq_diff_coords, axis=1))
+
+        # find first and last index of node in nodes list for efficiency
+        first_idx = self.nodes.index(np_elements[element_idxs][0].nodes[0])
+        last_idx = self.nodes.index(np_elements[element_idxs][-1].nodes[-1])
+
+        # find indices of element nodes in node list
+        if first_idx < last_idx:
+            node_indices = np.array([np.array([self.nodes.index(node, first_idx, last_idx + 1)
+                                               for node in element.nodes]) for element in unique_contact_elements])
+
+        else:
+            node_indices = np.array([np.array([self.nodes.index(node, first_idx, last_idx + 1)
+                                               for node in element.nodes]) for element in unique_contact_elements])
+
+        # get node indices of contact element at every time step
+        i = 0
+        new_node_indices = []
+        for element in contact_elements:
+            if i < len(unique_contact_elements):
+                if element == unique_contact_elements[i]:
+                    i += 1
+            new_node_indices.append(node_indices[i - 1])
+        self.node_indices = np.array(new_node_indices)
+
+        # update force at timestep 0
+        t = 0
         self.update_force(t)
-        # # find contact element indices
-        # element_idxs = self.active_elements.nonzero()[0].astype(int)
-        #
-        # # get contact elements
-        # np_elements = np.array(self.elements)
-        # unique_contact_elements = np_elements[list((dict.fromkeys(element_idxs)))]
-        # contact_elements = np_elements[element_idxs]
-        #
-        # # calculate distances between first element coord and moving load at time t
-        # coordinates = np.array([np.array(element.nodes[0].coordinates) for element in contact_elements])
-        # sq_diff_coords = np.power(coordinates - self.moving_coords, 2)
-        # distances = np.sqrt(np.sum(sq_diff_coords, axis=1))
-        #
-        # # find first and last index of node in nodes list for efficiency
-        # first_idx = self.nodes.index(np_elements[element_idxs][0].nodes[0])
-        # last_idx = self.nodes.index(np_elements[element_idxs][-1].nodes[-1])
-        #
-        # # find indices of element nodes in node list
-        # if first_idx < last_idx:
-        #     node_indices = np.array([np.array([self.nodes.index(node, first_idx, last_idx+1)
-        #                                        for node in element.nodes]) for element in unique_contact_elements])
-        #
-        # else:
-        #     node_indices = np.array([np.array([self.nodes.index(node, first_idx, last_idx + 1)
-        #                                        for node in element.nodes]) for element in unique_contact_elements])
-        #
-        #
-        # # get node indices of contact element at every time step
-        # i = 0
-        # new_node_indices = []
-        # for element in contact_elements:
-        #     if i < len(unique_contact_elements):
-        #         if element == unique_contact_elements[i]:
-        #             i += 1
-        #     new_node_indices.append(node_indices[i-1])
-        # node_indices = np.array(new_node_indices)
-        #
-        # # get all nodal coordinates
-        # np_nodes = np.array(self.nodes)
-        # # nodal_coordinates = np.array([[np_nodes[node_indices[time_idx,0]].coordinates,
-        # #                                np_nodes[node_indices[time_idx,1]].coordinates] for time_idx in range(len(self.time))])
-        #
-        # # nodal_coordinates = np.array([np_nodes[node_indices[t,0]].coordinates,
-        # #                                np_nodes[node_indices[t,1]].coordinates])
-        #
-        # # calculate rotation for each element
-        # element_rot = utils.calculate_point_rotation(np_nodes[node_indices[t,0]].coordinates, np_nodes[node_indices[t,1]].coordinates)
-        #
-        # # calculate rotated force vector at each time step
-        # moving_force_vector = np.array([self.moving_x_force[t], self.moving_y_force[t], self.moving_z_moment[t]])
-        #
-        # rotated_force = utils.rotate_point_around_z_axis(element_rot, moving_force_vector)
-        #
-        # # transform matrices to nd arrays for efficiency
-        # self.x_force_matrix = self.x_force_matrix.toarray()
-        # self.y_force_matrix = self.y_force_matrix.toarray()
-        # self.z_moment_matrix = self.z_moment_matrix.toarray()
-        #
-        # #distribute rotated forces on nodes, vectorizing this method might result in an overflow error
-        # for time_idx in range(len(self.time)):
-        #     self.distribute_point_load_on_nodes(
-        #         node_indices[time_idx, :],
-        #         time_idx,
-        #         distances[time_idx],
-        #         rotated_force,
-        #         element_rot
-        #     )
 
     def update_force(self, t):
 
@@ -632,52 +606,9 @@ class MovingPointLoad(LineLoadCondition):
         self.z_moment_vector = np.zeros(len(self.nodes))
         self.y_force_vector = np.zeros(len(self.nodes))
 
-        if t == 0:
-
-            # find contact element indices
-            element_idxs = self.active_elements.nonzero()[0].astype(int)
-
-            # get contact elements
-            np_elements = np.array(self.elements)
-            unique_contact_elements = np_elements[list((dict.fromkeys(element_idxs)))]
-            contact_elements = np_elements[element_idxs]
-
-            # calculate distances between first element coord and moving load at time t
-            coordinates = np.array([np.array(element.nodes[0].coordinates) for element in contact_elements])
-            sq_diff_coords = np.power(coordinates - self.moving_coords, 2)
-
-            self.distances = np.sqrt(np.sum(sq_diff_coords, axis=1))
-
-            # find first and last index of node in nodes list for efficiency
-            first_idx = self.nodes.index(np_elements[element_idxs][0].nodes[0])
-            last_idx = self.nodes.index(np_elements[element_idxs][-1].nodes[-1])
-
-            # find indices of element nodes in node list
-            if first_idx < last_idx:
-                node_indices = np.array([np.array([self.nodes.index(node, first_idx, last_idx+1)
-                                                   for node in element.nodes]) for element in unique_contact_elements])
-
-            else:
-                node_indices = np.array([np.array([self.nodes.index(node, first_idx, last_idx + 1)
-                                                   for node in element.nodes]) for element in unique_contact_elements])
-
-            # get node indices of contact element at every time step
-            i = 0
-            new_node_indices = []
-            for element in contact_elements:
-                if i < len(unique_contact_elements):
-                    if element == unique_contact_elements[i]:
-                        i += 1
-                new_node_indices.append(node_indices[i-1])
-            self.node_indices = np.array(new_node_indices)
-
-            # get all nodal coordinates
-            self.np_nodes = np.array(self.nodes)
-
-        np_nodes = self.np_nodes
-
         # calculate rotation for each element
-        element_rot = utils.calculate_point_rotation(np_nodes[self.node_indices[t,0]].coordinates, np_nodes[self.node_indices[t,1]].coordinates)
+        element_rot = utils.calculate_point_rotation(self.nodes[self.node_indices[t, 0]].coordinates,
+                                                     self.nodes[self.node_indices[t, 1]].coordinates)
 
         # calculate rotated force vector at each time step
         moving_force_vector = np.array([self.moving_x_force[t], self.moving_y_force[t], self.moving_z_moment[t]])
@@ -696,12 +627,13 @@ class MovingPointLoad(LineLoadCondition):
 
         # get nodal shear force and z-moment force vectors
         if math.isclose(rotated_force[1], 0):
-            shear_force_vector_v = z_mom_vector_v = np.zeros(int(len(self.contact_model_part.y_shape_functions)/2))
+            shear_force_vector_v = z_mom_vector_v = np.zeros(int(len(self.contact_model_part.y_shape_functions) / 2))
         else:
             shear_force_vector_v, z_mom_vector_v = self.__distribute_shear_force(self.distances[t], rotated_force)
 
         if math.isclose(rotated_force[2], 0):
-            shear_force_vector_z = z_mom_vector_z = np.zeros(int(len(self.contact_model_part.z_rot_shape_functions)/2))
+            shear_force_vector_z = z_mom_vector_z = np.zeros(
+                int(len(self.contact_model_part.z_rot_shape_functions) / 2))
         else:
             shear_force_vector_z, z_mom_vector_z = self.__distribute_z_moment(self.distances[t], rotated_force)
 
@@ -714,12 +646,7 @@ class MovingPointLoad(LineLoadCondition):
         # calculate global forces at a single timestep
         global_force_vector = utils.rotate_point_around_z_axis(-element_rot, local_force_matrix[:, :])
 
-        for idx, node_idx in enumerate(self.node_indices[t,:]):
-
+        for idx, node_idx in enumerate(self.node_indices[t, :]):
             self.x_force_vector[node_idx] += global_force_vector[0, idx]
             self.y_force_vector[node_idx] += global_force_vector[1, idx]
             self.z_moment_vector[node_idx] += global_force_vector[2, idx]
-
-
-
-
