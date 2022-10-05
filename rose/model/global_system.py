@@ -13,7 +13,6 @@ from rose.model import utils
 
 from scipy import sparse
 import numpy as np
-import numpy.ma as ma
 import logging
 from typing import List
 
@@ -654,7 +653,9 @@ class GlobalSystem:
         self.mesh.nodes = vec_f(self.mesh.nodes)
 
     def print_initial_message(self):
-        print(open(__file__ + r'/../../../docs/static/Initial_message.txt', "r").read())
+        import os
+        print(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),r'../../docs/static/Initial_message.txt'),
+                   "r").read())
 
     def print_end_message(self):
         print("\n\x1B[3m" + "  Your focus determines your reality. " + "\x1B[0m")
