@@ -24,11 +24,14 @@ class LoadCondition(ConditionModelPart):
         - :self.x_force:            Force in x direction
         - :self.y_force:            Force in y direction
         - :self.z_moment:           Moment around z-axis
+        - :self.x_force_vector:     nd-array of force in x direction at a time step
+        - :self.y_force_vector:     nd-array of force in y direction at a time step
+        - :self.z_moment_vector:    nd-array of moment around z-axis at a time step
         - :self.x_force_matrix:     Sparse matrix of force in x direction per time step
         - :self.y_force_matrix:     Sparse matrix of force in y direction per time step
-        - :self.z_moment_matrix:    Sparse matrix of force in z direction per time step
+        - :self.z_moment_matrix:    Sparse matrix of moment around z-axis per time step
         - :self.time:               array of each time step
-        - :self.initalisation_time: array of each time step where the force is gradually increase from 0 to the final value
+        - :self.initialisation_time: array of each time step where the force is gradually increase from 0 to the final value
     """
 
     def __init__(self, x_disp_dof: bool = False, y_disp_dof: bool = False, z_rot_dof: bool = False):
@@ -89,12 +92,11 @@ class LoadCondition(ConditionModelPart):
 
     def initialize_matrices(self):
         """
-        Initialises force matrices as sparse lil matrices with dimension [number of nodes, number of time steps]
+        Initialises force matrices as sparse lil matrices with dimension [number of nodes, number of time steps],
+        also initialises forces vectors as nd arrays with size [number of nodes]
 
         :return:
         """
-
-        # if self.x_disp_dof:
 
         if self.x_force_matrix is None:
             self.x_force_matrix = sparse.lil_matrix((len(self.nodes), len(self.time)))
@@ -144,7 +146,9 @@ class LineLoadCondition(LoadCondition):
 
         - :self.active_elements:    Numpy array which contains non-zero values if line load condition is active at a
                                         certain node at a certain time [number of nodes, number of time steps]
-        - :self.contact_model_part: Element model part which is in contact with the line load condition
+        - :self.contact_model_part: Element model part which is in contact with the line load condition at current time step
+        - :self.contact_model_parts: list of all Element model part which are in contact with the line load condition
+        - :self.node_indices:  node indices of contact element at every time step
 
     """
 
@@ -184,10 +188,13 @@ class MovingPointLoad(LineLoadCondition):
         - :self.start_element_idx:  Index of first element which is in contact with the moving load
         - :self.cum_distances_force: Numpy array of cumulative distance of moving point load
         - :self.cum_distances_nodes: Numpy array of cumulative distance of the nodes in current condition
+        - :self.local_distances:    Numpy array of distances between first node in contact element and moving load at
+                                        each time step
         - :self.moving_coords:      Numpy array of the coordinates at each time step of the moving load
         - :self.moving_x_force:     Numpy array of the force in x direction at each time step
         - :self.moving_y_force:     Numpy array of the force in y direction at each time step
         - :self.moving_z_moment:    Numpy array of the moment around the z-axis at each time step
+        - :self.model_part_at_t:    Numpy array with  of the contact model part at each time step
 
     """
 
@@ -506,50 +513,6 @@ class MovingPointLoad(LineLoadCondition):
         ])
 
         return shear_force_vector, z_mom_vector
-
-    def distribute_point_load_on_nodes(
-            self,
-            node_indices: np.ndarray,
-            time_idx: int,
-            distance: float,
-            rotated_force: np.ndarray,
-            element_rot: float,
-    ):
-        """
-        Distribute point load on surrounding nodes at timestep t
-
-        :param node_indices: indices of surrounding nodes at time t
-        :param time_idx: idx of time step
-        :param distance: distance point load to first node of element at time t
-        :param rotated_force: rotated force vector at time t
-        :param element_rot: rotation of contact element at time t
-        :return:
-        """
-
-        # get contact_model part
-        self.contact_model_part = self.model_part_at_t[time_idx]
-
-        # todo make calling of shapefunctions more general, for now it only works on a beam with normal, y and z-rot dof
-        # get nodal normal force vector
-        normal_force_vector = self.__distribute_normal_force(distance, rotated_force)
-
-        # get nodal shear force and z-moment force vectors
-        shear_force_vector_v, z_mom_vector_v = self.__distribute_shear_force(distance, rotated_force)
-        shear_force_vector_z, z_mom_vector_z = self.__distribute_z_moment(distance, rotated_force)
-
-        shear_force_vector = shear_force_vector_v + shear_force_vector_z
-        z_mom_vector = z_mom_vector_v + z_mom_vector_z
-
-        # combine all local forces in array
-        local_force_matrix = np.array([normal_force_vector, shear_force_vector, z_mom_vector])
-
-        # calculate global forces at a single timestep
-        global_force_matrix = \
-        utils.rotate_point_around_z_axis(np.array([-element_rot]), local_force_matrix[None, :, :])[0]
-        for idx, node_idx in enumerate(node_indices):
-            self.x_force_matrix[node_idx, time_idx] += global_force_matrix[0, idx]
-            self.y_force_matrix[node_idx, time_idx] += global_force_matrix[1, idx]
-            self.z_moment_matrix[node_idx, time_idx] += global_force_matrix[2, idx]
 
     def set_moving_point_load(self):
         """
