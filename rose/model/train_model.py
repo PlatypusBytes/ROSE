@@ -920,6 +920,28 @@ class TrainModel(GlobalSystem):
         # reset contact degrees of freedom
         self.get_contact_dofs()
 
+    def impose_displacement(self, K, F, imposed_displacement, imposed_dofs):
+        """
+        Calculate force due to an imposed displacement
+
+        :param K: Global stiffness matrix
+        :param F: Global force vector
+        :param imposed_displacement: array of imposed displacement per DOF
+        :param imposed_dofs: degrees of freedom indices of the imposed displacement
+        :return:
+        """
+
+        # Set imposed displacement on global degrees of freedom
+        u_constr = np.zeros(self.total_n_dof)
+        u_constr[imposed_dofs] = imposed_displacement
+
+        # Calculate force due to imposed displacement constraint
+        F_constr = K.dot(u_constr)
+
+        # sum global force vector and force due to constraint
+        return F + F_constr
+
+
     def calculate_initial_displacement(self, wheel_displacements, shift_in_ndof=0):
         """
         Calculates the initial displacement of the train
@@ -940,6 +962,8 @@ class TrainModel(GlobalSystem):
         ini_solver = StaticSolver()
         ini_solver.initialise(self.total_n_dof - len(wheel_dofs), self.time)
 
+        F = self.impose_displacement(K, F, wheel_displacements, wheel_dofs)
+
         # remove wheel degrees of freedom from the system
         K = utils.delete_from_lil(
             K, row_indices=wheel_dofs, col_indices=wheel_dofs).tocsc()
@@ -955,7 +979,7 @@ class TrainModel(GlobalSystem):
         # add wheel displacements to the initial displacement of the train system
         mask = np.ones(self.solver.u[0,:].shape, bool)
         mask[wheel_dofs] = False
-        self.solver.u[0, mask] = ini_solver.u[1, :] + max(wheel_displacements)
+        self.solver.u[0, mask] = ini_solver.u[1, :]
         self.solver.u[0, wheel_dofs] = wheel_displacements
 
     def update(self, start_time_id, end_time_id):
