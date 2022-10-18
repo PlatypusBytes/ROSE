@@ -540,20 +540,23 @@ class GlobalSystem:
             self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
 
         # run_stages with Newmark solver if required
-        if isinstance(self.solver, NewmarkSolver):
+        elif isinstance(self.solver, NewmarkSolver):
             self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
 
         # run_stages with Newmark solver if required
-        if isinstance(self.solver, CentralDifferenceSolver):
+        elif isinstance(self.solver, CentralDifferenceSolver):
             self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
 
         # run_stages with Newmark solver if required
-        if isinstance(self.solver, HHTSolver):
+        elif isinstance(self.solver, HHTSolver):
             self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
 
         # run_stages with Static solver if required
-        if isinstance(self.solver, StaticSolver):
-            self.solver.calculate(K, F, start_time_id, end_time_id,F_ini=self.global_force_vector)
+        elif isinstance(self.solver, StaticSolver):
+            self.solver.calculate(K, F, start_time_id, end_time_id, F_ini=self.global_force_vector)
+
+        else:
+            Exception(f"solver: '{self.solver.__class__.__name__}' is not recognised")
 
         # assign the solver results to the nodes.
         self.assign_results_to_nodes()

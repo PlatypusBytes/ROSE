@@ -191,16 +191,27 @@ class ModelPart:
         )
 
     def update_dof_indices(self):
+        """
+        Updates the array of active degrees of freedom indices within the global system. It is checked if the
+        displacement in the x and y direction and rotation around z-axis are active and not None.
+        :return:
+        """
+
+        # get degrees of freedom at each node
         dof_indices = np.array([dof for node in self.nodes for dof in node.index_dof])
 
+        # creates mask of active degrees of freedom
         mask_node_dof = (
                 np.ones((len(self.nodes), 3)).astype(bool) * [self.x_disp_dof, self.y_disp_dof,
                                                                    self.z_rot_dof]).flatten()
 
+        # creates mask of non-None degrees of freedom
         mask_none = dof_indices  != None
 
+        # generates a mask of the degrees of freedom which are active and not none
         self.mask_dof = mask_node_dof * mask_none
 
+        # get indices of the masked degrees of freedom
         self.dof_indices = dof_indices[self.mask_dof].astype(np.intp)
 
 

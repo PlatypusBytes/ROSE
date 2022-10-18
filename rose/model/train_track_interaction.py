@@ -246,12 +246,28 @@ class CoupledTrainTrack(GlobalSystem):
         return F
 
     def update_non_linear_iteration(self, t: int, u: np.ndarray):
+        """
+        Updates global system at a non-linear iteration. Currently only the rhs is updated
+
+        :param t: time index
+        :param u: displacement vector
+        :return:
+        """
         return self.update_force_vector_contact(u, t, np.copy(self.global_force_vector))
 
     def update_time_step_rhs(self, t, **kwargs):
+        """
+        Updates rhs at time step t
 
-        #todo add update left hand side in case of non-linear matrices
+        :param t: time index
+        :param kwargs: key word arguments, this is required, as this whole function is added to the solver
+        :return:
+        """
+
+        # update rhs at time step for the track
         self.track.update_time_step_rhs(t, **kwargs)
+
+        # add force from track and train to the coupled global force vector
         self.combine_rhs()
         return self.global_force_vector
 

@@ -481,11 +481,13 @@ class MovingPointLoad(LineLoadCondition):
 
         self.contact_model_part.set_y_shape_functions(distance)
 
+        # contribution to shear force on the nodes from shear force at at certain point within the element
         shear_force_vector = np.array([
             force[1] * self.contact_model_part.y_shape_functions[0],
             force[1] * self.contact_model_part.y_shape_functions[2],
         ])
 
+        # contribution to moment around z-axis on the nodes from shear force at at certain point within the element
         z_mom_vector = np.array([
             force[1] * self.contact_model_part.y_shape_functions[1],
             force[1] * self.contact_model_part.y_shape_functions[3],
@@ -586,14 +588,18 @@ class MovingPointLoad(LineLoadCondition):
         # get contact_model part
         self.contact_model_part = self.model_part_at_t[t]
 
-        # todo make calling of shapefunctions more general, for now it only works on a beam with normal, y and z-rot dof
-        # get nodal normal force vector
+        # todo make calling of shapefunctions more general (in case extension to 3d is desired), for now it only works
+        #  on a beam with normal, y and z-rot dof
+
+        # get nodal normal force vector, if force in the corresponding direction is 0, return zeros
+        # for efficiency
         if math.isclose(rotated_force[0], 0):
             normal_force_vector = np.zeros(len(self.contact_model_part.normal_shape_functions))
         else:
             normal_force_vector = self.__distribute_normal_force(self.local_distances[t], rotated_force)
 
-        # get nodal shear force and z-moment force vectors
+        # get nodal shear force and z-moment force vectors, if force in the corresponding direction is 0, return zeros
+        # for efficiency
         if math.isclose(rotated_force[1], 0):
             shear_force_vector_v = z_mom_vector_v = np.zeros(int(len(self.contact_model_part.y_shape_functions) / 2))
         else:
