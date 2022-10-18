@@ -22,48 +22,60 @@ pipelines:
                  BITBUCKET_USERNAME: $BITBUCKET_USERNAME
                  BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
                  CACHES: ["condacache"]
-    - step:
-        name: Install requirements.
-        caches:
-          - conda
-          - pip
-        script: # Modify the commands below to build your repository.
-          - conda env update -n rose --file env_rose.yml
     - parallel:
-        - step: # Run tests
-            name: Run tests and codecoverage.
+        - step:
+            name: Install requirements.
             caches:
-                - conda
-                - pip
-            script:
-                - conda env update -n rose --file env_rose.yml
-                - conda activate rose
-                - pytest -v --cov=rose --cov-report html:test-reports/coverage tests/ -m "not workinprogress"
-                - apt-get update && apt-get --yes install zip
-                - zip -r test-reports/coverage.zip test-reports/coverage
-                - pipe: atlassian/bitbucket-upload-file:0.3.1
-                  variables:
-                      BITBUCKET_USERNAME: $BITBUCKET_USERNAME
-                      BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
-                      FILENAME: "test-reports/coverage.zip"
-        - step: # Create documentation
-            name: Create documentation.
+              - conda
+              - pip
+            script: # Modify the commands below to build your repository.
+              - conda env update -n rose --file env_rose.yml
+        - parallel:
+            - step: # Run tests
+                name: Run tests and codecoverage.
+                caches:
+                    - conda
+                    - pip
+                script:
+                    - conda env update -n rose --file env_rose.yml
+                    - conda activate rose
+                    - pytest -v --cov=rose --cov-report html:test-reports/coverage tests/ -m "not workinprogress"
+                    - apt-get update && apt-get --yes install zip
+                    - zip -r test-reports/coverage.zip test-reports/coverage
+                    - pipe: atlassian/bitbucket-upload-file:0.3.1
+                      variables:
+                          BITBUCKET_USERNAME: $BITBUCKET_USERNAME
+                          BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
+                          FILENAME: "test-reports/coverage.zip"
+            - step: # Create documentation
+                name: Create documentation.
+                caches:
+                    - conda
+                    - pip
+                script:
+                    - conda env update -n rose --file env_rose.yml
+                    - conda activate rose
+                    - cd docs/src_doc
+                    - sphinx-build . build -b html
+                    - apt-get update && apt-get --yes install zip
+                    - cd build
+                    - zip -r src_doc.zip *
+                    - pipe: atlassian/bitbucket-upload-file:0.3.1
+                      variables:
+                          BITBUCKET_USERNAME: $BITBUCKET_USERNAME
+                          BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
+                          FILENAME: "src_doc.zip"
+        - step:
+            name: Install package.
             caches:
-                - conda
-                - pip
-            script:
-                - conda env update -n rose --file env_rose.yml
-                - conda activate rose
-                - cd docs/src_doc
-                - sphinx-build . build -b html
-                - apt-get update && apt-get --yes install zip
-                - cd build
-                - zip -r src_doc.zip *
-                - pipe: atlassian/bitbucket-upload-file:0.3.1
-                  variables:
-                      BITBUCKET_USERNAME: $BITBUCKET_USERNAME
-                      BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
-                      FILENAME: "src_doc.zip"
+              - conda
+              - pip
+            script: # Modify the commands below to build your repository.
+              - conda env create -n rose_package python==3.8.13
+              - conda activate rose_package
+              - pip install .
+              - pip install pytest==7.1.2
+              - pytest -v tests -m "not workinprogress"
 
 definitions:
    caches:
