@@ -7,14 +7,25 @@ import abc
 
 # todo move this class
 class Material:
+    """
+    This class contains the material of the rail.
 
+    :Attributes:
+
+        - :self.youngs_modulus:  youngs modulus of the material [N/m2]
+        - :self.poisson_ratio:   poisson ratio of the material [-]
+        - :self.density:         density of the material [kg/m3]
+    """
     def __init__(self):
         self.youngs_modulus: float = None
         self.poisson_ratio: float = None
         self.density: float = None
 
     def validate_input(self):
-
+        """
+        Validates material input. Checks if youngs modulus, poisson ratio and density are defined.
+        :return:
+        """
         if self.youngs_modulus is None:
             logging.error("Youngs modulus not defined")
         if self.poisson_ratio is None:
@@ -24,13 +35,27 @@ class Material:
 
     @property
     def shear_modulus(self):
+        """
+        Shear modulus of the material [N/m2]
 
+        ..math
+            G = E/(2*(1+\nu))
+        :return:
+        """
         return self.youngs_modulus / (2 * (1 + self.poisson_ratio))
 
 
 # todo move this class
 class Section:
+    """
+    This class contains the cross section of the rail.
 
+    :Attributes:
+
+        - :self.area:                    section area [m^2]
+        - :self.sec_moment_of_inertia:   second moment of inertia [m^4]
+        - :self.shear_factor:            shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
+    """
     def __init__(self):
 
         self.area: float = None  # [m^2]
@@ -58,7 +83,18 @@ class Section:
 
 
 class ModelPart:
+    """
+    Base model part class. This class is the base for boundary conditions and element model parts.
+    The model part has to consist of the same element types.
 
+
+    :Attributes:
+
+        - :self.name:            name of the model part [-]
+        - :self.nodes:           all nodes within the model part [-]
+        - :self.elements:        all elements within the model part [-]
+        - :self.total_n_dof:     total number of degree of freedoms within the model part [-]
+    """
     def __init__(self):
         self.name = ""
         self.nodes = np.array([])

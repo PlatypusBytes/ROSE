@@ -18,7 +18,36 @@ from typing import List
 
 
 class GlobalSystem:
+    """
+       Class which the global system, with this system the following formula van be calculated: K·u + C·v + M·a = F.
 
+       The class includes the mesh, the global matrices and vectors, the solver, the time discretisation, the model
+       parts and the calculated displacements, velocities and accelerations of the system
+
+       :Attributes:
+
+           - :self.mesh:                        The mesh within the system
+           - :self.global_mass_matrix:          The global mass matrix M of the system
+           - :self.global_stiffness_matrix:     The global stiffness matrix K of the system
+           - :self.global_damping_matrix:       The global damping matrix C of the system
+           - :self.global_force_vector:         The global force vector F of the system
+           - :self.solver:                      The solver which is used to solve the system
+           - :self.model_parts:                 List of model parts which are present within the model
+           - :self.total_n_dof:                 Total number of degrees of freedom in the while system
+           - :self.time:                        The time discretisation
+           - :self.initialisation_time:         The time discretisation, in which the external force is gradually applied
+           - :self.stage_time_ids:              The time indices in which the time step size changes
+           - :self.time_out:                    The time discretisation which is used for the output
+           - :self.displacements_out:           The output displacement results for each node in the system
+           - :self.velocities_out:              The output velocity results for each node in the system
+           - :self.accelerations_out:           The output acceleration results for each node in the system
+           - :self.g:                           Gravity constant
+           - :self.is_rayleigh_damping:         Boolean which is true if rayleigh damping is taken into account
+           - :self.damping_ratio:               Rayleigh damping ratio
+           - :self.radial_frequency_one:        First rayleigh radial frequency
+           - :self.radial_frequency_two:        Second rayleigh radial frequency
+
+    """
     def __init__(self):
 
         self.mesh: Mesh = Mesh()
@@ -49,7 +78,10 @@ class GlobalSystem:
         self.radial_frequency_two: float = 0
 
     def validate_input(self):
-
+        """
+        Validates input and adds errors to the logger
+        :return:
+        """
         for model_part in self.model_parts:
             model_part.validate_input()
 
@@ -68,7 +100,13 @@ class GlobalSystem:
             model_part.initialize()
 
     def __add_aux_matrices_to_global(self, model_part: ElementModelPart):
+        """
+        Add aux matrices of model part to the global matrices. If the model part does not have elements, the model part
+        nodes are used as reference
 
+        :param model_part: Element model part
+        :return:
+        """
 
         # use nodes as reference if model part does not contain elements
         if model_part.elements:
@@ -105,7 +143,12 @@ class GlobalSystem:
 
     @staticmethod
     def __reshape_aux_matrices(model_part: ElementModelPart):
+        """
+        Reshape aux matrix of model part with the same dimensions as the active dof in the corresponding node
 
+        :param model_part: Element model part
+        :return:
+        """
 
         # gets number of nodes per element if element exist, else nnodes = 1
         if model_part.elements:
@@ -138,7 +181,12 @@ class GlobalSystem:
             )
 
     def __add_condition_to_global(self, condition: LoadCondition):
+        """
+        Adds load condition to the global force vector
 
+        :param condition: Load condition
+        :return:
+        """
 
         dof_indices = condition.dof_indices
 
@@ -150,7 +198,13 @@ class GlobalSystem:
         self.global_force_vector[dof_indices] += cond_force_vector[condition.mask_dof]
 
     def trim_global_matrices_on_indices(self, row_indices: List, col_indices: List):
+        """
+        Removes items in global stiffness, mass, damping and force vector on row and column indices
 
+        :param row_indices: row indices which are to be removed
+        :param col_indices: column indices which are to be removed
+        :return:
+        """
 
         self.global_stiffness_matrix = utils.delete_from_lil(
             self.global_stiffness_matrix,
@@ -169,7 +223,12 @@ class GlobalSystem:
         )
 
     def recalculate_dof(self, removed_indices: np.array):
+        """
+        Recalculates the total number of degree of freedoms and the index of the nodal dof in the global matrices
 
+        :param removed_indices: indices which are removed from the global system
+        :return:
+        """
 
         j = 0
         for node in self.mesh.nodes:
@@ -202,7 +261,10 @@ class GlobalSystem:
             model_part.update_dof_indices()
 
     def __get_constrained_indices(self):
-
+        """
+        Gets indices of constrained dofs in global matrices. A dof is defined as constrained when the dof == False
+        :return:
+        """
 
         constrained_indices = []
         # check which nodes are constrained
@@ -229,7 +291,11 @@ class GlobalSystem:
         return constrained_indices
 
     def trim_all_global_matrices(self):
+        """
+        Checks which degrees of freedom are obsolete and removes from global matrices
 
+        :return:
+        """
 
         # gets indices without mass
         massless_indices = list(np.flip(np.where(np.isclose(self.global_mass_matrix.diagonal(), 0))[0]))
@@ -250,7 +316,11 @@ class GlobalSystem:
         self.recalculate_dof(np.array(obsolete_indices))
 
     def add_model_parts_to_global_matrices(self):
+        """
+        Adds data from model parts to the global matrices
 
+        :return:
+        """
         # add aux matrices to global matrices for each element model part and load model part
         for model_part in self.model_parts:
             if isinstance(model_part, ElementModelPart):
@@ -269,7 +339,10 @@ class GlobalSystem:
         self.trim_all_global_matrices()
 
     def calculate_initial_displacement(self):
-
+        """
+        Calculates initial displacement of the system
+        :return:
+        """
 
         # transfer matrices to compressed sparse column matrices
         K = sparse.csc_matrix(self.global_stiffness_matrix.copy(), dtype=float)
@@ -284,7 +357,11 @@ class GlobalSystem:
         self.solver.u[0, :] = ini_solver.u[1, :]
 
     def initialise_global_matrices(self):
+        """
+        Inititialises all the global matrices and global force vector as empty sparse matrices
 
+        :return:
+        """
         print("Initialising global matrices")
 
         # initialise global lil matrices
@@ -301,7 +378,10 @@ class GlobalSystem:
         self.global_force_vector = np.zeros(self.total_n_dof)
 
     def __calculate_rayleigh_damping_factors(self):
-
+        """
+        Calculate rayleigh damping coefficients
+        :return:
+        """
         constant = (
                 2
                 * self.damping_ratio
@@ -312,7 +392,23 @@ class GlobalSystem:
         return a0, a1
 
     def calculate_rayleigh_damping(self):
+        """
+        Calculates the rayleigh damping matrix and adds it to the global damping matrix. Rayleigh damping is calculated
+        with the following formula:
 
+        .. math::
+            C = a0 \cdot M + a1 \cdot K  \n
+            a0 = \\omega 1 * \\omega 2 * a1 \n
+            a1 = 2 * \\xi / (\\omega 1 * \\omega 2) \n
+
+        Where C is the rayleigh damping matrix \n
+        M is the global mass matrix \n
+        K is the global stiffness matrix \n
+        :math:`{\\omega}1` and :math:`{\\omega}2` are the first and second radial frequency \n
+        :math:`{\\xi}` is the rayleigh damping factor \n
+
+        :return:
+        """
 
         # calculate rayleigh damping if required
         if self.is_rayleigh_damping:
@@ -347,18 +443,30 @@ class GlobalSystem:
         self.total_n_dof = ndof
 
     def set_stage_time_ids(self):
+        """
+        Find indices of unique time step sizes, this indices represent the division between different stages.
 
+        :return:
+        """
         diff = np.diff(self.time)
         new_dt_idxs = sorted(np.unique(diff.round(decimals=15), return_index=True)[1])
         self.stage_time_ids = np.append(new_dt_idxs, len(self.time) - 1)
 
     def update_model_parts(self):
+        """
+        Updates all model parts
+        :return:
+        """
 
         for model_part in self.model_parts:
             model_part.update()
 
     def initialise(self):
+        """
+        Initialises model parts, degrees of freedom, global matrices, stages and solver.
 
+        :return:
+        """
 
         self.mesh.reorder_element_ids()
         self.mesh.reorder_node_ids()
@@ -375,7 +483,13 @@ class GlobalSystem:
         self.solver.update_rhs_at_time_step_func = self.update_time_step_rhs
 
     def update(self, start_time_id, end_time_id):
+        """
+        Updates model parts and solver
 
+        :param start_time_id: first time index of the stage
+        :param end_time_id: final time index of the stage
+        :return:
+        """
         # update model parts
         self.update_model_parts()
 
@@ -405,7 +519,13 @@ class GlobalSystem:
         return self.global_force_vector
 
     def calculate_stage(self, start_time_id, end_time_id):
+        """
+        Calculates a stage of the global system
 
+        :param start_time_id: first time index of the stage
+        :param end_time_id: final time index of the stage
+        :return:
+        """
         print("Calculating calculation phase")
 
         # transfer matrices to compressed sparse column matrices
@@ -442,7 +562,13 @@ class GlobalSystem:
         self.assign_results_to_nodes()
 
     def calculate_force_in_elements(self):
+        """
+        Calculates force in each element. The force is calculate by multiplying the local stiffness matrix of the
+        element with the displacements in the nodes of the element. The result on the nodes is then averaged to
+        calculate the force in the element.
 
+        :return:
+        """
 
         # loop over elements
         for element in self.mesh.elements:
