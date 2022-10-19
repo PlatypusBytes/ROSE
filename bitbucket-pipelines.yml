@@ -71,7 +71,7 @@ pipelines:
               - conda
               - pip
             script: # Modify the commands below to build your repository.
-              - conda env create -n rose_package python=3.8.13
+              - conda create -n rose_package python=3.8.13
               - conda activate rose_package
               - pip install .
               - pip install pytest==7.1.2
