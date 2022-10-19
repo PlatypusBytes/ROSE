@@ -76,6 +76,15 @@ pipelines:
               - pip install .
               - pip install pytest==7.1.2
               - pytest -v tests -m "not workinprogress"
+        - step:
+            name: Interrogate.
+            caches:
+              - conda
+              - pip
+            script: # Check if rose model is sufficiently documented in docstrings
+              - conda activate rose
+              - pip install interrogate==1.5.0
+              - interrogate -vv rose/model
 
 definitions:
    caches:
