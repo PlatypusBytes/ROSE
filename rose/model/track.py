@@ -1,9 +1,26 @@
+"""
+This module contains all model parts which are part of the track. I.e. the rail, sleeper and rail pads
+
+"""
+
 import numpy as np
 from rose.model.model_part import ElementModelPart, RodElementModelPart, TimoshenkoBeamElementModelPart
 import logging
 
+
 class InvalidRailException(Exception):
+    """
+    Invalid Rail Exception class. This class bases from
+    :class:`Exception`. This Exception class indicates that the rail is invalid
+
+    :Attributes:
+
+    """
     def __init__(self, message):
+        """
+        Initialises InvalidRailException and logs an error message
+        :param message: message to be logged
+        """
         logging.error(message)
         super().__init__(message)
 
@@ -18,6 +35,9 @@ class Rail(TimoshenkoBeamElementModelPart):
     """
 
     def __init__(self):
+        """
+        Initialises the rail model part and its base
+        """
         super().__init__()
 
     def calculate_length_rail(self):
@@ -68,15 +88,35 @@ class Sleeper(ElementModelPart):
 
     @property
     def y_disp_dof(self):
+        """
+        Displacement in y direction degree of freedom is set on true for the sleeper model part
+
+        :return:
+        """
         return True
 
     def set_aux_stiffness_matrix(self):
+        """
+        Sets auxiliary stiffness matrix of sleeper as zero
+
+        :return:
+        """
         self.aux_stiffness_matrix = np.zeros((1, 1))
 
     def set_aux_damping_matrix(self):
+        """
+       Sets auxiliary damping matrix of sleeper as zero
+
+       :return:
+       """
         self.aux_damping_matrix = np.zeros((1, 1))
 
     def set_aux_mass_matrix(self):
+        """
+        Sets auxiliary mass matrix of sleeper as sleeper mass
+
+        :return:
+       """
         self.aux_mass_matrix = np.array([[self.mass]])
 
 
@@ -89,4 +129,7 @@ class RailPad(RodElementModelPart):
 
     """
     def __init__(self):
+        """
+        Initialises rail pad model part and its base
+        """
         super().__init__()

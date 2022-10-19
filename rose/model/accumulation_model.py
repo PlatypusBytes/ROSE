@@ -1,3 +1,7 @@
+"""
+In this model, accumulation models are stored
+"""
+
 import sys
 import numpy as np
 from scipy.integrate import trapz
@@ -54,14 +58,28 @@ def train_info(data, trains, time_days):
 
 
 class Results:
+    """
+    Results class, this class contains results of each accumulation model
+    """
     def __init__(self):
+        """
+        Initialises results of the accumulation model
+
+        """
         self.time = []
         self.displacement = []
         self.nodes = []
 
 
 class BaseModel:
+    """
+    BaseModel class, this class is the base for each accumulation model
+    """
     def __init__(self):
+        """
+        Initialises BaseModel, BaseModel contains parameters and functions which are used in any accumulation model
+
+        """
         self.trains = []
         self.number_trains = []  # number of trains
         self.trains = []  # name of train types

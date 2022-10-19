@@ -634,6 +634,11 @@ class TrainModel(GlobalSystem):
         self.nodes = list(self.mesh.nodes)
 
     def __get_bogies(self):
+        """
+        Gets all bogies which are part of the train
+
+        :return:
+        """
         self.__bogies = []
         bogie_nodes = []
         for cart in self.carts:
@@ -644,6 +649,11 @@ class TrainModel(GlobalSystem):
                     self.__bogies.append(bogie)
 
     def __get_wheels(self):
+        """
+        Gets all wheels which are part of the train
+
+        :return:
+        """
         self.__wheels = []
         wheel_nodes = []
         for bogie in self.__bogies:
@@ -835,6 +845,7 @@ class TrainModel(GlobalSystem):
     def initialise_global_matrices(self):
         """
         Inititalise each global train matrix. I.e. mass matrix, damping matrix, stiffness matrix, force vector.
+
         :return:
         """
 
@@ -849,7 +860,9 @@ class TrainModel(GlobalSystem):
 
     def reset_mesh(self):
         """
-        Resets mesh of the train. A new instance of mesh is created and is filled with existing nodes of the carts, bogies and wheels
+        Resets mesh of the train. A new instance of mesh is created and is filled with existing nodes of the carts,
+        bogies and wheels
+
         :return:
         """
         self.mesh = Mesh()
@@ -862,6 +875,13 @@ class TrainModel(GlobalSystem):
         self.nodes = list(self.mesh.nodes)
 
     def check_distribution_factors(self):
+        """
+        Checks if distribution factors are present in each cart and each bogie. If the factors are not present,
+        initialise the distribution factors as ones. Distribution factors indicate the ratio of how much force which is
+        located on the train part, is transmitted to the train part
+
+        :return:
+        """
         for cart in self.carts:
             if len(cart.distribution_factor) == 0:
                 cart.distribution_factor = np.ones(len(cart.bogies))
@@ -940,7 +960,6 @@ class TrainModel(GlobalSystem):
 
         # sum global force vector and force due to constraint
         return F + F_constr
-
 
     def calculate_initial_displacement(self, wheel_displacements, shift_in_ndof=0):
         """

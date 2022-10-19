@@ -189,9 +189,11 @@ def calculate_point_rotation(coord1: np.ndarray, coord2: np.ndarray):
 
     return rot
 
+
 def calculate_rotation(coord1: np.ndarray, coord2: np.ndarray):
     """
     Calculates rotation between 2 coordinate arrays in a 2d space.
+
     :param coord1: first coordinate array
     :param coord2: second coordinate array
     :return:
@@ -220,6 +222,7 @@ def calculate_rotation(coord1: np.ndarray, coord2: np.ndarray):
 def rotate_point_around_z_axis(rotation: np.ndarray, point_vector: np.ndarray):
     """
     Rotates a point around the z-axis
+
     :param rotation: rotation array in radians
     :param point_vector: vector of global values [x-direction, y-direction, z-rotation] to be rotated
     :return:
@@ -254,10 +257,11 @@ def rotate_point_around_z_axis(rotation: np.ndarray, point_vector: np.ndarray):
 
 def rotate_force_vector(element: Element, contact_model_part, force_vector: np.array):
     """
-    Rotates force vector based on rotation of element
-    :param element:
-    :param contact_model_part:
-    :param force_vector:
+    Rotates force vector based on rotation of element, currently only works on 2 noded elements.
+
+    :param element: elements within current model part
+    :param contact_model_part: model part on which the force vector is located
+    :param force_vector: force vector to be rotated
     :return:
     """
     # todo make general, now it works for 2 nodes in a 2d space
@@ -271,12 +275,14 @@ def rotate_force_vector(element: Element, contact_model_part, force_vector: np.a
 
     return force_vector
 
+
 def rotate_aux_matrix(element: Element, model_part, aux_matrix: np.array):
     """
     Rotates aux matrix based on rotation of element
-    :param element:
-    :param model_part:
-    :param aux_matrix:
+
+    :param element: elements within current model part
+    :param model_part: current model part of which the auxiliary matrix is to be rotated
+    :param aux_matrix: auxiliary matrix to be rotated
     :return:
     """
     # todo make general, now it works for 2 nodes in a 2d space
@@ -298,6 +304,16 @@ def add_aux_matrix_to_global(
     model_part,
     nodes: List[Node] = None,
 ):
+    """
+    Adds auxiliary matrix to the global matrix
+
+    :param global_matrix: sparse global matrix
+    :param aux_matrix: auxiliary matrix to be added
+    :param elements: list of elements in current model part
+    :param model_part: current model part of which the auxiliary matrix is to be added to the global matrix
+    :param nodes: list of nodes in current model part
+    :return:
+    """
 
     global_matrix = global_matrix.toarray()
 
