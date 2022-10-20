@@ -2,9 +2,8 @@ from rose.model.geometry import Node, Element
 from rose.model.irregularities import RailIrregularities
 
 import numpy as np
-from shapely.geometry import LineString, Polygon, Point
-from scipy.spatial import KDTree
 from scipy import sparse, interpolate
+import math
 
 from typing import List
 import copy
@@ -162,9 +161,39 @@ def delete_from_lil(mat: sparse.lil_matrix, row_indices=[], col_indices=[]):
         return mat
 
 
+def calculate_point_rotation(coord1: np.ndarray, coord2: np.ndarray):
+    """
+    Calculates rotation between 2 points
+
+    :param coord1: coordinates point 1
+    :param coord2: coordinates point 2
+    :return:
+    """
+
+    # initialise rotation
+    rot = 0
+
+    # check if both x coordinates are equal
+    is_x_equal = math.isclose(coord2[0],coord1[0])
+
+    # apply a 90 degree rotation if x coordinates are equal
+    if is_x_equal:
+        return np.pi / 2 * np.sign((coord2[1] - coord1[1]))
+
+    # apply a 180 degree rotation if first x coord is smaller than the second
+    if coord2[0] < coord1[0]:
+        rot += np.pi
+
+    # calculate rotation between the coordinates if the x coordinates are not equal
+    rot += math.atan((coord2[1] - coord1[1]) / (coord2[0] - coord1[0]))
+
+    return rot
+
+
 def calculate_rotation(coord1: np.ndarray, coord2: np.ndarray):
     """
     Calculates rotation between 2 coordinate arrays in a 2d space.
+
     :param coord1: first coordinate array
     :param coord2: second coordinate array
     :return:
@@ -193,10 +222,21 @@ def calculate_rotation(coord1: np.ndarray, coord2: np.ndarray):
 def rotate_point_around_z_axis(rotation: np.ndarray, point_vector: np.ndarray):
     """
     Rotates a point around the z-axis
+
     :param rotation: rotation array in radians
     :param point_vector: vector of global values [x-direction, y-direction, z-rotation] to be rotated
     :return:
     """
+
+    if isinstance(rotation, float):
+        rot_matrix = np.zeros((3, 3))
+        rot_matrix[0, 0] = math.cos(rotation)
+        rot_matrix[1, 1] = rot_matrix[0, 0]
+        rot_matrix[0, 1] = math.sin(rotation)
+        rot_matrix[1, 0] = -rot_matrix[0, 1]
+        rot_matrix[2, 2] = 1
+
+        return rot_matrix.dot(point_vector)
 
     # set rotation matrix
     rot_matrix = np.zeros((len(rotation), 3, 3))
@@ -211,15 +251,17 @@ def rotate_point_around_z_axis(rotation: np.ndarray, point_vector: np.ndarray):
     # rotate each time step
     for idx, (mat, point) in enumerate(zip(rot_matrix,point_vector)):
         rotated_point[idx] = mat.dot(point)
+
     return rotated_point
 
 
 def rotate_force_vector(element: Element, contact_model_part, force_vector: np.array):
     """
-    Rotates force vector based on rotation of element
-    :param element:
-    :param contact_model_part:
-    :param force_vector:
+    Rotates force vector based on rotation of element, currently only works on 2 noded elements.
+
+    :param element: elements within current model part
+    :param contact_model_part: model part on which the force vector is located
+    :param force_vector: force vector to be rotated
     :return:
     """
     # todo make general, now it works for 2 nodes in a 2d space
@@ -233,12 +275,14 @@ def rotate_force_vector(element: Element, contact_model_part, force_vector: np.a
 
     return force_vector
 
+
 def rotate_aux_matrix(element: Element, model_part, aux_matrix: np.array):
     """
     Rotates aux matrix based on rotation of element
-    :param element:
-    :param model_part:
-    :param aux_matrix:
+
+    :param element: elements within current model part
+    :param model_part: current model part of which the auxiliary matrix is to be rotated
+    :param aux_matrix: auxiliary matrix to be rotated
     :return:
     """
     # todo make general, now it works for 2 nodes in a 2d space
@@ -260,6 +304,16 @@ def add_aux_matrix_to_global(
     model_part,
     nodes: List[Node] = None,
 ):
+    """
+    Adds auxiliary matrix to the global matrix
+
+    :param global_matrix: sparse global matrix
+    :param aux_matrix: auxiliary matrix to be added
+    :param elements: list of elements in current model part
+    :param model_part: current model part of which the auxiliary matrix is to be added to the global matrix
+    :param nodes: list of nodes in current model part
+    :return:
+    """
 
     global_matrix = global_matrix.toarray()
 
@@ -326,93 +380,6 @@ def distance_np(coordinates_array1: np.array, coordinates_array2: np.array, axis
     :return:
     """
     return np.sqrt(np.sum((coordinates_array1 - coordinates_array2) ** 2, axis=axis))
-
-
-def centeroid_np(arr):
-    """
-    Calculate centroid of numpy array
-    :param arr: numpy array
-    :return: centroid
-    """
-    length = arr.shape[0]
-    sum_x = np.sum(arr[:, 0])
-    sum_y = np.sum(arr[:, 1])
-    sum_z = np.sum(arr[:, 2])
-    return sum_x / length, sum_y / length, sum_z / length
-
-
-def find_intersecting_point_element(
-    elements, point_coordinates, intersection_tolerance=1e-6
-):
-    """
-    Finds index of the element in an element array which intersects with a given point
-
-    :param elements:
-    :param point_coordinates:
-    :param intersection_tolerance:
-    :return:
-    """
-
-    # convert elements to shapely elements for intersection
-    shapely_elements = get_shapely_elements(elements)
-
-    # calculate centroids
-    centroids = np.array(
-        [
-            centeroid_np(np.array([node.coordinates for node in element.nodes]))
-            for element in elements
-        ]
-    )
-
-    # set kdtree to quickly search nearest element of the point
-    tree = KDTree(centroids)
-
-    # set shapely point for intersection
-    point = Point(point_coordinates)
-    element_idx = None
-
-    # loop is required because the closest element centroid to the point is not always the centroid of the
-    # intersecting element
-    for i in range(len(elements)):
-        nr_nearest_neighbours = i + 1
-        # find nearest neighbour element of point coordinates
-        nearest_neighbours = tree.query(point_coordinates, k=nr_nearest_neighbours)
-        element_idx = (
-            nearest_neighbours[1]
-            if isinstance(nearest_neighbours[1], (np.int32, np.int64))
-            else nearest_neighbours[1][-1]
-        )
-
-        # check if coordinate is in element
-        if (
-            shapely_elements[element_idx]
-            .buffer(intersection_tolerance)
-            .intersection(point)
-        ):
-            return element_idx
-
-    return element_idx
-
-
-def __create_shapely_element(element: Element):
-    """
-    Convert element to shapely element
-    :param element:
-    :return:
-    """
-    if len(element.nodes) == 2:
-        return LineString([node.coordinates for node in element.nodes])
-    elif len(element.nodes) > 2:
-        return Polygon([node.coordinates for node in element.nodes])
-
-
-def get_shapely_elements(elements: List[Element]):
-    """
-    Convert elements to shapely elements for intersection
-    :param elements:
-    :return:
-    """
-    return [__create_shapely_element(element) for element in elements]
 
 
 def generate_rail_irregularities(wheels: List, time, **kwargs):

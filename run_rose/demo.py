@@ -183,6 +183,8 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
     :param coupled_model: current coupled model
     :param segment_id: id of the current segment
     :param output_dir: output directory
+    :param output_interval: interval of how many timesteps should be written in output
+    :return:
     """
 
     # check if output folder exists

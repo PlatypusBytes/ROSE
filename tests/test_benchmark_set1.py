@@ -101,7 +101,7 @@ class TestBenchmarkSet1:
         # set load
         velocities = np.ones(len(time)) * 10
 
-        load = MovingPointLoad(x_disp_dof=rail_model_part.normal_dof, y_disp_dof=rail_model_part.y_disp_dof,
+        load = MovingPointLoad(x_disp_dof=rail_model_part.x_disp_dof, y_disp_dof=rail_model_part.y_disp_dof,
                                z_rot_dof=rail_model_part.z_rot_dof, start_distance=5)
         load.time = time
         load.contact_model_part = rail_model_part
@@ -321,6 +321,7 @@ class TestBenchmarkSet1:
 
 
     @pytest.mark.workinprogress
+    @pytest.mark.skip
     def test_moving_load_on_cantilever_beam(self, set_up_material, set_up_euler_section):
         nodes_beam = [Node(0.0,0.0,0.0), Node(1.0, 0.0, 0.0)]
         elements_beam = [Element(nodes_beam)]
@@ -701,7 +702,7 @@ class TestBenchmarkSet1:
         velocities = np.ones(len(time)) * velocity
 
         # set moving load
-        load = MovingPointLoad(x_disp_dof=rail_model_part.normal_dof, y_disp_dof=rail_model_part.y_disp_dof,
+        load = MovingPointLoad(x_disp_dof=rail_model_part.x_disp_dof, y_disp_dof=rail_model_part.y_disp_dof,
                                z_rot_dof=rail_model_part.z_rot_dof)
         load.time = time
         load.contact_model_part = rail_model_part

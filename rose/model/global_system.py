@@ -3,6 +3,8 @@ from rose.model.boundary_conditions import LoadCondition
 from rose.model.geometry import Mesh
 from rose.model.exceptions import *
 
+from solvers.central_difference_solver import CentralDifferenceSolver
+from solvers.HHT_solver import HHTSolver
 from solvers.newmark_solver import NewmarkSolver
 from solvers.static_solver import StaticSolver
 from solvers.zhai_solver import ZhaiSolver
@@ -158,7 +160,7 @@ class GlobalSystem:
         if model_part.aux_stiffness_matrix is not None:
             model_part.aux_stiffness_matrix = utils.reshape_aux_matrix(
                 n_nodes_element,
-                [model_part.normal_dof, model_part.y_disp_dof, model_part.z_rot_dof],
+                [model_part.x_disp_dof, model_part.y_disp_dof, model_part.z_rot_dof],
                 model_part.aux_stiffness_matrix,
             )
 
@@ -166,7 +168,7 @@ class GlobalSystem:
         if model_part.aux_mass_matrix is not None:
             model_part.aux_mass_matrix = utils.reshape_aux_matrix(
                 n_nodes_element,
-                [model_part.normal_dof, model_part.y_disp_dof, model_part.z_rot_dof],
+                [model_part.x_disp_dof, model_part.y_disp_dof, model_part.z_rot_dof],
                 model_part.aux_mass_matrix,
             )
 
@@ -174,7 +176,7 @@ class GlobalSystem:
         if model_part.aux_damping_matrix is not None:
             model_part.aux_damping_matrix = utils.reshape_aux_matrix(
                 n_nodes_element,
-                [model_part.normal_dof, model_part.y_disp_dof, model_part.z_rot_dof],
+                [model_part.x_disp_dof, model_part.y_disp_dof, model_part.z_rot_dof],
                 model_part.aux_damping_matrix,
             )
 
@@ -185,26 +187,15 @@ class GlobalSystem:
         :param condition: Load condition
         :return:
         """
-        self.global_force_vector = self.global_force_vector.toarray()
-        for i, node in enumerate(condition.nodes):
-            # add load condition on normal displacement dof
-            if condition.x_disp_dof:
-                self.global_force_vector[
-                    node.index_dof[0], :
-                ] += condition.x_force_matrix[i, :]
 
-            # add load condition on y displacement dof
-            if condition.y_disp_dof:
-                self.global_force_vector[node.index_dof[1], :] += condition.y_force_matrix[
-                    i, :
-                ]
+        dof_indices = condition.dof_indices
 
-            # add load condition on z rotation dof
-            if condition.z_rot_dof:
-                self.global_force_vector[node.index_dof[2], :] += condition.z_moment_matrix[
-                    i, :
-                ]
-        self.global_force_vector = sparse.lil_matrix(self.global_force_vector)
+        # combine condition forces in a 1d vector
+        cond_force_vector = np.array(
+            [condition.x_force_vector, condition.y_force_vector, condition.z_moment_vector]).T.flatten()
+
+        # add condition force vector to global
+        self.global_force_vector[dof_indices] += cond_force_vector[condition.mask_dof]
 
     def trim_global_matrices_on_indices(self, row_indices: List, col_indices: List):
         """
@@ -264,6 +255,10 @@ class GlobalSystem:
 
         # recalculate the total amount of active degrees of freedom in the whole system
         self.total_n_dof = j
+
+        # add dof indices to model part
+        for model_part in self.model_parts:
+            model_part.update_dof_indices()
 
     def __get_constrained_indices(self):
         """
@@ -351,7 +346,7 @@ class GlobalSystem:
 
         # transfer matrices to compressed sparse column matrices
         K = sparse.csc_matrix(self.global_stiffness_matrix.copy(), dtype=float)
-        F = sparse.csc_matrix(self.global_force_vector[:, :3].copy(), dtype=float)
+        F = self.global_force_vector
 
         # calculate system with static solver
         ini_solver = StaticSolver()
@@ -380,7 +375,7 @@ class GlobalSystem:
             (self.total_n_dof, self.total_n_dof), dtype=float
         )
 
-        self.global_force_vector = sparse.lil_matrix((self.total_n_dof, len(self.time)),dtype=float)
+        self.global_force_vector = np.zeros(self.total_n_dof)
 
     def __calculate_rayleigh_damping_factors(self):
         """
@@ -441,6 +436,10 @@ class GlobalSystem:
             index_dof += 1
             ndof = ndof + len(node.index_dof)
 
+        # add dof indices to model part
+        for model_part in self.model_parts:
+            model_part.update_dof_indices()
+
         self.total_n_dof = ndof
 
     def set_stage_time_ids(self):
@@ -481,6 +480,7 @@ class GlobalSystem:
         self.set_stage_time_ids()
 
         self.solver.initialise(self.total_n_dof, self.time)
+        self.solver.update_rhs_at_time_step_func = self.update_time_step_rhs
 
     def update(self, start_time_id, end_time_id):
         """
@@ -496,6 +496,28 @@ class GlobalSystem:
         # update solver
         self.solver.update(start_time_id)
 
+    def update_time_step_rhs(self, t, **kwargs):
+        """
+        Updates the rhs at time step t
+
+        :param t: time index
+        :param kwargs: key word arguments, this is required, as this whole function is added to the solver
+        :return:
+        """
+
+        # regenerate global force vector
+        self.global_force_vector = np.zeros_like(self.global_force_vector)
+
+        # update all loads at time step t
+        for model_part in self.model_parts:
+            if isinstance(model_part, LoadCondition):
+                model_part.update_force(t)
+
+                # add load to global force vector
+                self.__add_condition_to_global(model_part)
+
+        return self.global_force_vector
+
     def calculate_stage(self, start_time_id, end_time_id):
         """
         Calculates a stage of the global system
@@ -510,7 +532,7 @@ class GlobalSystem:
         M = self.global_mass_matrix.tocsc()
         C = self.global_damping_matrix.tocsc()
         K = self.global_stiffness_matrix.tocsc()
-        self.global_force_vector = self.global_force_vector.tocsc()
+
         F = self.global_force_vector
 
         # run_stages with Zhai solver if required
@@ -518,12 +540,23 @@ class GlobalSystem:
             self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
 
         # run_stages with Newmark solver if required
-        if isinstance(self.solver, NewmarkSolver):
+        elif isinstance(self.solver, NewmarkSolver):
+            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
+
+        # run_stages with Newmark solver if required
+        elif isinstance(self.solver, CentralDifferenceSolver):
+            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
+
+        # run_stages with Newmark solver if required
+        elif isinstance(self.solver, HHTSolver):
             self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
 
         # run_stages with Static solver if required
-        if isinstance(self.solver, StaticSolver):
-            self.solver.calculate(K, F, start_time_id, end_time_id)
+        elif isinstance(self.solver, StaticSolver):
+            self.solver.calculate(K, F, start_time_id, end_time_id, F_ini=self.global_force_vector)
+
+        else:
+            Exception(f"solver: '{self.solver.__class__.__name__}' is not recognised")
 
         # assign the solver results to the nodes.
         self.assign_results_to_nodes()
@@ -544,7 +577,7 @@ class GlobalSystem:
             for model_part in element.model_parts:
                 if isinstance(model_part, ElementModelPart):
                     aux_matrix = model_part.aux_stiffness_matrix
-                    mask = [model_part.normal_dof, model_part.y_disp_dof, model_part.z_rot_dof]
+                    mask = [model_part.x_disp_dof, model_part.y_disp_dof, model_part.z_rot_dof]
                     break
             else:
                 model_part = None
@@ -589,7 +622,7 @@ class GlobalSystem:
         self.velocities_out = self.solver.v
         self.accelerations_out = self.solver.a
 
-        self.time_out = self.solver.time_out
+        self.time_out = self.solver.output_time
 
     def _assign_result_to_node(self, node):
         """
@@ -617,6 +650,27 @@ class GlobalSystem:
         vec_f = np.vectorize(self._assign_result_to_node)
         self.mesh.nodes = vec_f(self.mesh.nodes)
 
+    @staticmethod
+    def print_initial_message():
+        """
+        Prints message which is to be shown at the start of the calculation
+
+        :return:
+        """
+        import os
+        print(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),r'../../libs/Initial_message.txt'),
+                   "r").read())
+
+    @staticmethod
+    def print_end_message():
+        """
+        Prints message which is to be shown at the end of the calculation
+
+        :return:
+        """
+        print("\n\n\n\x1B[3m" + "  Your focus determines your reality. " + "\x1B[0m")
+        print("\x1B[3m" + "--- Qui - Gon Jinn" + "\x1B[0m")
+
     def main(self):
         """
         Main function of the class. Input is validated, then the system is initialised. Each stage is calculated and the
@@ -624,6 +678,7 @@ class GlobalSystem:
 
         :return:
         """
+        self.print_initial_message()
 
         self.validate_input()
         self.initialise()
@@ -634,3 +689,5 @@ class GlobalSystem:
             self.calculate_stage(self.stage_time_ids[i], self.stage_time_ids[i + 1])
 
         self.finalise()
+
+        self.print_end_message()

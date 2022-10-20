@@ -8,6 +8,12 @@ random_generator = np.random.default_rng(seed)
 
 
 class WheelFlat:
+    """
+   Class containing a wheel flat.
+
+   :Attributes:
+       - :self.irregularities:     np array of the irregularities at each position
+   """
     def __init__(self, x: np.ndarray, wheel_diameter: float, flatness_length: float, start_position=None):
         """
         Creates an array with a wheel flat. where every circumference of the wheel, the wheel is indented
@@ -15,13 +21,19 @@ class WheelFlat:
         :param x: position of the node [m]
         :param wheel_diameter: diameter of the wheel [m]
         :param flatness_length: total flat length of the wheel [m]
+        :param start_position: optional starting position of where a wheel flat is known
         """
 
+        # calculate wheel circumference
         wheel_circumference = np.pi * wheel_diameter
 
+        # calculate half of the angle between the flat part and the new wheel radius at wheel flat
         half_angle_wheel_flat = np.arcsin(flatness_length / wheel_diameter)
+
+        # calculate new wheel radius at wheel flat
         new_radius = (wheel_diameter / 2) * np.cos(half_angle_wheel_flat)
 
+        # calculate height of the wheel flat, with respect to the bottom
         irregularity_height = wheel_diameter / 2 - new_radius
 
         # Apply a random start distance if no start position is chosen, else the wheel flat starts at the start
@@ -51,6 +63,15 @@ class WheelFlat:
 
 
 class RailIrregularities:
+    """
+    Class containing rail unevenness following :cite: `zhang_2001`.
+
+    :Attributes:
+        - :self.Av:                 Vertical track irregularity parameter
+        - :self.omega_c:            critical wave angular frequency
+        - :self.omega:              wave angular frequency
+        - :self.irregularities:     np array of the irregularities at each position
+    """
     def __init__(self, x: np.ndarray,
                  f_min: float = 2, f_max: float = 500, N: int = 2000, Av: float = 0.00002095, omega_c: float = 0.8242):
         """
@@ -96,6 +117,12 @@ class RailIrregularities:
         return
 
     def spectral(self, omega):
+        """
+        Computes spectral unevenness
+
+        :param omega: angular frequency rad/s
+        :return:
+        """
         spectral_unevenness = 2 * np.pi * self.Av * self.omega_c ** 2 / ((omega ** 2 + self.omega_c ** 2) * omega ** 2)
         return spectral_unevenness
 

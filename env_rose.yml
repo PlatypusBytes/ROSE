@@ -5,7 +5,6 @@ dependencies:
   - matplotlib=3.5.1
   - numpy=1.22.3
   - scipy=1.8.0
-  - shapely=1.8.0
   - tqdm=4.64.0
   - pytest=7.1.2
   - pytest-cov=3.0.0
@@ -16,14 +15,13 @@ dependencies:
   - sphinx-autodoc-typehints=1.12.0
   - pyshp=2.2.0
   - pyproj=3.3.1
-  - pypardiso=0.4.1
   - scikit-learn=1.0.2
   - xlrd=2.0.1
   - pip:
     - sphinx-rtd-theme==1.0.0
     - rst2pdf==0.99
     - releases==1.6.3
-    - "git+https://bitbucket.org/DeltaresGEO/solvers.git@0.2#egg=solvers"
+    - "git+https://bitbucket.org/DeltaresGEO/solvers.git#egg=solvers"
     - "git+https://bitbucket.org/DeltaresGEO/wolfstiff.git#egg=WolfStiffness"
     - "git+https://bitbucket.org/DeltaresGEO/signalprocessing.git#egg=signalprocessing"
 

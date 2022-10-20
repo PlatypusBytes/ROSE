@@ -64,6 +64,27 @@ pipelines:
                       BITBUCKET_USERNAME: $BITBUCKET_USERNAME
                       BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
                       FILENAME: "src_doc.zip"
+                    
+        - step:
+            name: Install package.
+            caches:
+              - conda
+              - pip
+            script: # Modify the commands below to build your repository.
+              - conda create -n rose_package python=3.8.13
+              - conda activate rose_package
+              - pip install .
+              - pip install pytest==7.1.2
+              - pytest -v tests -m "not workinprogress"
+        - step:
+            name: Interrogate.
+            caches:
+              - conda
+              - pip
+            script: # Check if rose model is sufficiently documented in docstrings
+              - conda activate rose
+              - pip install interrogate==1.5.0
+              - interrogate -vv rose/model
 
 definitions:
    caches:

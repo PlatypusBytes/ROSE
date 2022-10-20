@@ -1,3 +1,8 @@
+"""
+This module contains all soil element model parts
+
+"""
+
 from rose.model.model_part import RodElementModelPart
 
 
@@ -10,5 +15,8 @@ class Soil(RodElementModelPart):
 
     """
     def __init__(self):
+        """
+        Initialises Soil model part and its base
+        """
         super(Soil, self).__init__()
 
