@@ -22,9 +22,9 @@ def train_model(time, velocity, start_coord):
     :return:
     """
 
-    sprinter = set_train(time, velocity, start_coord, TrainType.SPRINTER)
-    intercity = set_train(time, velocity, start_coord, TrainType.INTERCITY)
-    cargo = set_train(time, velocity, start_coord, TrainType.CARGO)
+    sprinter = set_train(time, velocity, start_coord, TrainType.SPRINTER_SGM)
+    intercity = set_train(time, velocity, start_coord, TrainType.DOUBLEDEKKER)
+    cargo = set_train(time, velocity, start_coord, TrainType.CARGO_FALNS5)
 
     trains = {"Sprinter": {"model": sprinter,
                            "traffic": {"nb-per-hour": 4,

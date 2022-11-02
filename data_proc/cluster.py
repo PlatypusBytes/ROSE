@@ -254,11 +254,11 @@ def plot_segment(coordinates, data_class, data_features, percentage, sos_percent
     ax[0].legend(values_sorted, keys_sorted)
 
     ax[0].grid()
-    ax[0].set_xlabel("X coordinate")
-    ax[0].set_ylabel("Y coordinate")
+    ax[0].set_xlabel("X RD coordinate [m]")
+    ax[0].set_ylabel("Y RD coordinate [m]")
     ax[1].grid()
-    ax[1].set_xlabel("Time")
-    ax[1].set_ylabel("Settlement")
+    ax[1].set_xlabel("Time [y]")
+    ax[1].set_ylabel("Settlement [mm]")
     plt.savefig(os.path.join(output_path, f"{name}.png"))
     plt.close()
 
