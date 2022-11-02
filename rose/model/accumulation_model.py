@@ -290,36 +290,6 @@ class Varandas(BaseModel, Results):
         # create results dic
         self.create_results()
 
-    # def create_results(self):
-    #     """
-    #     Creates the results dictionary
-    #     """
-    #     # collect displacements
-    #     aux = []
-    #     for i, _ in enumerate(self.nodes):
-    #         aux.append(self.displacement[i].tolist())
-    #
-    #     # create results struct
-    #     self.results.nodes = list(self.nodes)
-    #     self.results.time = self.cumulative_time.tolist()
-    #     self.results.displacement = aux
-    #     return
-    #
-    # def dump(self, output_file: str):
-    #     """
-    #     Writes results to json file
-    #
-    #     :param output_file: filename of the results
-    #     """
-    #
-    #     # check if path to output file exists. if not creates
-    #     if not os.path.isdir(os.path.split(output_file)[0]):
-    #         os.makedirs(os.path.split(output_file)[0])
-    #
-    #     # dump dict
-    #     with open(output_file, "wb") as f:
-    #         pickle.dump(self.results, f)
-
 
 class LiSelig(BaseModel, Results):
     def __init__(self, t_ini: int = 0, last_layer_depth: int = -20, steps: int = 1, reload=False):
@@ -549,33 +519,3 @@ class LiSelig(BaseModel, Results):
         
         pbar.close()
         self.create_results()
-
-    # def create_results(self):
-    #     """
-    #     Creates the results dictionary
-    #     """
-    #     # collect displacements
-    #     aux = []
-    #     for i, _ in enumerate(self.nodes):
-    #         aux.append(self.displacement[i].tolist())
-    #
-    #     # create results struct
-    #     self.results.nodes = list(self.nodes)
-    #     self.results.time = self.cumulative_time.tolist()
-    #     self.results.displacement = aux
-    #
-    # def dump(self, output_file: str):
-    #     """
-    #     Writes results to json file
-    #
-    #     :param output_file: filename of the results
-    #     """
-    #
-    #     # check if path to output file exists. if not creates
-    #     if not os.path.isdir(os.path.split(output_file)[0]):
-    #         os.makedirs(os.path.split(output_file)[0])
-    #
-    #     # dump dict
-    #     with open(output_file, "wb") as f:
-    #         pickle.dump(self.results, f)
-    #     return
