@@ -68,16 +68,21 @@ class Results:
         # collect displacements
         aux = []
         for i, _ in enumerate(self.nodes):
-            aux.append(self.displacement[i].tolist())
+            # if reloading => append previous results
+            if self.reload:
+                aux.append(np.hstack([self.reload.displacement[i], self.displacement[i].tolist()]))
+            else:
+                aux.append(self.displacement[i].tolist())
 
-        # # if reloading -> append results
-        # if self.reload:
-        #     time = self.reload.cumulative_time + self.cumulative_time
-        #     aux = self.reload.settlement + aux
-        
+        # if reloading => append results
+        if self.reload:
+            time = np.hstack([self.reload.cumulative_time, self.cumulative_time])
+        else:
+            time = self.cumulative_time
+
         # create results struct
         self.results.nodes = list(self.nodes)
-        self.results.time = self.cumulative_time.tolist()
+        self.results.time = time.tolist()
         self.results.displacement = aux
 
     def dump(self, output_file: str):
