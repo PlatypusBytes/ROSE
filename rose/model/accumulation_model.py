@@ -33,7 +33,7 @@ def train_info(data: object, trains: dict, time_days: int) -> object:
     # number of trains
     data.number_trains = len(data.trains)
     # define cumulative time
-    data.cumulative_time = np.linspace(data.start_time, time_days - 1, int(np.max(data.number_cycles) / data.steps))
+    data.cumulative_time = np.linspace(data.start_time, time_days, int(np.max(data.number_cycles) / data.steps))
     # define cumulative nb cycles
     data.cumulative_nb_cycles = np.linspace(data.start_time, int(np.max(data.number_cycles)) - 1, int(np.max(data.number_cycles)))
     # index to save results
@@ -70,7 +70,7 @@ class Results:
         for i, _ in enumerate(self.nodes):
             # if reloading => append previous results
             if self.reload:
-                aux.append(np.hstack([self.reload.displacement[i], self.displacement[i].tolist()]))
+                aux.append(np.hstack([self.reload.displacement[i], self.displacement[i].tolist()]).tolist())
             else:
                 aux.append(self.displacement[i].tolist())
 
@@ -141,6 +141,7 @@ class Varandas(BaseModel, Results):
         @param steps: (optional, default 1) step interval to save results
         @param reload: (optional, default False) reload last stage
         """
+        #ToDo: improve load distribution accross time
         super().__init__()
 
         # material parameters
@@ -289,10 +290,13 @@ class Varandas(BaseModel, Results):
 
         # create results dic
         self.create_results()
+        if self.reload:
+            self.displacement = self.results.displacement
+            self.cumulative_time = self.results.time
 
 
 class LiSelig(BaseModel, Results):
-    def __init__(self, t_ini: int = 0, last_layer_depth: int = -20, steps: int = 1, reload=False):
+    def __init__(self, t_ini: int = 0, last_layer_depth: int = -20, steps: int = 1, reload: (bool, object) = False):
         r"""
         Accumulation model for soil layer. Based on Li and Selig :cite:`Li_Selig_1996`.
         Implementation based on Punetha et al. :cite:`Punetha_2020`.
@@ -519,3 +523,6 @@ class LiSelig(BaseModel, Results):
         
         pbar.close()
         self.create_results()
+        if self.reload:
+            self.displacement = self.results.displacement
+            self.cumulative_time = self.results.time
