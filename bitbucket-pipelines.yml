@@ -32,6 +32,7 @@ pipelines:
     - parallel:
         - step: # Run tests
             name: Run tests and codecoverage.
+            size: 2x
             caches:
                 - conda
                 - pip
