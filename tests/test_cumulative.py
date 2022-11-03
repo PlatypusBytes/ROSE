@@ -14,8 +14,8 @@ tol = 1e-6
 class TestVarandas(unittest.TestCase):
     def setUp(self):
         self.time = 20
-        self.steps = 50
-        self.idx = range(500-100, 500+100)
+        self.steps = 200
+        self.idx = range(500 - 60, 500 + 60)
 
         # load transition zones results for all trains
         with open(os.path.join(TEST_PATH, "test_data", f"DOUBLEDEKKER.pickle"), "rb") as f:
@@ -33,7 +33,7 @@ class TestVarandas(unittest.TestCase):
         return
 
     def test_settlement_1(self):
-        sett = Varandas()
+        sett = Varandas(steps=self.steps)
         sett.read_traffic(self.traininfo, self.time)
         sett.settlement(idx=self.idx)
         sett.dump(os.path.join(TEST_PATH, "./example.pickle"))
@@ -85,7 +85,7 @@ class TestVarandas(unittest.TestCase):
         total_time = [10, 20]  # days
         reload_v = False
         for t in total_time:
-            sett = Varandas(steps=self.steps,reload=reload_v)
+            sett = Varandas(steps=self.steps, reload=reload_v)
             sett.read_traffic(self.traininfo, t)
             sett.settlement(idx=self.idx)
             sett.dump(os.path.join(TEST_PATH, "./example.pickle"))
@@ -107,8 +107,8 @@ class TestVarandas(unittest.TestCase):
 class TestLiSelig(unittest.TestCase):
     def setUp(self):
         self.time = 20
-        self.steps = 50
-        self.idx = range(500-100, 500+100)
+        self.steps = 200
+        self.idx = range(500 - 60, 500 + 60)
 
         # load transition zones results for all trains
         with open(os.path.join(TEST_PATH, "test_data", f"DOUBLEDEKKER.pickle"), "rb") as f:
