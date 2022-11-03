@@ -46,20 +46,6 @@ class TestVarandas(unittest.TestCase):
         self.assertTrue(res)
         return
 
-    def test_settlement_1_all(self):
-        sett = Varandas(steps=self.steps)
-        sett.read_traffic(self.traininfo, self.time)
-        sett.settlement()
-        sett.dump(os.path.join(TEST_PATH, "./example.pickle"))
-
-        # compare with existing file
-        with open(os.path.join(TEST_PATH, "./test_data/varandas_1_all.pickle"), "rb") as f:
-            data = pickle.load(f)
-
-        res = compare_dics(sett.results.__dict__, data.__dict__)
-        self.assertTrue(res)
-        return
-
     def test_settlement_2(self):
 
         traininfo = {"dubbeldekker": {"forces": self.traininfo["dubbeldekker"]["forces"],
@@ -139,22 +125,6 @@ class TestLiSelig(unittest.TestCase):
 
         # compare with existing file
         with open(os.path.join(TEST_PATH, "./test_data/li_selig_1.pickle"), "rb") as f:
-            data = pickle.load(f)
-
-        res = compare_dics(sett.results.__dict__, data.__dict__)
-        self.assertTrue(res)
-        return
-
-    def test_settlement_1_all(self):
-
-        sett = LiSelig(t_ini=1, steps=self.steps)
-        sett.read_traffic(self.traininfo, self.time)
-        sett.read_SoS([self.soil1], np.zeros(self.nb_nodes).astype(int))
-        sett.calculate(0.25, 3.5)
-        sett.dump(os.path.join(TEST_PATH, "./example.pickle"))
-
-        # compare with existing file
-        with open(os.path.join(TEST_PATH, "./test_data/li_selig_1_all.pickle"), "rb") as f:
             data = pickle.load(f)
 
         res = compare_dics(sett.results.__dict__, data.__dict__)
