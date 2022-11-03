@@ -13,7 +13,7 @@ tol = 1e-6
 
 class TestVarandas(unittest.TestCase):
     def setUp(self):
-        self.time = 20
+        self.time = 10
         self.steps = 200
         self.idx = range(500 - 60, 500 + 60)
 
@@ -68,7 +68,7 @@ class TestVarandas(unittest.TestCase):
         return
 
     def test_settlement_3(self):
-        total_time = [10, 20]  # days
+        total_time = [5, 10]  # days
         reload_v = False
         for t in total_time:
             sett = Varandas(steps=self.steps, reload=reload_v)
@@ -92,7 +92,7 @@ class TestVarandas(unittest.TestCase):
 
 class TestLiSelig(unittest.TestCase):
     def setUp(self):
-        self.time = 20
+        self.time = 10
         self.steps = 200
         self.idx = range(500 - 60, 500 + 60)
 
@@ -171,7 +171,7 @@ class TestLiSelig(unittest.TestCase):
         return
 
     def test_settlement_4(self):
-        total_time = [10, 20]
+        total_time = [5, 10]
         reload_s = False
         for t in total_time:
             sett = LiSelig(t_ini=1, steps=self.steps, reload=reload_s)
