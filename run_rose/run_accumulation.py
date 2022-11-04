@@ -2,6 +2,7 @@ import os
 import json
 import pickle
 import numpy as np
+from copy import deepcopy
 from rose.model.accumulation_model import Varandas, LiSelig
 
 base_path = "./results_TZ"
@@ -15,8 +16,6 @@ with open(os.path.join(base_path, f"DOUBLEDEKKER.pickle"), "rb") as f:
 #     sprinter_stl = pickle.load(f)
 # with open(os.path.join(base_path, f"SPRINTER_SGM.pickle"), "rb") as f:
 #     sprinter_sgm = pickle.load(f)
-# with open(os.path.join(base_path, f"ICM.pickle"), "rb") as f:
-#     icm = pickle.load(f)
 # with open(os.path.join(base_path, f"CARGO_TAPPS.pickle"), "rb") as f:
 #     tapps = pickle.load(f)
 # with open(os.path.join(base_path, f"TRAXX.pickle"), "rb") as f:
@@ -25,7 +24,8 @@ with open(os.path.join(base_path, f"DOUBLEDEKKER.pickle"), "rb") as f:
 #     BR189 = pickle.load(f)
 
 
-total_time = 365  # days
+total_time = [5, 10, 15]  # days
+# total_time = [365]  # days
 idx = range(500-333, 500+333)  # indexes to collect data
 
 # train info
@@ -61,19 +61,22 @@ sleeper_length = 3.5
 with open(r"../data_proc/SOS.json", "r") as f:
     dat = json.load(f)
 
-soil1 = dat["Segment 1077"]["scenario 2"]
-soil2 = dat["Segment 1079"]["scenario 4"]
-# delete embankment from soil2
-for key in soil2["soil_layers"].keys():
-    soil2["soil_layers"][key].pop(0)
+soil1 = dat["Segment 1077"]["scenario 2"]  # stiff
+soil2 = dat["Segment 1079"]["scenario 4"]  # soft
+soil2["soil_layers"]["top_level"][0] = 0
 
-b = LiSelig(t_ini=100)
-b.read_traffic(train_info, total_time)
-b.read_SoS([soil1, soil2], doubledekker["soil_ID"])
-b.calculate(sleeper_width, sleeper_length, idx=idx)
-b.dump(os.path.join(output_folder, "./LiSelig.pickle"))
+steps = 10
+reload_s, reload_v = False, False
+for t in total_time:
+    sellig = LiSelig(t_ini=50, steps=steps, reload=reload_s)
+    sellig.read_traffic(train_info, t)
+    sellig.read_SoS([soil1, soil2], doubledekker["soil_ID"])  # stiff to soft
+    sellig.calculate(sleeper_width, sleeper_length, idx=idx)
+    sellig.dump(os.path.join(output_folder, f"./LiSelig_time_{t}.pickle"))
+    reload_s = deepcopy(sellig)
 
-sett = Varandas()
-sett.read_traffic(train_info, total_time)
-sett.settlement(idx=idx)
-sett.dump(os.path.join(output_folder, "./Varandas.pickle"))
+    sett = Varandas(steps=steps, reload=reload_v)
+    sett.read_traffic(train_info, t)
+    sett.settlement(idx=idx)
+    sett.dump(os.path.join(output_folder, f"./Varandas_time_{t}.pickle"))
+    reload_v = deepcopy(sett)

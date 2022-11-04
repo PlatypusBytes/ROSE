@@ -286,7 +286,7 @@ class Varandas(BaseModel, Results):
         # in case of reloading
         if self.reload:
             self.displacement = self.displacement +\
-                                (np.ones((self.displacement.shape[1], 1)) * self.previous_stage.displacement[:, -1]).T
+                                (np.ones((self.displacement.shape[1], 1)) * np.array(self.previous_stage.displacement)[:, -1]).T
 
         # create results dic
         self.create_results()
@@ -519,7 +519,7 @@ class LiSelig(BaseModel, Results):
             pbar.update()
             self.displacement[k, :] = self.displacement[k, :] - self.displacement[k, 0]
             if self.reload:
-                self.displacement[k, :] = self.displacement[k, :] + self.previous_stage[k, -1]
+                self.displacement[k, :] = self.displacement[k, :] + np.array(self.previous_stage)[k, -1]
         
         pbar.close()
         self.create_results()

@@ -73,6 +73,7 @@ pipelines:
               - conda create -n rose_package python=3.8.13
               - conda activate rose_package
               - pip install .
+              - pip install git+https://@bitbucket.org/DeltaresGEO/rose.git#egg=rose
               - pip install pytest==7.1.2
               - pytest -v tests -m "not workinprogress"
         - step:
