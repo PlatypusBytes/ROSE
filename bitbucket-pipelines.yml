@@ -37,7 +37,6 @@ pipelines:
                 - conda
                 - pip
             script:
-                - conda env update -n rose --file env_rose.yml
                 - conda activate rose
                 - pytest -v --cov=rose --cov-report html:test-reports/coverage tests/ -m "not workinprogress"
                 - apt-get update && apt-get --yes install zip
@@ -53,7 +52,6 @@ pipelines:
                 - conda
                 - pip
             script:
-                - conda env update -n rose --file env_rose.yml
                 - conda activate rose
                 - cd docs/src_doc
                 - sphinx-build . build -b html
