@@ -120,6 +120,80 @@ class Sleeper(ElementModelPart):
         self.aux_mass_matrix = np.array([[self.mass]])
 
 
+class Hinge(ElementModelPart):
+    """
+    Hinge element model part class. This model part can only be used together with a beam model part.
+    This class bases from :class:`~rose.model.model_part.ElementModelPart`. This model part is a point which contains
+    a mass and fixity factor which indicates the degree of fixation on the connected beam element.
+
+    :Attributes:
+
+        - :self.mass:           mass of the hinge
+        - :self.fixity_factor:  Factor which indicates the degree of fixation of the hinge, ranging from 0-1 (free-fixed) [-]
+        - :self.connected_beam: Beam model part which is connected to the hinge
+    """
+    def __init__(self):
+        super().__init__()
+        self.mass = None
+        self.fixity_factor = None
+        self.connected_beam = None
+
+        self.rotational_stiffness = None
+
+    @property
+    def y_disp_dof(self):
+        """
+        Displacement in y direction degree of freedom is set on true for the hinge model part
+
+        :return:
+        """
+        return True
+
+    def set_aux_stiffness_matrix(self):
+        """
+        Sets auxiliary stiffness matrix of hinge as zero
+
+        :return:
+        """
+        self.aux_stiffness_matrix = np.zeros((1, 1))
+
+    def set_aux_damping_matrix(self):
+        """
+       Sets auxiliary damping matrix of sleeper as zero
+
+       :return:
+       """
+        self.aux_damping_matrix = np.zeros((1, 1))
+
+    def set_aux_mass_matrix(self):
+        """
+        Sets auxiliary mass matrix of sleeper as sleeper mass
+
+        :return:
+       """
+        self.aux_mass_matrix = np.array([[self.mass]])
+
+    def calculate_hinge_stiffness(self):
+        """
+        Calculates rotational stiffness [Nm] based on fixity factor of hinge, Youngs modulus, second moment of area and
+        length of the connected beam element.
+
+        :return:
+        """
+
+        E = self.connected_beam.material.youngs_modulus  # Youngs modulus of connected beam [N/m2]
+        I = self.connected_beam.section.sec_moment_of_inertia
+        l = self.connected_beam.length_element
+
+        if 0 <= self.fixity_factor < 1:
+            self.rotational_stiffness = 3 * E * I * self.fixity_factor / ((1 - self.fixity_factor) * l)
+        elif np.isclose(self.fixity_factor, 1):
+            # >> infinite
+            self.rotational_stiffness = 1e30
+        else:
+            Exception("fixity factor should be between 0 and 1")
+
+
 class RailPad(RodElementModelPart):
     """
     Rail pad element model part class. This class bases from

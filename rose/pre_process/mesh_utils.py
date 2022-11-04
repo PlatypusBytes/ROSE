@@ -1,5 +1,5 @@
 from rose.model.geometry import Node, Element, Mesh
-from rose.model.track import Rail, RailPad, Sleeper
+from rose.model.track import Rail, RailPad, Sleeper, Hinge
 from rose.model.soil import Soil
 from rose.model.model_part import ConstraintModelPart, ElementModelPart
 # from rose.base.boundary_conditions import LineLoadCondition, MovingPointLoad
@@ -76,12 +76,13 @@ def add_no_displacement_boundary_to_bottom(bottom_model_part: ElementModelPart):
     return {"bottom_boundary": no_disp_boundary_condition}
 
 
-def add_semi_rigid_hinge_at_x(rail_model_part, x_coordinate_hinge, hinge_stiffness, mesh):
+def add_semi_rigid_hinge_at_x(rail_model_part, hinge_model_part, x_coordinate_hinge, mesh):
     """
     Adds a semi rigid hinge to the rail at a certain x coordinate. As a result, the rail model part is split in 4 parts.
     The elements before the hinge, the two elements connected to the hinge, and the elements after the hinge.
 
     :param rail_model_part: original rail model part
+    :param hinge_model_part: hinge model part
     :param x_coordinate_hinge: x coordinate of the hinge
     :param hinge_stiffness: stiffness of the hinge
     :param mesh: sorted mesh of system
@@ -102,7 +103,11 @@ def add_semi_rigid_hinge_at_x(rail_model_part, x_coordinate_hinge, hinge_stiffne
             removed_node_idx = idx
             hinge_node = node
             rail_model_part.nodes.remove(node)
+
+            # add node to hinge model part
+            hinge_model_part.nodes = [hinge_node]
             break
+
     if hinge_node is None:
         raise Exception(f"node at x-coord {x_coordinate_hinge} is not found")
 
@@ -124,12 +129,14 @@ def add_semi_rigid_hinge_at_x(rail_model_part, x_coordinate_hinge, hinge_stiffne
             hinge_rail_model_part.elements = [element]
             hinge_rail_model_part.nodes = element.nodes
             hinge_rail_model_part.length_rail = rail_model_part.length_rail
+            hinge_rail_model_part.material = rail_model_part.material
+            hinge_rail_model_part.section = rail_model_part.section
 
             # add hinge stiffness to hinge model part
             if hinge_node == element.nodes[0]:
-                hinge_rail_model_part.spring_stiffness1 = hinge_stiffness/2
+                hinge_rail_model_part.spring_stiffness1 = hinge_model_part.rotational_stiffness/2
             if hinge_node == element.nodes[1]:
-                hinge_rail_model_part.spring_stiffness2 = hinge_stiffness/2
+                hinge_rail_model_part.spring_stiffness2 = hinge_model_part.rotational_stiffness/2
 
             hinge_rail_model_parts.append(hinge_rail_model_part)
 
@@ -151,6 +158,31 @@ def add_semi_rigid_hinge_at_x(rail_model_part, x_coordinate_hinge, hinge_stiffne
 
     # return list of spatially sorted rail model parts and updated mesh
     return [rail_part_1] + hinge_rail_model_parts + [rail_part_2], mesh
+
+
+def create_hinge_model_part(hinge_data, rail_model_part, mesh):
+    """
+    Creates a hinge model part and adds it to the rail model part
+
+    :param hinge_data: dictionary of hinge data
+    :param rail_model_part: rail model part, on which the hinge is located
+    :param mesh: the mesh of the model
+    :return:
+    """
+
+    # create hinge model part
+    hinge = Hinge()
+    hinge.connected_beam = rail_model_part
+    hinge.mass = hinge_data["mass"]
+    hinge.fixity_factor = hinge_data["fixity_factor"]
+
+    # calculate hinge rotational stiffness
+    hinge.calculate_hinge_stiffness()
+
+    # add hinge to rail model part
+    rail_model_parts, all_mesh = add_semi_rigid_hinge_at_x(rail_model_part, hinge, hinge_data["hinge_coord"], mesh)
+
+    return rail_model_parts, hinge, all_mesh
 
 
 def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
@@ -233,7 +265,7 @@ def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     rail_model_part.elements = elements_track
     rail_model_part.nodes = nodes_track
     rail_model_part.length_rail = sleeper_distance
-
+    rail_model_part.length_element = sleeper_distance
     # initialise railpad model part
     rail_pad_model_part = RailPad()
     rail_pad_model_part.elements = elements_rail_pad

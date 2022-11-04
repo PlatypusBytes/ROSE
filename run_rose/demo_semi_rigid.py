@@ -54,8 +54,8 @@ def time_integration():
     time["tot_ini_time"] = 0.5  # total initalisation time  [s]
     time["n_t_ini"] = 5000  # number of time steps initialisation time  [-]
 
-    time["tot_calc_time"] = 5  # total time during calculation phase   [s]
-    time["n_t_calc"] = 20000  # number of time steps during calculation phase [-]
+    time["tot_calc_time"] = 13  # total time during calculation phase   [s]
+    time["n_t_calc"] = 50000  # number of time steps during calculation phase [-]
 
     return time
 
@@ -68,7 +68,7 @@ def soil_parameters(sleeper_distance, stiffness, damping):
     return soil
 
 
-def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity, hinge_coord, hinge_stiffness,
+def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity, hinge_data,
                  use_irregularities, output_interval):
     # choose solver
     solver = solver_c.NewmarkImplicitForce()
@@ -90,7 +90,27 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
     rail_model_part, sleeper_model_part, rail_pad_model_part, soil_model_parts, all_mesh = \
         combine_horizontal_tracks(all_element_model_parts, all_meshes, geometry["sleeper_distance"])
 
-    rail_model_parts, all_mesh = add_semi_rigid_hinge_at_x(rail_model_part, hinge_coord, hinge_stiffness, all_mesh)
+    # set elements
+    material = Material()
+    material.youngs_modulus = mat["young_mod_beam"]
+    material.poisson_ratio = mat["poisson_beam"]
+    material.density = mat["rho"]
+
+    section = Section()
+    section.area = mat["rail_area"]
+    section.sec_moment_of_inertia = mat["inertia_beam"]
+    section.shear_factor = mat["shear_factor_rail"]
+
+    rail_model_part.section = section
+    rail_model_part.material = material
+
+    # create hinge model part
+    rail_model_parts, hinge_model_part, all_mesh = create_hinge_model_part(hinge_data, rail_model_part, all_mesh)
+
+    # M = calculate_hinge_stiffness(mat["young_mod_beam"], mat["inertia_beam"], geometry["sleeper_distance"],
+    #                               hinge_data["fixity_factor"])
+    #
+    # rail_model_parts, all_mesh = add_semi_rigid_hinge_at_x(rail_model_part, hinge_data["hinge_coord"], M, all_mesh)
 
     # Fixate the bottom boundary
     bottom_boundaries = [add_no_displacement_boundary_to_bottom(soil_model_part)["bottom_boundary"] for soil_model_part
@@ -104,20 +124,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
     # Combine all time steps in an array
     time = np.concatenate((initialisation_time, calculation_time[1:]))
 
-    # set elements
-    material = Material()
-    material.youngs_modulus = mat["young_mod_beam"]
-    material.poisson_ratio = mat["poisson_beam"]
-    material.density = mat["rho"]
 
-    section = Section()
-    section.area = mat["rail_area"]
-    section.sec_moment_of_inertia = mat["inertia_beam"]
-    section.shear_factor = mat["shear_factor_rail"]
-
-    for part in rail_model_parts:
-        part.section = section
-        part.material = material
 
     rail_pad_model_part.mass = mat["mass_rail_pad"]
     rail_pad_model_part.stiffness = mat["stiffness_rail_pad"]
@@ -277,8 +284,10 @@ def main():
     nb_sleepers = [1000]  # number of sleepers per segment
     stiffness = [214e7]  # stiffness per segment
     damping = [30e3]  # damping per segment
-    hinge_coord = 500 * .6  # x-coordinate of the hinge, should be a multiple of the sleeper distance i.e. 0.6 m
-    hinge_stiffness = 2000000  # stiffness of the hinge
+
+    hinge_data = {"hinge_coord": 500 * .6, # x-coordinate of the hinge, should be a multiple of the sleeper distance i.e. 0.6 m [m]
+                  "fixity_factor": 0.95, # factor which indicate the degree of fixation of the hinge range from 0-1 (free-fixed) [-]
+                  "mass": 60}       # mass of hinge [kg]
 
     # starting coordinate of the middle of the train. Note that the whole train should be within the geometry at all
     # time steps.
@@ -311,8 +320,8 @@ def main():
         # soil parameters
         soil = soil_parameters(geom["sleeper_distance"], stiffness, damping)
         # define train-track mode model
-        coupled_model = create_model(train_type, train_start_coord, geom, mat, tim, soil, train_speed[i],
-                                     hinge_coord, hinge_stiffness,
+        coupled_model = create_model(train_type, train_start_coord, geom, mat, tim, soil, train_speed[0],
+                                     hinge_data,
                                      use_irregularities, output_time_interval)
 
         # calculate
