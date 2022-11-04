@@ -665,7 +665,10 @@ class TestBenchmarkSet1:
         rail_model_part.length_rail = length_beam
 
         # add hinge to rail
-        rail_model_parts, all_mesh = add_semi_rigid_hinge_at_x(rail_model_part, hinge_location, 0, all_mesh)
+        hinge_model_part = Hinge()
+        hinge_model_part.rotational_stiffness = 0
+
+        rail_model_parts, all_mesh = add_semi_rigid_hinge_at_x(rail_model_part,hinge_model_part, hinge_location, all_mesh)
 
         # get rail nodes and elements and reorder node and element ids
         rail_nodes = [part.nodes for part in rail_model_parts]
