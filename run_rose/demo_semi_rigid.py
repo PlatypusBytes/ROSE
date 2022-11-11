@@ -157,14 +157,11 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
     track.model_parts = model_parts
 
     # set up train
-    train = TrainModel()
+    train = set_train(time, velocities, train_start_coord, train_type)
     train.use_irregularities = use_irregularities
     train.irregularity_parameters = {"Av": 0.00002095}
     train.time = time
     train.velocities = velocities
-
-    # create train
-    train = set_train(time, velocities, train_start_coord, train_type)
 
     # setup coupled train track system
     coupled_model = CoupledTrainTrack()
@@ -294,7 +291,7 @@ def main():
     train_start_coord = 30
 
     # choose if train and track irregularities
-    use_irregularities = False
+    use_irregularities = True
 
     # write results every n steps
     output_time_interval = 10
