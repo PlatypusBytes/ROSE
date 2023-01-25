@@ -198,7 +198,6 @@ class TestLiSelig(unittest.TestCase):
 def compare_dics(dic1, dic2):
     result = []
     for key in dic1:
-        print(key)
         res = False
         if isinstance(dic1[key], list):
             for j in range(len(dic1[key])):
