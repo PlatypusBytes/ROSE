@@ -44,6 +44,9 @@ class HrsmMax:
         self.max_fast = np.zeros(len(BANDS["one-third"]))
         # maximum effective value over the length Dx
         self.max_fast_Dx = np.zeros(len(BANDS["one-third"]))
+        # frequency bands
+        self.frequency_bands = np.mean([np.array(BANDS["one-third"])[:, 0]*(2 ** (1 / 6)),
+                                        np.array(BANDS["one-third"])[:, 1]/(2 ** (1 / 6))], axis=0)
 
         # convert signal from m to mm
         if convert_m2mm:
