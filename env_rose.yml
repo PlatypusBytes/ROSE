@@ -17,6 +17,7 @@ dependencies:
   - pyproj=3.3.1
   - scikit-learn=1.0.2
   - xlrd=2.0.1
+  - gstools=1.4.1
   - pip:
     - sphinx-rtd-theme==1.0.0
     - rst2pdf==0.99
