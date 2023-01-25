@@ -658,7 +658,7 @@ class GlobalSystem:
         :return:
         """
         import os
-        print(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),r'../../libs/Initial_message.txt'),
+        print(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),r'../../rose_libs/Initial_message.txt'),
                    "r").read())
 
     @staticmethod
