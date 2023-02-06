@@ -3,19 +3,19 @@ import pickle
 import scipy
 # import ROSE packages
 from rose.model.model_part import Material, Section
-from rose.model.train_model import *
 from rose.model.train_track_interaction import *
 from rose.pre_process.default_trains import TrainType, set_train
 import solvers.newmark_solver as solver_c
+from rose.utils import random_field as rf
 
 
 def geometry(nb_sleeper, fact=1):
     # Set geometry parameters
     geometry = {}
-    geometry["n_segments"] = len(nb_sleeper)  # number of segments
+    geometry["n_segments"] = len(nb_sleeper)
     geometry["n_sleepers"] = [int(n / fact) for n in nb_sleeper]  # number of sleepers per segment
     geometry["sleeper_distance"] = 0.6 * fact  # distance between sleepers, equal for each segment
-    geometry["depth_soil"] = [1] * len(nb_sleeper) # depth of the soil [m] per segment
+    geometry["depth_soil"] = [1]*len(nb_sleeper)  # depth of the soil [m] per segment
 
     return geometry
 
@@ -70,8 +70,8 @@ def soil_parameters(sleeper_distance, stiffness, damping):
     return soil
 
 
-def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity, use_irregularities,
-                 output_interval):
+def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity, hinge_data,
+                 use_irregularities, output_interval):
     # choose solver
     solver = solver_c.NewmarkImplicitForce()
     solver.output_interval = output_interval
@@ -92,18 +92,6 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
     rail_model_part, sleeper_model_part, rail_pad_model_part, soil_model_parts, all_mesh = \
         combine_horizontal_tracks(all_element_model_parts, all_meshes, geometry["sleeper_distance"])
 
-    # Fixate the bottom boundary
-    bottom_boundaries = [add_no_displacement_boundary_to_bottom(soil_model_part)["bottom_boundary"] for soil_model_part
-                         in soil_model_parts]
-
-    # set initialisation time
-    initialisation_time = np.linspace(0, time_int["tot_ini_time"], time_int["n_t_ini"])
-    # set calculation time
-    calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + time_int["tot_calc_time"],
-                                   time_int["n_t_calc"])
-    # Combine all time steps in an array
-    time = np.concatenate((initialisation_time, calculation_time[1:]))
-
     # set elements
     material = Material()
     material.youngs_modulus = mat["young_mod_beam"]
@@ -117,6 +105,26 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
 
     rail_model_part.section = section
     rail_model_part.material = material
+
+    # create hinge model part
+    rail_model_parts, hinge_model_part, all_mesh = create_hinge_model_part(hinge_data, rail_model_part, all_mesh)
+
+    # M = calculate_hinge_stiffness(mat["young_mod_beam"], mat["inertia_beam"], geometry["sleeper_distance"],
+    #                               hinge_data["fixity_factor"])
+    #
+    # rail_model_parts, all_mesh = add_semi_rigid_hinge_at_x(rail_model_part, hinge_data["hinge_coord"], M, all_mesh)
+
+    # Fixate the bottom boundary
+    bottom_boundaries = [add_no_displacement_boundary_to_bottom(soil_model_part)["bottom_boundary"] for soil_model_part
+                         in soil_model_parts]
+
+    # set initialisation time
+    initialisation_time = np.linspace(0, time_int["tot_ini_time"], time_int["n_t_ini"])
+    # set calculation time
+    calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + time_int["tot_calc_time"],
+                                   time_int["n_t_calc"])
+    # Combine all time steps in an array
+    time = np.concatenate((initialisation_time, calculation_time[1:]))
 
     rail_pad_model_part.mass = mat["mass_rail_pad"]
     rail_pad_model_part.stiffness = mat["stiffness_rail_pad"]
@@ -136,7 +144,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
 
     # constraint rotation at the side boundaries
     side_boundaries = ConstraintModelPart(x_disp_dof=False, y_disp_dof=True, z_rot_dof=True)
-    side_boundaries.nodes = [rail_model_part.nodes[0], rail_model_part.nodes[-1]]
+    side_boundaries.nodes = [rail_model_parts[0].nodes[0], rail_model_parts[-1].nodes[-1]]
 
     # populate global system
     track = GlobalSystem()
@@ -144,11 +152,11 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
     track.time = time
 
     # collect all model parts track
-    model_parts = [rail_model_part, rail_pad_model_part, sleeper_model_part, side_boundaries] \
-                  + soil_model_parts + bottom_boundaries
+    model_parts = rail_model_parts + [rail_pad_model_part, sleeper_model_part, side_boundaries] \
+        + soil_model_parts + bottom_boundaries
     track.model_parts = model_parts
 
-    # create train
+    # set up train
     train = set_train(time, velocities, train_start_coord, train_type)
     train.use_irregularities = use_irregularities
     train.irregularity_parameters = {"Av": 0.00002095}
@@ -160,7 +168,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
 
     coupled_model.train = train
     coupled_model.track = track
-    coupled_model.rail = rail_model_part
+    coupled_model.rail = rail_model_parts
     coupled_model.time = time
     coupled_model.initialisation_time = initialisation_time
 
@@ -184,7 +192,6 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
     :param coupled_model: current coupled model
     :param segment_id: id of the current segment
     :param output_dir: output directory
-    :param output_interval: interval of how many timesteps should be written in output
     :return:
     """
 
@@ -193,20 +200,35 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
         os.makedirs(output_dir)
 
     # collect results
+    rail_nodes = []
+    rail_elements = []
+    for i in range(4):
+        rail_nodes.append(coupled_model.track.model_parts[i].nodes)
+        rail_elements.append(coupled_model.track.model_parts[i].elements)
+    rail_nodes_all = list(itertools.chain.from_iterable(rail_nodes))
+
+    # only get unique rail nodes
+    rail_nodes = []
+    for rail_node in rail_nodes_all:
+        if rail_node not in rail_nodes:
+            rail_nodes.append(rail_node)
+
+    rail_elements = list(itertools.chain.from_iterable(rail_elements))
+
     vertical_displacements_rail = np.array(
-        [node.displacements[:, 1] for node in coupled_model.track.model_parts[0].nodes])
+        [node.displacements[:, 1] for node in rail_nodes])
     vertical_force_rail = np.array(
-        [element.force[:, 1] for element in coupled_model.track.model_parts[0].elements])
-    coords_rail = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[0].nodes])
+        [element.force[:, 1] for element in rail_elements])
+    coords_rail = np.array([node.coordinates[0] for node in rail_nodes])
 
     vertical_displacements_rail_pad = np.array(
-        [node.displacements[:, 1] for node in coupled_model.track.model_parts[1].nodes])
+        [node.displacements[:, 1] for node in coupled_model.track.model_parts[4].nodes])
     vertical_force_rail_pad = np.array(
-        [element.force[:, 1] for element in coupled_model.track.model_parts[1].elements])
-    coords_rail_pad = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[1].nodes])
+        [element.force[:, 1] for element in coupled_model.track.model_parts[4].elements])
+    coords_rail_pad = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[4].nodes])
 
     vertical_displacements_sleeper = np.array(
-        [node.displacements[:, 1] for node in coupled_model.track.model_parts[2].nodes])
+        [node.displacements[:, 1] for node in coupled_model.track.model_parts[5].nodes])
     # vertical_force_sleeper = np.array(
     #     [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
     # coords_sleeper = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[2].nodes])
@@ -252,8 +274,10 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
     for j in idx_soil:
         for i, _ in enumerate(coupled_model.track.model_parts[j].elements):
             idx = coupled_model.track.model_parts[j].elements[i].nodes[0].index_dof[1]
-            soil_stiff[idx, idx] = soil_stiff[idx, idx] + coupled_model.track.model_parts[j].elements[i].model_parts[0].stiffness
-            soil_damp[idx, idx] = soil_damp[idx, idx] + coupled_model.track.model_parts[j].elements[i].model_parts[0].damping
+            soil_stiff[idx, idx] = soil_stiff[idx, idx] + \
+                coupled_model.track.model_parts[j].elements[i].model_parts[0].stiffness
+            soil_damp[idx, idx] = soil_damp[idx, idx] + \
+                coupled_model.track.model_parts[j].elements[i].model_parts[0].damping
             idx_matrix[n] = idx
             n += 1
 
@@ -281,6 +305,7 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
                     "idx_matrix": list(set(idx_matrix[np.isnan(idx_matrix) == False])),
                     "global_stiffness": coupled_model.track.global_stiffness_matrix,
                     }
+
     # filename
     file_name = f'{segment_id}.pickle'
     # dump pickle
@@ -291,9 +316,18 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
 
 
 def main():
-    nb_sleepers = [500, 500]
-    stiffness = [132e6, 214e7]
-    damping = [30e3, 20e3]
+    nb_slprs = [1000]  # number of sleepers per segment
+    stiffness = [132e6]  # stiffness per segment
+    damping = [30e3]  # damping per segment
+
+    nb_sleepers = [1] * 1000
+    stiffness = rf.create_rf(stiffness[0], 0.25, 20, 0, np.linspace(0, nb_slprs[0], nb_slprs[0]) * 0.6, seed=14)
+    damping = rf.create_rf(damping[0], 0.25, 20, 0, np.linspace(0, nb_slprs[0], nb_slprs[0]) * 0.6, seed=14)
+
+    hinge_data = {"hinge_coord": 500 * .6,  # x-coordinate of the hinge, should be a multiple of the sleeper distance i.e. 0.6 m [m]
+                  # factor which indicate the degree of fixation of the hinge range from 0-1 (free-fixed) [-]
+                  "fixity_factor": 0.9,
+                  "mass": 60}       # mass of hinge [kg]
 
     # starting coordinate of the middle of the train. Note that the whole train should be within the geometry at all
     # time steps.
@@ -304,7 +338,7 @@ def main():
 
     # write results every n steps
     output_time_interval = 7
-    output_dir = "./results_TZ_soft_stiff"
+    output_dir = "./results_hinge_soft"
 
     # Trains
     trains = [TrainType.DOUBLEDEKKER, TrainType.SPRINTER_SLT, TrainType.SPRINTER_SGM,
@@ -315,6 +349,7 @@ def main():
 
     running_time = [14, 14, 14,
                     23, 23, 23]
+
     for i, train_type in enumerate(trains):
 
         filename = train_type.name
@@ -329,7 +364,9 @@ def main():
         soil = soil_parameters(geom["sleeper_distance"], stiffness, damping)
         # define train-track mode model
         coupled_model = create_model(train_type, train_start_coord, geom, mat, tim, soil, train_speed[i],
+                                     hinge_data,
                                      use_irregularities, output_time_interval)
+
         # calculate
         coupled_model.main()
         # write results

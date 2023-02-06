@@ -1,5 +1,6 @@
 import os
 import pickle
+import scipy
 # import ROSE packages
 from rose.model.model_part import Material, Section
 from rose.model.train_track_interaction import *
@@ -48,14 +49,14 @@ def materials():
     return material
 
 
-def time_integration():
+def time_integration(running_time, time_step):
     time = {}
     # set time parameters in two stages
-    time["tot_ini_time"] = 0.5  # total initalisation time  [s]
-    time["n_t_ini"] = 5000  # number of time steps initialisation time  [-]
+    time["tot_ini_time"] = 0.0001  # total initalisation time  [s]
+    time["n_t_ini"] = 5  # number of time steps initialisation time  [-]
 
-    time["tot_calc_time"] = 13  # total time during calculation phase   [s]
-    time["n_t_calc"] = 50000  # number of time steps during calculation phase [-]
+    time["tot_calc_time"] = running_time  # total time during calculation phase   [s]
+    time["n_t_calc"] = int(running_time / time_step)  # number of time steps during calculation phase [-]
 
     return time
 
@@ -234,8 +235,21 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
     #     [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
     # coords_sleeper = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[2].nodes])
 
+    # collect results
+    soil_nodes = []
+    soil_elements = []
+
+    # get soil
+    idx_soil = [i for i, cm in enumerate(coupled_model.track.model_parts) if type(cm).__name__ == "Soil"]
+
+    for i in idx_soil:
+        soil_nodes.append(coupled_model.track.model_parts[i].nodes)
+        soil_elements.append(coupled_model.track.model_parts[i].elements)
+    soil_nodes = list(itertools.chain.from_iterable(soil_nodes))
+    soil_elements = list(itertools.chain.from_iterable(soil_elements))
+
     vertical_displacements_soil = np.array(
-        [node.displacements[:, 1] for node in coupled_model.track.model_parts[7].nodes])
+        [node.displacements[:, 1] for node in soil_nodes])
 
     id_s = 0
     soil_id = []
@@ -245,14 +259,29 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
             id_s += 1
 
     vertical_force_soil = np.array(
-        [element.force[:, 0] for element in coupled_model.track.model_parts[7].elements])
-    coords_soil = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[7].nodes])
+        [element.force[:, 0] for element in soil_elements])
+    coords_soil = np.array([node.coordinates[0] for node in soil_nodes])
 
     vertical_displacements_train = np.array(
         [node.displacements[:, 1] for node in coupled_model.train.nodes])
     vertical_force_train = np.array([node.force[:, 1] for node in coupled_model.train.nodes])
 
     solver_output_indices = coupled_model.solver.output_time_indices
+
+    # collect stiffness and damping of the soil
+    soil_stiff = scipy.sparse.lil_matrix(coupled_model.track.global_stiffness_matrix.shape)
+    soil_damp = scipy.sparse.lil_matrix(coupled_model.track.global_stiffness_matrix.shape)
+    idx_matrix = np.full((coupled_model.track.global_stiffness_matrix.shape[0]), np.nan)
+    n = 0
+    for j in idx_soil:
+        for i, _ in enumerate(coupled_model.track.model_parts[j].elements):
+            idx = coupled_model.track.model_parts[j].elements[i].nodes[0].index_dof[1]
+            soil_stiff[idx, idx] = soil_stiff[idx, idx] + \
+                coupled_model.track.model_parts[j].elements[i].model_parts[0].stiffness
+            soil_damp[idx, idx] = soil_damp[idx, idx] + \
+                coupled_model.track.model_parts[j].elements[i].model_parts[0].damping
+            idx_matrix[n] = idx
+            n += 1
 
     result_track = {"name": segment_id,
                     # "omega": omega,
@@ -273,10 +302,14 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
                     "vertical_displacements_train": vertical_displacements_train.tolist(),
                     "vertical_force_train": vertical_force_train.tolist(),
                     "soil_ID": soil_id,
+                    "soil_stiffness": soil_stiff,
+                    "soil_damping": soil_damp,
+                    "idx_matrix": list(set(idx_matrix[np.isnan(idx_matrix) == False])),
+                    "global_stiffness": coupled_model.track.global_stiffness_matrix,
                     }
 
     # filename
-    file_name = f'res_{segment_id}.pickle'
+    file_name = f'{segment_id}.pickle'
     # dump pickle
     with open(os.path.join(output_dir, file_name), "wb") as f:
         pickle.dump(result_track, f)
@@ -285,25 +318,24 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
 
 
 def main():
-
     nb_sleepers = [1000]  # number of sleepers per segment
-    stiffness = [214e7]  # stiffness per segment
+    stiffness = [132e6]  # stiffness per segment
     damping = [30e3]  # damping per segment
 
     hinge_data = {"hinge_coord": 500 * .6, # x-coordinate of the hinge, should be a multiple of the sleeper distance i.e. 0.6 m [m]
-                  "fixity_factor": 0.95, # factor which indicate the degree of fixation of the hinge range from 0-1 (free-fixed) [-]
+                  "fixity_factor": 0.9, # factor which indicate the degree of fixation of the hinge range from 0-1 (free-fixed) [-]
                   "mass": 60}       # mass of hinge [kg]
 
     # starting coordinate of the middle of the train. Note that the whole train should be within the geometry at all
     # time steps.
-    train_start_coord = 30
+    train_start_coord = 20
 
     # choose if train and track irregularities
-    use_irregularities = True
+    use_irregularities = False
 
     # write results every n steps
-    output_time_interval = 10
-    output_dir = "./results_hinge"
+    output_time_interval = 7
+    output_dir = "./results_hinge_soft"
 
     # Trains
     trains = [TrainType.DOUBLEDEKKER, TrainType.SPRINTER_SLT, TrainType.SPRINTER_SGM,
@@ -311,6 +343,9 @@ def main():
 
     train_speed = [140/3.6, 140/3.6, 140/3.6,
                    80/3.6, 80/3.6, 80/3.6]
+
+    running_time = [14, 14, 14,
+                    23, 23, 23]
 
     for i, train_type in enumerate(trains):
 
@@ -321,11 +356,11 @@ def main():
         # materials
         mat = materials()
         # time integration
-        tim = time_integration()
+        tim = time_integration(running_time[i], 0.00025)
         # soil parameters
         soil = soil_parameters(geom["sleeper_distance"], stiffness, damping)
         # define train-track mode model
-        coupled_model = create_model(train_type, train_start_coord, geom, mat, tim, soil, train_speed[0],
+        coupled_model = create_model(train_type, train_start_coord, geom, mat, tim, soil, train_speed[i],
                                      hinge_data,
                                      use_irregularities, output_time_interval)
 

@@ -7,6 +7,7 @@ from rose.model.train_model import *
 from rose.model.train_track_interaction import *
 from rose.pre_process.default_trains import TrainType, set_train
 import solvers.newmark_solver as solver_c
+from rose.utils import random_field as rf
 
 
 def geometry(nb_sleeper, fact=1):
@@ -291,9 +292,18 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
 
 
 def main():
-    nb_sleepers = [500, 500]
+    nb_slprs = [500, 500]
     stiffness = [132e6, 214e7]
     damping = [30e3, 20e3]
+
+    nb_sleepers = [1] * 1000
+    stiffness1 = rf.create_rf(stiffness[0], 0.25, 20, 0, np.linspace(0, nb_slprs[0], nb_slprs[0]) * 0.6, seed=14)
+    stiffness2 = rf.create_rf(stiffness[1], 0.25, 20, 0, np.linspace(0, nb_slprs[1], nb_slprs[1]) * 0.6, seed=14)
+    stiffness = np.hstack((stiffness1, stiffness2))
+
+    damping1 = rf.create_rf(damping[0], 0.25, 20, 0, np.linspace(0, nb_slprs[0], nb_slprs[0]) * 0.6, seed=14)
+    damping2 = rf.create_rf(damping[1], 0.25, 20, 0, np.linspace(0, nb_slprs[1], nb_slprs[1]) * 0.6, seed=14)
+    damping = np.hstack((damping1, damping2))
 
     # starting coordinate of the middle of the train. Note that the whole train should be within the geometry at all
     # time steps.
@@ -304,7 +314,7 @@ def main():
 
     # write results every n steps
     output_time_interval = 7
-    output_dir = "./results_TZ_soft_stiff"
+    output_dir = "./results_TZ_soft_stiff_RF"
 
     # Trains
     trains = [TrainType.DOUBLEDEKKER, TrainType.SPRINTER_SLT, TrainType.SPRINTER_SGM,
