@@ -384,7 +384,7 @@ def plot_settlement_over_time(dates: np.ndarray, settlements: np.ndarray, **kwar
     :return:
     """
     # set timestamp dates into true dates
-    if dates.dtype == np.float:
+    if dates.dtype == float:
         dates = [datetime.fromtimestamp(int(date)) for date in dates]
 
     plt.plot(dates, settlements, **kwargs)
