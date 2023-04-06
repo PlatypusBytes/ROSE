@@ -16,7 +16,8 @@ import xlrd
 import re
 from typing import List, Dict
 
-from rose.utils import signal_proc
+from SignalProcessing.signal_tools import Signal
+
 import data_proc.SoS as SoS
 
 
@@ -196,13 +197,16 @@ def __filter_without_boundary_effects(data, fs, Fpass_high, Fpass_low):
     :return:
     """
 
-    filtered_sig = signal_proc.filter_sig(data, fs, Fpass_high, 4, type="highpass")
-    filtered_sig = signal_proc.filter_sig(filtered_sig, fs, Fpass_low, 2, type="lowpass")
-    filtered_sig_flipped = signal_proc.filter_sig(np.flip(data), fs, Fpass_high, 4, type="highpass")
-    filtered_sig_flipped = signal_proc.filter_sig(filtered_sig_flipped, fs, Fpass_low, 2, type="lowpass")
+    signal = Signal(np.zeros(len(data)),data,FS=fs)
+    signal.filter(Fpass_high,4, type_filter="highpass")
+    signal.filter(Fpass_low, 2, type_filter="lowpass")
 
-    filtered_sig = np.hstack([np.flip(filtered_sig_flipped)[:int(len(filtered_sig) / 2)],
-                    filtered_sig[int(len(filtered_sig) / 2):]])
+    flipped_signal = Signal(np.zeros(len(data)),np.flip(data),FS=fs)
+    flipped_signal.filter(Fpass_high,4, type_filter="highpass")
+    flipped_signal.filter(Fpass_low, 2, type_filter="lowpass")
+
+    filtered_sig = np.hstack([np.flip(flipped_signal.signal)[:int(len(signal.signal) / 2)],
+                    signal.signal[int(len(signal.signal) / 2):]])
 
     return filtered_sig
 
@@ -443,9 +447,6 @@ def plot_date_vs_mileage2(xlim, ylim, res, fig=None):
         coords_1 = coordinate_data[0][:discont_indices[0][0] + 1, :]
         coords_2 = coordinate_data[0][discont_indices[0][0] + 1:, :]
 
-        # diff_1 = np.diff(coords_1)
-        # diff_2 = np.diff(coords_2)
-        #
         diff_1 = np.diff(coords_1, axis=0)
         diff_2 = np.diff(coords_2, axis=0)
 
@@ -454,50 +455,22 @@ def plot_date_vs_mileage2(xlim, ylim, res, fig=None):
         distances_1 = np.append(0,distances_1)
 
 
-
-        # diff_1 = np.diff(coords_1)
-        # diff_2 = np.diff(coords_2)
-
         heights_1 = interpolated_heights[0][:discont_indices[0][0] + 1]
         heights_2 = interpolated_heights[0][discont_indices[0][0] + 1:]
 
+        signal = Signal(1/distances_1,heights_1- np.mean(heights_1),FS =distances_1[1] )
+        signal.filter(1 / 25, 10, type_filter="highpass")
+        signal.filter(1 / 3, 10, type_filter="lowpass")
 
-        freq, amp, phas = signal_proc.fft_sig(heights_1 - np.mean(heights_1),distances_1[1])
+        signal.fft()
+        signal.inv_fft()
 
-        # plt.plot(1/freq, amp)
+        t = signal.time_inv
+        u = signal.signal_inv
 
-        filt = signal_proc.filter_sig(heights_1 - np.mean(heights_1), distances_1[1], 1 / 25, 10, type="highpass")
-        filt = signal_proc.filter_sig(filt, distances_1[1], 1 / 3, 10, type="lowpass")
-        freq, amp, phas = signal_proc.fft_sig(filt, distances_1[1])
-
-        # plt.plot(1 / freq, amp)
-
-        # plt.show()
-
-        t, u = signal_proc.inverse_fft_sig(amp, phas, distances_1[1])
-
-
-        plt.plot(t,u+ np.mean(heights_1))
-        plt.plot(distances_1,heights_1)
+        plt.plot(t, u + np.mean(heights_1))
+        plt.plot(distances_1, heights_1)
         plt.show()
-
-    # plt.plot(1/freq, amp)
-    # plt.show()
-
-    # get data within limits
-
-    # im_array = np.array[]
-
-    # settlement = np.subtract(interpolated_heights, interpolated_heights[0, :]) * m_to_mm
-
-    # im = ax.imshow(settlement, aspect='auto', cmap='gray',extent=[0,0.1,0,12])
-    # ax.set_ylabel("Column length [m]", fontsize=12)
-    # ax.set_xlabel("Column width [m]", fontsize=12)
-    # # cax = plt.axes([0.55, 0.1, 0.075, 0.8])
-    # cbar = plt.colorbar(im, fraction=0.1, pad=0.01)
-    # cbar.set_label("Displacement [mm]", fontsize=10)
-    #
-    # plt.show()
 
 
 def plot_date_vs_mileage(xlim, ylim, res, fig=None,position=111):
@@ -556,23 +529,8 @@ def plot_date_vs_mileage(xlim, ylim, res, fig=None,position=111):
 
 
     ax.set_yticks(y_ticks)
-
-    # dates_reverse = np.copy(dates)
-    # np.fliplr(dates_reverse)
-
     ax.set_yticklabels(np.flip(dates))
 
-    # plt.show()
-
-
-    # plt.close()
-    #
-    # # plot data on a 3d projecten
-    #
-    #
-    # ax.set_xlabel("x-coord")
-    # ax.set_ylabel("y-coord")
-    # ax.set_zlabel("height [m NAP]")
 
 
 def get_data_within_bounds(xlim, ylim, res):
@@ -1025,13 +983,15 @@ if __name__ == '__main__':
 
     # read_rila_data_from_krdz(filename)
     # res = read_rila_data_from_csv(filename)
-    dir = r"D:\software_development\rose\data\Fugro\AMS-to-EIN"
-    res = get_data_at_location(dir, location="all",filetype="KRDZ")
-    res = merge_data(res)
+    # dir = r"D:\software_development\rose\data\Fugro\AMS-to-EIN"
+    # res = get_data_at_location(dir, location="all", filetype="KRDZ")
+    # res = merge_data(res)
     # res = get_data_at_location(r"..\data\Fugro\Amsterdam-Eindhoven TKI Project", location="all")
-    save_fugro_data(res, r"..\data\Fugro\updated_rila_data.pickle")
-    # res = load_rila_data(r"..\data\Fugro\rila_data.pickle")
+    # save_fugro_data(res, r"..\data\Fugro\updated_rila_data.pickle")
+    res = load_rila_data(r"..\data\Fugro\rila_data.pickle")
 
+
+    calculate_d_values(res['data'][0]['heights'], res['data'][0]['coordinates'])
     # res = merge_data(res)
     # # point_coordinates = np.array([[122730.096, 487773.31], [138101.172, 453431.389],[0,0]])
     # # filter_data_at_point_coordinates(res, point_coordinates,1)
