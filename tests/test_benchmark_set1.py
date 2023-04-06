@@ -7,7 +7,7 @@ from rose.model.boundary_conditions import MovingPointLoad
 from rose.pre_process.mesh_utils import *
 from rose.post_processing.plot_utils import *
 
-import rose.utils.signal_proc as sp
+from SignalProcessing.signal_tools import Signal
 
 from solvers.newmark_solver import NewmarkExplicit
 
@@ -224,13 +224,16 @@ class TestBenchmarkSet1:
         vertical_displacements = np.array([node.displacements[:,1] for node in beam_nodes])
 
         # process signal of numerical and analytical solution
-        _, amplitude_num, _ = sp.fft_sig(vertical_displacements[int((n_beams-1)/2), :], int(1/ time[1]),
-                                      nb_points=2**14)
-        _, amplitude_analyt, _ = sp.fft_sig(beam_analytical.u[int((n_beams-1)/2), :], int(1 / time[1]),
-                                         nb_points=2**14)
+        signal_num = Signal(time,vertical_displacements[int((n_beams-1)/2), :],int(1 / time[1]))
+        signal_num.fft(2**14, half_representation=True)
+        amplitude_num = signal_num.amplitude
+
+        signal_analyt = Signal(time, beam_analytical.u[int((n_beams-1)/2), :], int(1 / time[1]))
+        signal_analyt.fft(2**14, half_representation=True)
+        amplitude_signal_analyt = signal_analyt.amplitude
 
         # assert if signal amplitudes are approximately equal at eigen frequency
-        assert amplitude_num[163] == pytest.approx(amplitude_analyt[163], rel=1e-2)
+        assert amplitude_num[163] == pytest.approx(amplitude_signal_analyt[163], rel=1e-2)
 
 
 
@@ -482,15 +485,19 @@ class TestBenchmarkSet1:
         # get numerical frequencies and amplitudes
         vert_velocities = np.array([node.velocities[:, 1] for node in rod_nodes])
 
-        freq_num, amplitude_num, _ = sp.fft_sig(vert_velocities[-1, :], int(1 / time[1]),
-                                             nb_points=2 ** 14)
-        freq_ana, amplitude_ana, _ = sp.fft_sig(pulse_load.v[-1, :], int(1 / time[1]),
-                                             nb_points=2 ** 14)
+        signal_num = Signal(time,vert_velocities[-1, :],int(1 / time[1]))
+        signal_num.fft(2**14, half_representation=True)
+        amplitude_num = signal_num.amplitude
+        freq_num = signal_num.frequency
 
-        # check if first eigen frequency is as expected
+        signal_analyt = Signal(time, pulse_load.v[-1, :], int(1 / time[1]))
+        signal_analyt.fft(2**14, half_representation=True)
+        amplitude_ana = signal_analyt.amplitude
+
+        # Check if first eigen frequency is as expected
         assert first_eig_freq == pytest.approx(freq_num[amplitude_num == np.max(amplitude_num)][0], rel=0.01)
 
-        # check if amplitude is as expected
+        # Check if amplitude is as expected
         assert max(amplitude_ana) == pytest.approx(max(amplitude_num), rel=0.01)
 
     @pytest.mark.skip(reason="work in progress")
