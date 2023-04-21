@@ -23,5 +23,5 @@ dependencies:
     - rst2pdf==0.99
     - releases==1.6.3
     - "git+https://bitbucket.org/DeltaresGEO/solvers.git#egg=solvers"
-    - "git+https://bitbucket.org/DeltaresGEO/wolfstiff.git#egg=WolfStiffness"
+    - "git+https://github.com/PlatypusBytes/WolfStiffness.git"
     - "git+https://github.com/PlatypusBytes/SignalProcessing.git"
