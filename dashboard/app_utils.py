@@ -1,5 +1,5 @@
 import os
-
+import json
 from pyproj import Transformer
 # import ROSE packages
 from rose.model.model_part import Material, Section
@@ -334,6 +334,8 @@ def runner(input_data, path_results, calculation_time=50):
     E = 100e6
     v = 0.2
     emb = ["embankment", E / (2 * (1 + v)), v, 2000, 0.05, 0.8]
+    sleeper_width = 0.25
+    sleeper_length = 3.5
 
     features = {}
     # loop over segments
@@ -400,14 +402,20 @@ def runner(input_data, path_results, calculation_time=50):
                 train["forces"] = forces[j][i,:][None,:]
 
             # calculate cumulative settlement
-            sett = accumulation_model.Varandas()
-            sett.read_traffic(train_dicts, calculation_time)
-            sett.settlement(idx=[0])
+            sett_varandas = accumulation_model.Varandas()
+            sett_varandas.read_traffic(train_dicts, calculation_time)
+            sett_varandas.settlement(idx=[0])
+
+            sett_li_selig = accumulation_model.LiSelig(t_ini=100)
+            sett_li_selig.read_traffic(train_dicts, calculation_time)
+            sett_li_selig.read_SoS([scenario], np.zeros(input_data["track_info"]["geometry"]["n_sleepers"]).astype(int))
+            sett_li_selig.calculate(sleeper_width, sleeper_length, idx=[0])
+
 
             # calculate output step size (1 outout value per day + last value
-            n_steps = len(sett.results["time"])
-            n_days = sett.results["time"][-1] - sett.results["time"][0]
-            step_size = n_steps/n_days
+            n_steps = len(sett_varandas.cumulative_time)
+            n_days = sett_varandas.cumulative_time[-1] - sett_varandas.cumulative_time[0]
+            step_size = n_steps / n_days
 
             # get output indices
             indices = [int(day*step_size) for day in range(int(n_days))]
@@ -415,8 +423,8 @@ def runner(input_data, path_results, calculation_time=50):
             indices.append(n_steps-1)
 
             # get cumulative settlement result
-            cumulative_time = np.array(sett.results["time"])[indices]
-            cumulative_settlements.append(np.array(sett.results["settlement"]['0'])[indices])
+            cumulative_time = sett_varandas.cumulative_time[indices]
+            cumulative_settlements.append(sett_varandas.displacement[0][indices] + sett_li_selig.displacement[0][indices])
 
         # calculate mean and std cumulative settlement in mm
         cumulative_settlement_mean, cumulative_settlement_std = calculate_weighted_mean_and_std(
