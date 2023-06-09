@@ -1,5 +1,4 @@
 import os
-import json
 
 from pyproj import Transformer
 # import ROSE packages
@@ -7,7 +6,7 @@ from rose.model.model_part import Material, Section
 from rose.model.train_model import *
 from rose.model.train_track_interaction import *
 from rose.model import accumulation_model
-from solvers.newmark_solver import NewmarkSolver
+from solvers.newmark_solver import NewmarkImplicitForce
 from dashboard import io_utils
 
 
@@ -39,7 +38,7 @@ def calculate_weighted_mean_and_std(values: np.ndarray, weights: np.ndarray) -> 
 def assign_data_to_coupled_model(train_info, track_info, time_int, soil):
     # choose solver
     # solver = solver_c.NewmarkSolver()
-    solver = NewmarkSolver()
+    solver = NewmarkImplicitForce()
     # solver = solver_c.ZhaiSolver()
 
     all_element_model_parts = []
@@ -204,11 +203,11 @@ def get_dynamic_stiffness_track(coupled_model):
 
     # get vertical force and displacement at middle node of the track
     y_idx = middle_node.index_dof[1]
-    force_vector = coupled_model.track.global_force_vector[y_idx, :].toarray()
+    force_vector = coupled_model.track.solver.F_out[:, y_idx]
     vert_displacement = middle_node.displacements[:, 1]
 
     # calculate dynamic stiffness
-    dyn_stiffness = force_vector[0, :] / vert_displacement
+    dyn_stiffness = force_vector[:] / vert_displacement
 
     return dyn_stiffness
 
@@ -434,3 +433,13 @@ def runner(input_data, path_results, calculation_time=50):
     io_utils.write_all_results(features, os.path.join(path_results, input_data["project_name"], "data.json"))
 
     return True, get_base_data(features, os.path.join(path_results, input_data["project_name"], "settings.json"))
+
+
+if __name__ == '__main__':
+    import json
+
+
+    input_data = r"D:\software_development\rose\dashboard\example_rose_input6.json"
+
+    input_data = json.load(open(input_data))
+    runner(input_data, "../dash_calculations")
