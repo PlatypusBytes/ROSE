@@ -2,10 +2,6 @@ import numpy as np
 import matplotlib.pylab as plt
 # from SignalProcessing import signal_tools
 
-# set seed for random generator for reproducibility
-seed = 99
-random_generator = np.random.default_rng(seed)
-
 
 class WheelFlat:
     """
@@ -14,7 +10,7 @@ class WheelFlat:
    :Attributes:
        - :self.irregularities:     np array of the irregularities at each position
    """
-    def __init__(self, x: np.ndarray, wheel_diameter: float, flatness_length: float, start_position=None):
+    def __init__(self, x: np.ndarray, wheel_diameter: float, flatness_length: float, start_position=None, seed=99):
         """
         Creates an array with a wheel flat. where every circumference of the wheel, the wheel is indented
 
@@ -22,7 +18,11 @@ class WheelFlat:
         :param wheel_diameter: diameter of the wheel [m]
         :param flatness_length: total flat length of the wheel [m]
         :param start_position: optional starting position of where a wheel flat is known
+        :param seed: (default 99) seed for random generator
         """
+
+        # random generator
+        random_generator = np.random.default_rng(seed)
 
         # calculate wheel circumference
         wheel_circumference = np.pi * wheel_diameter
@@ -73,7 +73,7 @@ class RailIrregularities:
         - :self.irregularities:     np array of the irregularities at each position
     """
     def __init__(self, x: np.ndarray,
-                 f_min: float = 2, f_max: float = 500, N: int = 2000, Av: float = 0.00002095, omega_c: float = 0.8242):
+                 f_min: float = 2, f_max: float = 500, N: int = 2000, Av: float = 0.00002095, omega_c: float = 0.8242, seed=99):
         """
         Creates rail unevenness following :cite: `zhang_2001`.
 
@@ -87,6 +87,7 @@ class RailIrregularities:
         @param N: (default 2000) number of frequency increments
         @param Av: (default 0.00002095 m2 rad/m) vertical track irregularity parameters
         @param omega_c: (default 0.8242 rad/m) critical wave number
+        @param seed: (default 99) seed for random generator
         """
 
         # default parameters
@@ -105,7 +106,7 @@ class RailIrregularities:
         # for each frequency increment
         for n in range(N):
             omega_n = omega_min + delta_omega * n
-            phi = random_generator.uniform(0, 2 * np.pi)
+            phi = random_generator.uniform(0, 2 * np.pi, seed=seed)
             self.irregularities += np.sqrt(4 * self.spectral(omega_n) * delta_omega) * np.cos(omega_n * x - phi)
 
         # # compute spectrum
