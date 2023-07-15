@@ -108,7 +108,7 @@ class RailIrregularities:
         # for each frequency increment
         for n in range(N):
             omega_n = omega_min + delta_omega * n
-            phi = random_generator.uniform(0, 2 * np.pi, seed=seed)
+            phi = random_generator.uniform(0, 2 * np.pi)
             self.irregularities += np.sqrt(4 * self.spectral(omega_n) * delta_omega) * np.cos(omega_n * x - phi)
 
         # # compute spectrum
@@ -132,6 +132,7 @@ class RailIrregularities:
 
 if __name__ == "__main__":
     distance = np.linspace(0, 50, 50)
-    r = RailIrregularities(distance)
-    plt.plot(distance, r.irregularities)
+    for i in range(10):
+        r = RailIrregularities(distance, seed=i)
+        plt.plot(distance, r.irregularities)
     plt.show()
