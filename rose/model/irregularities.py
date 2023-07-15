@@ -93,6 +93,8 @@ class RailIrregularities:
         # default parameters
         self.Av = Av
         self.omega_c = omega_c
+        # random generator
+        random_generator = np.random.default_rng(seed)
 
         # define omega range
         omega_max = 2 * np.pi * f_max
