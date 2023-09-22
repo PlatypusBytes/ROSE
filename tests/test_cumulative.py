@@ -15,7 +15,7 @@ class TestVarandas(unittest.TestCase):
     def setUp(self):
         self.time = 8
         self.steps = 200
-        self.idx = range(500 - 60, 500 + 60)
+        self.idx = range(250 - 60, 250 + 60)
 
         # load transition zones results for all trains
         with open(os.path.join(TEST_PATH, "test_data", f"DOUBLEDEKKER.pickle"), "rb") as f:
@@ -94,7 +94,7 @@ class TestLiSelig(unittest.TestCase):
     def setUp(self):
         self.time = 10
         self.steps = 200
-        self.idx = range(500 - 60, 500 + 60)
+        self.idx = range(250 - 60, 250 + 60)
 
         # load transition zones results for all trains
         with open(os.path.join(TEST_PATH, "test_data", f"DOUBLEDEKKER.pickle"), "rb") as f:
