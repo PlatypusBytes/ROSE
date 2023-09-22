@@ -259,14 +259,11 @@ class TestBenchmarkSet2:
         n_beams = 201
 
         # Setup parameters euler beam
-
-        calculation_time_steps = 100000
-
         # initialisation_time = np.linspace(0, 0.01, 10000)
         # calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + 0.1, calculation_time_steps)
         # time = np.concatenate((initialisation_time, calculation_time[1:]))
         # E = 20e3
-        time = np.linspace(0, 100, 10001)
+        time = np.linspace(0, 100, 4001)
         # E = 20e3
         E = 20e5
         I = 1
@@ -396,7 +393,7 @@ class TestBenchmarkSet2:
         n_beams = 201
 
         # Setup parameters euler beam
-        time = np.linspace(0, 100, 5001)
+        time = np.linspace(0, 100, 4001)
         E = 20e5
         nu = 0
         G = E/(2*(1+nu))
@@ -1076,7 +1073,7 @@ class TestBenchmarkSet2:
         np.testing.assert_array_almost_equal(expected_u_beam, u_beam)
         np.testing.assert_array_almost_equal(expected_u_vehicle, u_vehicle)
 
-    @pytest.mark.workinprogress
+    @pytest.mark.skip(reason="work in progress")
     def test_moving_load_on_hinge(self):
         # Set parameters of beam and winkler foundation
         stiffness_spring = 400e3

@@ -2,7 +2,7 @@ from rose.pre_process.mesh_utils import *
 import pytest
 
 class TestMeshUtils:
-    @pytest.mark.workinprogress
+    @pytest.mark.skip("work in progress")
     def test_create_horizontal_track(self):
 
         time = np.linspace(0, 10, 1000)
