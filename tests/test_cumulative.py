@@ -13,7 +13,7 @@ tol = 1e-6
 
 class TestVarandas(unittest.TestCase):
     def setUp(self):
-        self.time = 10
+        self.time = 8
         self.steps = 200
         self.idx = range(500 - 60, 500 + 60)
 
