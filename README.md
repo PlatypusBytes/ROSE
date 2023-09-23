@@ -1,6 +1,5 @@
 ![Tests](https://github.com/PlatypusBytes/rose/actions/workflows/workflow.yml/badge.svg)
-[![codecov](https://codecov.io/gh/PlatypusBytes/rose/graph/badge.svg?token=CRWV3A3WLR)](https://codecov.io/gh/PlatypusBytes/rose)
-
+[![codecov](https://codecov.io/gh/PlatypusBytes/rose/graph/badge.svg?token=BxXZoumoIt)](https://codecov.io/gh/PlatypusBytes/rose)
 
 # README #
 
