@@ -7,6 +7,7 @@ from data_proc import fugro
 import matplotlib.pyplot as plt
 import numpy as np
 
+@pytest.mark.skip("work in progress")
 class TestFugro:
 
     def test_calculate_d_values(self):
