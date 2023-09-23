@@ -9,6 +9,6 @@ tqdm==4.66.1
 scikit-learn==1.3.1
 scipy==1.11.2
 xlrd==2.0.1
-SignalProcessing@git+https://github.com/PlatypusBytes/SignalProcessing.git@be545bd035506c8c831e2678f06226169bc60632
-solvers@git+https://bitbucket.org/DeltaresGEO/solvers.git@f7a3409020f30a747cf11975b391c73b227e2390
-WolfStiffness@git+https://github.com/PlatypusBytes/WolfStiffness.git@61fea97b7ce75b63517079b279820eb1ed525ad6
+SignalProcessing@git+https://github.com/PlatypusBytes/SignalProcessing.git
+solvers@git+https://github.com/PlatypusBytes/solvers/
+WolfStiffness@git+https://github.com/PlatypusBytes/WolfStiffness.git
