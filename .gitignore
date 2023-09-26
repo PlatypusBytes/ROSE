@@ -1,9 +1,10 @@
-/dashboard/frontend/node_modules/
-/dashboard/frontend/.env
-/dashboard/flask_session
 
 ._*
 __pycache__
 .DS_Store
 .DS_Store?
-
+venv/*
+build/*
+*egg-info/*
+.vscode/*
+__pycache__/*
