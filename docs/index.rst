@@ -82,7 +82,7 @@ ROSE is a research programme that results from a collaboration between the follo
 
 * `ProRail <https://www.prorail.nl>`_
 * `Deltares <https://www.deltares.nl>`_
-* `Fugro <https://www.fugro.com/>`_
+* `Fugro <https://www.fugro.com/nl>`_
 * `Sensar <https://sensar.nl/>`_
 * `Ricardo Rail <https://www.ricardo.com/rail/>`_.
 

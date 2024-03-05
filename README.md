@@ -1,4 +1,5 @@
 ![Tests](https://github.com/PlatypusBytes/rose/actions/workflows/workflow.yml/badge.svg)
+[![Documentation Status](https://readthedocs.org/projects/rose-model/badge/?version=latest)](https://rose-model.readthedocs.io/)
 [![codecov](https://codecov.io/gh/PlatypusBytes/rose/graph/badge.svg?token=BxXZoumoIt)](https://codecov.io/gh/PlatypusBytes/rose)
 
 # README #
@@ -16,12 +17,12 @@ and parameterisation of the model.
 ## Developers
 The ROSE software has been developed within a TKI project, and in a consortium with the following partners:
 
-* [Deltares](www.deltares.nl)
+* [Deltares](https://www.deltares.nl)
 
-* [ProRail](www.prorail.nl)
+* [ProRail](https://www.prorail.nl)
 
-* [Sensar](www.sensar.nl)
+* [Sensar](https://www.sensar.nl)
 
-* [Fugro](www.fugro.com/nl)
+* [Fugro](https://www.fugro.com/nl)
 
-* [Ricardo Rail](www.rail.ricardo.com)
+* [Ricardo Rail](https://www.ricardo.com/rail/)
