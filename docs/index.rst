@@ -8,7 +8,7 @@ ROSE is build in `Python <https://www.python.org/>`_.
 ROSE consists of:
 
 * train-track interaction model that computes the dynamic response
-* cyclic cumulative models that compute the track degradation in time
+* cyclic cumulative models that compute the track degradation in time.
 
 
 .. figure:: _static/rose.png
@@ -73,7 +73,7 @@ The tutorials are available in the following links:
 
 * Tutorial 1 - `How to setup and run the ROSE model ROSE model <../../tutorials/rose_demo.ipynb>`_
 * Tutorial 2 - `How to compute the rail strain with the ROSE model <../../tutorials/calculate_strain.ipynb>`_
-* Tutorial 3 - `How to perform the model optimisation in the ROSE model <../../tutorials/rose_optimisation.ipynb>`_
+* Tutorial 3 - `How to perform the model optimisation in the ROSE model <../../tutorials/rose_optimisation.ipynb>`_.
 
 
 ROSE team
@@ -84,7 +84,7 @@ ROSE is a research programme that results from a collaboration between the follo
 * `Deltares <https://www.deltares.nl>`_
 * `Fugro <https://www.fugro.com/>`_
 * `Sensar <https://sensar.nl/>`_
-* `Ricardo Rail <https://www.ricardo.com/rail/>`_
+* `Ricardo Rail <https://www.ricardo.com/rail/>`_.
 
 The :doc:`authors`.
 
