@@ -60,9 +60,7 @@ class Section:
 
         self.area: float = None  # [m^2]
         self.sec_moment_of_inertia: float = None  # [m^4]
-        self.shear_factor: float = (
-            0  # shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
-        )
+        self.shear_factor: float = 0  # shear factor (kr=0 - Euler-Bernoulli beam, kr>0 - Timoshenko beam)
         self.height = None
         self.height_neutral_axis = None
 
