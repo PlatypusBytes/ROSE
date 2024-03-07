@@ -81,6 +81,7 @@ Contributing
 We welcome contributions to ROSE.
 If you want contribute please follow the steps defined in :doc:`contributions`.
 
+
 ROSE team
 =========
 ROSE is a research programme that results from a collaboration between the following partners:
