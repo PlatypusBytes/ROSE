@@ -76,6 +76,11 @@ The tutorials are available in the following links:
 * Tutorial 3 - `How to perform the model optimisation in the ROSE model <../../tutorials/rose_optimisation.ipynb>`_.
 
 
+Contributing
+============
+We welcome contributions to ROSE.
+If you want contribute please follow the steps defined in :doc:`contributions`.
+
 ROSE team
 =========
 ROSE is a research programme that results from a collaboration between the following partners:
