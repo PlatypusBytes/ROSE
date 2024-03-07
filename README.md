@@ -12,7 +12,7 @@ long-term deformation caused by train traffic.
 The ROSE software allows the use of data in order to improve the schematisation
 and parameterisation of the model.
 
-![scheme](./docs/_static/scheme.png)
+![scheme](./docs/_static/rose.png)
 
 
 # Installation
