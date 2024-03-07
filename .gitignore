@@ -1,10 +1,9 @@
-
-._*
 __pycache__
-.DS_Store
-.DS_Store?
 venv/*
 build/*
 *egg-info/*
 .vscode/*
 __pycache__/*
+.coverage
+docs/build/*
+tutorials/disp_track_animation_frames/*
