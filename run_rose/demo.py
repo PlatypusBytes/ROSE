@@ -151,7 +151,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
     # create train
     train = set_train(time, velocities, train_start_coord, train_type)
     train.use_irregularities = use_irregularities
-    train.irregularity_parameters = {"Av": 0.00002095}
+    train.irregularity_parameters = {"Av": 0.00002095, "seed":4}
     train.time = time
     train.velocities = velocities
 
@@ -280,6 +280,8 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
                     "soil_damping": soil_damp,
                     "idx_matrix": list(set(idx_matrix[np.isnan(idx_matrix) == False])),
                     "global_stiffness": coupled_model.track.global_stiffness_matrix,
+                    "global_damping": coupled_model.track.global_damping_matrix,
+                    "global_mass": coupled_model.track.global_mass_matrix,
                     }
     # filename
     file_name = f'{segment_id}.pickle'
@@ -300,7 +302,7 @@ def main():
     train_start_coord = 20
 
     # choose if train and track irregularities
-    use_irregularities = False
+    use_irregularities = True
 
     # write results every n steps
     output_time_interval = 7
