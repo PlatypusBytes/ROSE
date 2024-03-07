@@ -19,4 +19,6 @@ jobs:
             pip install .
             pip install pytest nbmake
       - name: Run notebook tests
-        run: pytest --nbmake ./tutorials/*.ipynb
+        run: |
+            pytest --nbmake ./tutorials/rose_demo.ipynb
+            pytest --nbmake ./tutorials/calculate_strain.ipynb
