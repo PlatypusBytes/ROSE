@@ -17,8 +17,7 @@ jobs:
           python-version: '3.10'
       - name: Install dependencies
         run: |
-            pip install .
-            pip install pytest nbmake
+            pip install .[testing]
       - name: Run notebook tests
         run: |
             pytest --nbmake ./tutorials/rose_demo.ipynb
