@@ -41,7 +41,7 @@ def set_train(time: np.ndarray, velocities: np.ndarray, start_coord: float, trai
     elif train_type == TrainType.CARGO_FALNS5:
         return set_cargo_FALNS5_train(time, velocities, start_coord)
     elif train_type == TrainType.CARGO_SGNS:
-        return set_cargo_FALNS5_train(time, velocities, start_coord)
+        return set_cargo_SGNS_train(time, velocities, start_coord)
     elif train_type == TrainType.CARGO_TAPPS:
         return set_cargo_TAPPS_train(time, velocities, start_coord)
     elif train_type == TrainType.TRAXX:
