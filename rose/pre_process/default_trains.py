@@ -1,4 +1,3 @@
-import sys
 from enum import Enum
 import numpy as np
 
@@ -19,7 +18,7 @@ class TrainType(Enum):
     # RSMV = 9
 
 
-def set_train(time: np.ndarray, velocities: np.ndarray, start_coord: float, train_type: TrainType):
+def set_train(time: np.ndarray, velocities: np.ndarray, start_coord: float, train_type: TrainType, nb_carts=1):
     """
     Sets a default train according to the TrainType
 
@@ -27,79 +26,81 @@ def set_train(time: np.ndarray, velocities: np.ndarray, start_coord: float, trai
     :param velocities: velocities of the train per time step
     :param start_coord: initial coordinate of the middle of the cart
     :param train_type: type of train
+    :param nb_carts: number of carts (default 1)
 
     :return: TrainModel
     """
     if train_type == TrainType.DOUBLEDEKKER:
-        return set_double_dekker_train(time, velocities, start_coord)
+        return set_double_dekker_train(time, velocities, start_coord, nb_carts=nb_carts)
     elif train_type == TrainType.SPRINTER_SLT:
-        return set_sprinter_slt_train(time, velocities, start_coord)
+        return set_sprinter_slt_train(time, velocities, start_coord, nb_carts=nb_carts)
     elif train_type == TrainType.SPRINTER_SGM:
-        return set_sprinter_sgm_train(time, velocities, start_coord)
+        return set_sprinter_sgm_train(time, velocities, start_coord, nb_carts=nb_carts)
     elif train_type == TrainType.ICM:
-        return set_icm_train(time, velocities, start_coord)
+        return set_icm_train(time, velocities, start_coord, nb_carts=nb_carts)
     elif train_type == TrainType.CARGO_FALNS5:
-        return set_cargo_FALNS5_train(time, velocities, start_coord)
+        return set_cargo_FALNS5_train(time, velocities, start_coord, nb_carts=nb_carts)
     elif train_type == TrainType.CARGO_SGNS:
-        return set_cargo_SGNS_train(time, velocities, start_coord)
+        return set_cargo_SGNS_train(time, velocities, start_coord, nb_carts=nb_carts)
     elif train_type == TrainType.CARGO_TAPPS:
-        return set_cargo_TAPPS_train(time, velocities, start_coord)
+        return set_cargo_TAPPS_train(time, velocities, start_coord, nb_carts=nb_carts)
     elif train_type == TrainType.TRAXX:
-        return set_traxx_locomotive(time, velocities, start_coord)
+        return set_traxx_locomotive(time, velocities, start_coord, nb_carts=nb_carts)
     elif train_type == TrainType.BR189:
-        return set_br189_locomotive(time, velocities, start_coord)
+        return set_br189_locomotive(time, velocities, start_coord, nb_carts=nb_carts)
     # elif train_type == TrainType.RSMV:
     #     return set_rsmv_train(time, velocities, start_coord)
     else:
         return None
 
-def set_traxx_locomotive(time, velocities, start_coord):
+def set_traxx_locomotive(time, velocities, start_coord, nb_carts=1):
     """
     Sets a train model with the default parameters for the Traxx locomotive
 
     :param time: all time steps
     :param velocities: velocity of the train
     :param start_coord: initial coordinate of the cart
+    :param nb_carts: number of carts (default 1)
 
     :return: TrainModel
     """
 
     traxx_locomotive = TrainModel()
-
+    traxx_length = 18.95
     traxx_locomotive.time = time
     traxx_locomotive.velocities = velocities
-    traxx_locomotive.cart_distances = [start_coord]
-    traxx_locomotive.carts = [Cart()]
+    traxx_locomotive.carts = [Cart() for _ in range(nb_carts)]
+    traxx_locomotive.cart_distances = [start_coord + i * traxx_length for i in range(nb_carts)]
 
-    cart = traxx_locomotive.carts[0]
-    cart.bogie_distances = [-5.175, 5.175]
-    cart.inertia = 1558125/2
-    cart.mass = 54000/2
-    cart.stiffness = 24e6
-    cart.damping = 71e3
-    cart.length = 18.95
-    cart.calculate_total_n_dof()
+    for cart in traxx_locomotive.carts:
+        cart.bogie_distances = [-5.175, 5.175]
+        cart.inertia = 1558125/2
+        cart.mass = 54000/2
+        cart.stiffness = 24e6
+        cart.damping = 71e3
+        cart.length = traxx_length
+        cart.calculate_total_n_dof()
 
-    # setup bogies per cart
-    cart.bogies = [Bogie() for _ in range(len(cart.bogie_distances))]
-    for bogie in cart.bogies:
-        bogie.wheel_distances = [-1.3, 1.3]
-        bogie.mass = 7e3/2
-        bogie.inertia = 9.333e3/2
-        bogie.stiffness = 2.232e6
-        bogie.damping = 36.7e3
-        bogie.length = 2.6
-        bogie.calculate_total_n_dof()
+        # setup bogies per cart
+        cart.bogies = [Bogie() for _ in range(len(cart.bogie_distances))]
+        for bogie in cart.bogies:
+            bogie.wheel_distances = [-1.3, 1.3]
+            bogie.mass = 7e3/2
+            bogie.inertia = 9.333e3/2
+            bogie.stiffness = 2.232e6
+            bogie.damping = 36.7e3
+            bogie.length = 2.6
+            bogie.calculate_total_n_dof()
 
-        # setup wheels per bogie
-        bogie.wheels = [Wheel() for _ in range(len(bogie.wheel_distances))]
-        for wheel in bogie.wheels:
-            wheel.mass = 4.e3
+            # setup wheels per bogie
+            bogie.wheels = [Wheel() for _ in range(len(bogie.wheel_distances))]
+            for wheel in bogie.wheels:
+                wheel.mass = 4.e3
 
     return traxx_locomotive
 
 
-def set_br189_locomotive(time, velocities, start_coord):
+def set_br189_locomotive(time, velocities, start_coord, nb_carts=1):
     """
     Sets a train model with the default parameters for the Traxx locomotive
 
@@ -111,36 +112,36 @@ def set_br189_locomotive(time, velocities, start_coord):
     """
 
     br189_locomotive = TrainModel()
-
+    br189_length = 19.6
     br189_locomotive.time = time
     br189_locomotive.velocities = velocities
-    br189_locomotive.cart_distances = [start_coord]
-    br189_locomotive.carts = [Cart()]
+    br189_locomotive.carts = [Cart() for _ in range(nb_carts)]
+    br189_locomotive.cart_distances = [start_coord + i * br189_length for i in range(nb_carts)]
 
-    cart = br189_locomotive.carts[0]
-    cart.bogie_distances = [-4.95, 4.95]
-    cart.inertia = 1592750/2
-    cart.mass = 55200/2
-    cart.stiffness = 24e6
-    cart.damping = 71e3
-    cart.length = 19.6
-    cart.calculate_total_n_dof()
+    for cart in br189_locomotive.carts:
+        cart.bogie_distances = [-4.95, 4.95]
+        cart.inertia = 1592750/2
+        cart.mass = 55200/2
+        cart.stiffness = 24e6
+        cart.damping = 71e3
+        cart.length = br189_length
+        cart.calculate_total_n_dof()
 
-    # setup bogies per cart
-    cart.bogies = [Bogie() for _ in range(len(cart.bogie_distances))]
-    for bogie in cart.bogies:
-        bogie.wheel_distances = [-1.45, 1.45]
-        bogie.mass = 7000/2
-        bogie.inertia = 9333.3/2
-        bogie.stiffness = 2.232e6
-        bogie.damping = 36.7e3
-        bogie.length = 2.9
-        bogie.calculate_total_n_dof()
+        # setup bogies per cart
+        cart.bogies = [Bogie() for _ in range(len(cart.bogie_distances))]
+        for bogie in cart.bogies:
+            bogie.wheel_distances = [-1.45, 1.45]
+            bogie.mass = 7000/2
+            bogie.inertia = 9333.3/2
+            bogie.stiffness = 2.232e6
+            bogie.damping = 36.7e3
+            bogie.length = 2.9
+            bogie.calculate_total_n_dof()
 
-        # setup wheels per bogie
-        bogie.wheels = [Wheel() for _ in range(len(bogie.wheel_distances))]
-        for wheel in bogie.wheels:
-            wheel.mass = 4.e3
+            # setup wheels per bogie
+            bogie.wheels = [Wheel() for _ in range(len(bogie.wheel_distances))]
+            for wheel in bogie.wheels:
+                wheel.mass = 4.e3
 
     return br189_locomotive
 
@@ -193,16 +194,20 @@ def set_double_dekker_train(time, velocities, start_coord, nb_carts=1):
     return intercity_train
 
 
-def set_sprinter_slt_train(time, velocities, start_coord):
+def set_sprinter_slt_train(time, velocities, start_coord, nb_carts=2):
     """
     Sets a train model with the default parameters for the Dutch local sprinter train
 
     :param time: all time steps
     :param velocities: velocity of the train
     :param start_coord: initial coordinate of the cart
+    :param nb_carts: number of carts (default 1)
 
     :return: TrainModel
     """
+
+    if nb_carts < 2:
+        raise ValueError("Number of carts must be at least 2 for the sprinter SLT train")
 
     cart_length = 2 * 7.785
 
@@ -210,8 +215,8 @@ def set_sprinter_slt_train(time, velocities, start_coord):
 
     sprinter_train.time = time
     sprinter_train.velocities = velocities
-    sprinter_train.carts = [Cart(), Cart()]
-    sprinter_train.cart_distances = [start_coord, start_coord + cart_length, start_coord + cart_length * 2]
+    sprinter_train.carts = [Cart() for _ in range(nb_carts)]
+    sprinter_train.cart_distances =  [start_coord + i * cart_length for i in range(nb_carts)]
 
     # create all bogies
     bogies = [Bogie() for _ in range(len(sprinter_train.carts) + 1)]
@@ -352,83 +357,195 @@ def set_icm_train(time, velocities, start_coord, nb_carts=1):
 
     return icm_train
 
-
-def set_cargo_locomotive_wagon(time, velocities, start_coord, locomotive, wagon, nb_locomotives=1, nb_wagons=1):
+def set_cargo_SGNS_train(time, velocities, start_coord, nb_carts=1):
     """
-    Sets a cargo train model with a TRAXX locomotive and TAPPS wagons
+    Sets a train model with the default parameters for the Dutch cargo train
 
     :param time: all time steps
     :param velocities: velocity of the train
     :param start_coord: initial coordinate of the cart
-    :param nb_tapps: number of tapps wagons (default 1)
+    :param nb_carts: number of carts (default 1)
+
+    :return: TrainModel
+    """
+
+    cargo_train = TrainModel()
+    cargo_length = 19.74
+
+    cargo_train.time = time
+    cargo_train.velocities = velocities
+    cargo_train.carts = [Cart() for _ in range(nb_carts)]
+    cargo_train.cart_distances = [start_coord + i * cargo_length for i in range(nb_carts)]
+
+    for cart in cargo_train.carts:
+        cart.bogie_distances = [-7.1, 7.1]
+        cart.inertia = 784200/2
+        cart.mass = 29.48e3/2
+        cart.stiffness = 3.27e7
+        cart.damping = 8.02e5
+        cart.length = cargo_length
+        cart.calculate_total_n_dof()
+
+        # setup bogies per cart
+        cart.bogies = [Bogie() for _ in range(len(cart.bogie_distances))]
+        for bogie in cart.bogies:
+            bogie.wheel_distances = [-0.91, 0.91]
+            bogie.mass = 5e3/2
+            bogie.inertia = 2.1e3/2
+            bogie.stiffness = 3.27e6
+            bogie.damping = 8.02e4
+            bogie.length = 1.82
+            bogie.calculate_total_n_dof()
+
+            # setup wheels per bogie
+            bogie.wheels = [Wheel() for _ in range(len(bogie.wheel_distances))]
+            for wheel in bogie.wheels:
+                wheel.mass = 1.5e3
+
+    return cargo_train
+
+
+def set_cargo_FALNS5_train(time, velocities, start_coord, nb_carts=1):
+    """
+    Sets a train model with the default parameters for the Dutch cargo train
+
+    :param time: all time steps
+    :param velocities: velocity of the train
+    :param start_coord: initial coordinate of the cart
+    :param nb_carts: number of carts (default 1)
+
+    :return: TrainModel
+    """
+
+    cargo_train = TrainModel()
+    cargo_length = 15.79
+
+    cargo_train.time = time
+    cargo_train.velocities = velocities
+    cargo_train.carts = [Cart() for _ in range(nb_carts)]
+    cargo_train.cart_distances = [start_coord + i * cargo_length for i in range(nb_carts)]
+
+    for cart in cargo_train.carts:
+        cart.bogie_distances = [-5.335, 5.335]
+        cart.inertia = 248278/2
+        cart.mass = 60e3/2
+        cart.stiffness = 2.37e8
+        cart.damping = 8.02e5
+        cart.length = cargo_length
+        cart.calculate_total_n_dof()
+
+        # setup bogies per cart
+        cart.bogies = [Bogie() for _ in range(len(cart.bogie_distances))]
+        for bogie in cart.bogies:
+            bogie.wheel_distances = [-0.91, 0.91]
+            bogie.mass = 5.2e3/2
+            bogie.inertia = 2100/2
+            bogie.stiffness = 2.37e6
+            bogie.damping = 8.02e4
+            bogie.length = 1.82
+            bogie.calculate_total_n_dof()
+
+            # setup wheels per bogie
+            bogie.wheels = [Wheel() for _ in range(len(bogie.wheel_distances))]
+            for wheel in bogie.wheels:
+                wheel.mass = 3e3
+
+    return cargo_train
+
+
+def set_cargo_TAPPS_train(time, velocities, start_coord, nb_carts=1):
+    """
+    Sets a train model with the default parameters for the Dutch cargo train
+
+    :param time: all time steps
+    :param velocities: velocity of the train
+    :param start_coord: initial coordinate of the cart
+    :param nb_carts: number of carts (default 1)
+
+    :return: TrainModel
+    """
+
+    cargo_train = TrainModel()
+    cargo_length = 12.55
+
+    cargo_train.time = time
+    cargo_train.velocities = velocities
+    cargo_train.carts = [Cart() for _ in range(nb_carts)]
+    cargo_train.cart_distances = [start_coord + i * cargo_length for i in range(nb_carts)]
+
+    for cart in cargo_train.carts:
+        cart.bogie_distances = [-3.745, 3.745]
+        cart.inertia = 1558125/2
+        cart.mass = 65e3/2
+        cart.stiffness = 24e6
+        cart.damping = 71e3
+        cart.length = cargo_length
+        cart.calculate_total_n_dof()
+
+        # setup bogies per cart
+        cart.bogies = [Bogie() for _ in range(len(cart.bogie_distances))]
+        for bogie in cart.bogies:
+            bogie.wheel_distances = [-0.91, 0.91]
+            bogie.mass = 9333.3/2
+            bogie.inertia = 9.3e3/2
+            bogie.stiffness = 2.232e6
+            bogie.damping = 36.7e3
+            bogie.length = 1.82
+            bogie.calculate_total_n_dof()
+
+            # setup wheels per bogie
+            bogie.wheels = [Wheel() for _ in range(len(bogie.wheel_distances))]
+            for wheel in bogie.wheels:
+                wheel.mass = 2.5e3
+
+    return cargo_train
+
+def build_cargo_train(time: np.ndarray, velocities: np.ndarray, start_coord: float, locomotive: TrainType,
+                      wagon: TrainType, nb_locomotives=1, nb_wagons=1):
+    """
+    Builds a cargo train model with locomotives and wagons
+
+    :param time: all time steps
+    :param velocities: velocity of the train
+    :param start_coord: initial coordinate of the cart
+    :param locomotive: type of locomotive
+    :param wagon: type of wagon
+    :param nb_locomotives: number of locomotives (default 1)
+    :param nb_wagons: number of wagons (default 1)
 
     :return: TrainModel
     """
 
     # define locomotive
     if locomotive == TrainType.TRAXX:
-        cargo_train = set_traxx_locomotive(time, velocities, start_coord)
+        cargo_train = set_traxx_locomotive(time, velocities, start_coord, nb_carts=nb_locomotives)
     elif locomotive == TrainType.BR189:
-        cargo_train = set_br189_locomotive(time, velocities, start_coord)
+        cargo_train = set_br189_locomotive(time, velocities, start_coord, nb_carts=nb_locomotives)
     else:
-        sys.exit(f"Locomotive {locomotive} not defined")
-
-    # add the number of locomotives
-    cargo_train.cart_distances.extend([start_coord + cargo_train.carts[0].length * (i + 1) for i in range(nb_locomotives)])
-    cargo_train.carts.extend([Cart() for _ in range(nb_locomotives)])
-    start_coord = cargo_train.cart_distances[-1]  # update start coordinate for the wagons
-
-    for i, cart in enumerate(cargo_train.carts):
-        if i == 0:
-            # it is  already a loc
-            continue
-        # locomotive props
-        cart.bogie_distances = cargo_train.carts[0].bogie_distances
-        cart.inertia = cargo_train.carts[0].inertia
-        cart.mass = cargo_train.carts[0].mass
-        cart.stiffness = cargo_train.carts[0].stiffness
-        cart.damping = cargo_train.carts[0].damping
-        cart.length = cargo_train.carts[0].length
-        cart.calculate_total_n_dof()
-
-        # setup bogies per cart
-        cart.bogies = [Bogie() for _ in range(len(cart.bogie_distances))]
-        for bogie in cart.bogies:
-            bogie.wheel_distances = cargo_train.carts[0].bogies[0].wheel_distances
-            bogie.mass = cargo_train.carts[0].bogies[0].mass
-            bogie.inertia = cargo_train.carts[0].bogies[0].inertia
-            bogie.stiffness = cargo_train.carts[0].bogies[0].stiffness
-            bogie.damping = cargo_train.carts[0].bogies[0].damping
-            bogie.length = cargo_train.carts[0].bogies[0].length
-            bogie.calculate_total_n_dof()
-
-            # setup wheels per bogie
-            bogie.wheels = [Wheel() for _ in range(len(bogie.wheel_distances))]
-            for wheel in bogie.wheels:
-                wheel.mass = cargo_train.carts[0].bogies[0].wheels[0].mass
+        raise ValueError(f"Locomotive {locomotive} not defined")
 
     # define wagon
     if wagon == TrainType.CARGO_TAPPS:
         wagon_length = 12.55
-        wagon_train = set_cargo_TAPPS_train(time, velocities, start_coord)
+        wagon_train = set_cargo_TAPPS_train(time, velocities, start_coord, nb_carts=nb_wagons)
     elif wagon == TrainType.FALNS5:
         wagon_length = 15.79
-        wagon_train = set_cargo_FALNS5_train(time, velocities, start_coord)
+        wagon_train = set_cargo_FALNS5_train(time, velocities, start_coord, nb_carts=nb_wagons)
     elif wagon == TrainType.SGNS:
         wagon_length = 19.74
-        wagon_train = set_cargo_SGNS_train(time, velocities, start_coord)
+        wagon_train = set_cargo_SGNS_train(time, velocities, start_coord, nb_carts=nb_wagons)
     else:
-        sys.exit(f"Wagon {wagon} not defined")
+        raise ValueError(f"Wagon {wagon} not defined")
 
     cargo_train.cart_distances.extend([start_coord + wagon_length * (i + 1) for i in range(nb_wagons)])
     cargo_train.carts.extend([Cart() for _ in range(nb_wagons)])
 
     for i, cart in enumerate(cargo_train.carts):
-        if i <= nb_locomotives:
-            # is the locomotive
+        if i < nb_locomotives:
+            # is the locomotive => skip
             continue
 
-        # tapps props
+        # wagon props
         cart.bogie_distances = wagon_train.carts[0].bogie_distances
         cart.inertia = wagon_train.carts[0].inertia
         cart.mass = wagon_train.carts[0].mass
@@ -454,140 +571,6 @@ def set_cargo_locomotive_wagon(time, velocities, start_coord, locomotive, wagon,
                 wheel.mass = wagon_train.carts[0].bogies[0].wheels[0].mass
 
     return cargo_train
-
-
-def set_cargo_SGNS_train(time, velocities, start_coord):
-    """
-    Sets a train model with the default parameters for the Dutch cargo train
-    :return:
-    """
-
-    cargo_train = TrainModel()
-
-    cargo_train.time = time
-    cargo_train.velocities = velocities
-    cargo_train.carts = [Cart()]
-    cargo_train.cart_distances = [start_coord]
-
-    cart = cargo_train.carts[0]
-    cart.bogie_distances = [-7.1, 7.1]
-    cart.inertia = 784200/2
-    cart.mass = 29.48e3/2
-    cart.stiffness = 3.27e7
-    cart.damping = 8.02e5
-    cart.length = 19.74
-    cart.calculate_total_n_dof()
-
-    # setup bogies per cart
-    cart.bogies = [Bogie() for _ in range(len(cart.bogie_distances))]
-    for bogie in cart.bogies:
-        bogie.wheel_distances = [-0.91, 0.91]
-        bogie.mass = 5e3/2
-        bogie.inertia = 2.1e3/2
-        bogie.stiffness = 3.27e6
-        bogie.damping = 8.02e4
-        bogie.length = 1.82
-        bogie.calculate_total_n_dof()
-
-        # setup wheels per bogie
-        bogie.wheels = [Wheel() for _ in range(len(bogie.wheel_distances))]
-        for wheel in bogie.wheels:
-            wheel.mass = 1.5e3
-
-    return cargo_train
-
-
-def set_cargo_FALNS5_train(time, velocities, start_coord):
-    """
-    Sets a train model with the default parameters for the Dutch cargo train
-
-    :param time: all time steps
-    :param velocities: velocity of the train
-    :param start_coord: initial coordinate of the cart
-
-    :return: TrainModel
-    """
-
-    cargo_train = TrainModel()
-
-    cargo_train.time = time
-    cargo_train.velocities = velocities
-    cargo_train.carts = [Cart()]
-    cargo_train.cart_distances = [start_coord]
-
-    cart = cargo_train.carts[0]
-    cart.bogie_distances = [-5.335, 5.335]
-    cart.inertia = 248278/2
-    cart.mass = 60e3/2
-    cart.stiffness = 2.37e8
-    cart.damping = 8.02e5
-    cart.length = 15.79
-    cart.calculate_total_n_dof()
-
-    # setup bogies per cart
-    cart.bogies = [Bogie() for _ in range(len(cart.bogie_distances))]
-    for bogie in cart.bogies:
-        bogie.wheel_distances = [-0.91, 0.91]
-        bogie.mass = 5.2e3/2
-        bogie.inertia = 2100/2
-        bogie.stiffness = 2.37e6
-        bogie.damping = 8.02e4
-        bogie.length = 1.82
-        bogie.calculate_total_n_dof()
-
-        # setup wheels per bogie
-        bogie.wheels = [Wheel() for _ in range(len(bogie.wheel_distances))]
-        for wheel in bogie.wheels:
-            wheel.mass = 3e3
-
-    return cargo_train
-
-
-def set_cargo_TAPPS_train(time, velocities, start_coord):
-    """
-    Sets a train model with the default parameters for the Dutch cargo train
-
-    :param time: all time steps
-    :param velocities: velocity of the train
-    :param start_coord: initial coordinate of the cart
-
-    :return: TrainModel
-    """
-
-    cargo_train = TrainModel()
-
-    cargo_train.time = time
-    cargo_train.velocities = velocities
-    cargo_train.carts = [Cart()]
-    cargo_train.cart_distances = [start_coord]
-
-    cart = cargo_train.carts[0]
-    cart.bogie_distances = [-3.745, 3.745]
-    cart.inertia = 1558125/2
-    cart.mass = 65e3/2
-    cart.stiffness = 24e6
-    cart.damping = 71e3
-    cart.length = 12.55
-    cart.calculate_total_n_dof()
-
-    # setup bogies per cart
-    cart.bogies = [Bogie() for _ in range(len(cart.bogie_distances))]
-    for bogie in cart.bogies:
-        bogie.wheel_distances = [-0.91, 0.91]
-        bogie.mass = 9333.3/2
-        bogie.inertia = 9.3e3/2
-        bogie.stiffness = 2.232e6
-        bogie.damping = 36.7e3
-        bogie.length = 1.82
-        bogie.calculate_total_n_dof()
-
-        # setup wheels per bogie
-        bogie.wheels = [Wheel() for _ in range(len(bogie.wheel_distances))]
-        for wheel in bogie.wheels:
-            wheel.mass = 2.5e3
-
-    return cargo_train
-
 
 # def set_rsmv_train(time, velocities, start_coord):
 #     """
