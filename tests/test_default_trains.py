@@ -36,7 +36,7 @@ train_configs = {TrainType.DOUBLEDEKKER: {'cart_length': 24.1,
                                           'wheel_mass': 1.5e3
                                           },
                 TrainType.SPRINTER_SLT: {'cart_length': 15.57,
-                                         'bogie_distances': [-7.785, 7.785],
+                                         'bogie_distances': [7.785, -7.785],
                                          'inertia': 36.7e3,
                                          'mass': 23e3,
                                          'stiffness': 2468e3,
