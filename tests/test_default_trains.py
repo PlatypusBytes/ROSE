@@ -174,29 +174,37 @@ def test_build_cargo_trains():
     velocity = 2
     start_coordinate = 10
 
-    # test only three locomotives
+    # test three locomotives + one wagon
     cargo_train = build_cargo_train(time, velocity, start_coordinate,
                                     locomotive=TrainType.TRAXX, wagon=TrainType.CARGO_TAPPS,
-                                    nb_locomotives=3, nb_wagons=0)
+                                    nb_locomotives=3, nb_wagons=1)
 
-    _validate_carts(cargo_train, train_configs[TrainType.TRAXX], start_coordinate, 3)
+    assert(len(cargo_train.carts) == 4)
+    loc = deepcopy(cargo_train)
+    loc.carts = loc.carts[:3]
+    loc.cart_distances = loc.cart_distances[:3]
+    _validate_carts(loc, train_configs[TrainType.TRAXX], start_coordinate, 3)
+    wag = deepcopy(cargo_train)
+    wag.carts =[wag.carts[-1]]
+    wag.cart_distances = [wag.cart_distances[0]]
+    _validate_carts(wag, train_configs[TrainType.CARGO_TAPPS], start_coordinate, 1)
 
-    # test Traxx + three wagons
+    # test one locomotive + three wagons
     cargo_train = build_cargo_train(time, velocity, start_coordinate,
-                                    locomotive=TrainType.TRAXX, wagon=TrainType.CARGO_TAPPS,
+                                    locomotive=TrainType.BR189, wagon=TrainType.CARGO_FALNS5,
                                     nb_locomotives=1, nb_wagons=3)
 
     assert(len(cargo_train.carts) == 4)
     loc = deepcopy(cargo_train)
     loc.carts = [loc.carts[0]]
     loc.cart_distances = [loc.cart_distances[0]]
-    _validate_carts(loc, train_configs[TrainType.TRAXX], start_coordinate, 1)
+    _validate_carts(loc, train_configs[TrainType.BR189], start_coordinate, 1)
     wag = deepcopy(cargo_train)
     wag.carts =wag.carts[1:]
     # correct distances
     aux = wag.cart_distances[1] - wag.cart_distances[0]
     wag.cart_distances = [i - aux for i in wag.cart_distances[1:]]
-    _validate_carts(wag, train_configs[TrainType.CARGO_TAPPS], start_coordinate, 3)
+    _validate_carts(wag, train_configs[TrainType.CARGO_FALNS5], start_coordinate, 3)
 
 
 def _validate_carts(train, config, start_coordinate, nb_carts):
@@ -204,7 +212,7 @@ def _validate_carts(train, config, start_coordinate, nb_carts):
     Validate the train
     """
     assert (len(train.carts) == nb_carts)
-    cart_distances = [start_coordinate + i * config['cart_length'] for i in range(len(train.carts))]
+    cart_distances = [start_coordinate - i * config['cart_length'] for i in range(len(train.carts))]
 
     for _, cart in enumerate(train.carts):
         assert cart.bogie_distances == config['bogie_distances']

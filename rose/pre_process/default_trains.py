@@ -70,7 +70,7 @@ def set_traxx_locomotive(time, velocities, start_coord, nb_carts=1):
     traxx_locomotive.time = time
     traxx_locomotive.velocities = velocities
     traxx_locomotive.carts = [Cart() for _ in range(nb_carts)]
-    traxx_locomotive.cart_distances = [start_coord + i * traxx_length for i in range(nb_carts)]
+    traxx_locomotive.cart_distances = [start_coord - i * traxx_length for i in range(nb_carts)]
 
     for cart in traxx_locomotive.carts:
         cart.bogie_distances = [-5.175, 5.175]
@@ -116,7 +116,7 @@ def set_br189_locomotive(time, velocities, start_coord, nb_carts=1):
     br189_locomotive.time = time
     br189_locomotive.velocities = velocities
     br189_locomotive.carts = [Cart() for _ in range(nb_carts)]
-    br189_locomotive.cart_distances = [start_coord + i * br189_length for i in range(nb_carts)]
+    br189_locomotive.cart_distances = [start_coord - i * br189_length for i in range(nb_carts)]
 
     for cart in br189_locomotive.carts:
         cart.bogie_distances = [-4.95, 4.95]
@@ -164,7 +164,7 @@ def set_double_dekker_train(time, velocities, start_coord, nb_carts=1):
     intercity_train.time = time
     intercity_train.velocities = velocities
     intercity_train.carts = [Cart() for _ in range(nb_carts)]
-    intercity_train.cart_distances = [start_coord + i * train_length for i in range(nb_carts)]
+    intercity_train.cart_distances = [start_coord - i * train_length for i in range(nb_carts)]
 
     for cart in intercity_train.carts:
         cart.bogie_distances = [-9.95, 9.95]
@@ -216,7 +216,7 @@ def set_sprinter_slt_train(time, velocities, start_coord, nb_carts=2):
     sprinter_train.time = time
     sprinter_train.velocities = velocities
     sprinter_train.carts = [Cart() for _ in range(nb_carts)]
-    sprinter_train.cart_distances =  [start_coord + i * cart_length for i in range(nb_carts)]
+    sprinter_train.cart_distances =  [start_coord - i * cart_length for i in range(nb_carts)]
 
     # create all bogies
     bogies = [Bogie() for _ in range(len(sprinter_train.carts) + 1)]
@@ -279,7 +279,7 @@ def set_sprinter_sgm_train(time, velocities, start_coord, nb_carts=1):
     sprinter_train.time = time
     sprinter_train.velocities = velocities
     sprinter_train.carts = [Cart() for _ in range(nb_carts)]
-    sprinter_train.cart_distances = [start_coord + i * train_length for i in range(nb_carts)]
+    sprinter_train.cart_distances = [start_coord - i * train_length for i in range(nb_carts)]
 
     for cart in sprinter_train.carts:
         cart.bogie_distances = [-9, 9]
@@ -328,7 +328,7 @@ def set_icm_train(time, velocities, start_coord, nb_carts=1):
     icm_train.time = time
     icm_train.velocities = velocities
     icm_train.carts = [Cart() for _ in range(nb_carts)]
-    icm_train.cart_distances = [start_coord + i * icm_length for i in range(nb_carts)]
+    icm_train.cart_distances = [start_coord - i * icm_length for i in range(nb_carts)]
 
     for cart in icm_train.carts:
         cart.bogie_distances = [-7.7, 7.7]
@@ -375,7 +375,7 @@ def set_cargo_SGNS_train(time, velocities, start_coord, nb_carts=1):
     cargo_train.time = time
     cargo_train.velocities = velocities
     cargo_train.carts = [Cart() for _ in range(nb_carts)]
-    cargo_train.cart_distances = [start_coord + i * cargo_length for i in range(nb_carts)]
+    cargo_train.cart_distances = [start_coord - i * cargo_length for i in range(nb_carts)]
 
     for cart in cargo_train.carts:
         cart.bogie_distances = [-7.1, 7.1]
@@ -423,7 +423,7 @@ def set_cargo_FALNS5_train(time, velocities, start_coord, nb_carts=1):
     cargo_train.time = time
     cargo_train.velocities = velocities
     cargo_train.carts = [Cart() for _ in range(nb_carts)]
-    cargo_train.cart_distances = [start_coord + i * cargo_length for i in range(nb_carts)]
+    cargo_train.cart_distances = [start_coord - i * cargo_length for i in range(nb_carts)]
 
     for cart in cargo_train.carts:
         cart.bogie_distances = [-5.335, 5.335]
@@ -471,7 +471,7 @@ def set_cargo_TAPPS_train(time, velocities, start_coord, nb_carts=1):
     cargo_train.time = time
     cargo_train.velocities = velocities
     cargo_train.carts = [Cart() for _ in range(nb_carts)]
-    cargo_train.cart_distances = [start_coord + i * cargo_length for i in range(nb_carts)]
+    cargo_train.cart_distances = [start_coord - i * cargo_length for i in range(nb_carts)]
 
     for cart in cargo_train.carts:
         cart.bogie_distances = [-3.745, 3.745]
@@ -526,18 +526,16 @@ def build_cargo_train(time: np.ndarray, velocities: np.ndarray, start_coord: flo
 
     # define wagon
     if wagon == TrainType.CARGO_TAPPS:
-        wagon_length = 12.55
         wagon_train = set_cargo_TAPPS_train(time, velocities, start_coord, nb_carts=nb_wagons)
-    elif wagon == TrainType.FALNS5:
-        wagon_length = 15.79
+    elif wagon == TrainType.CARGO_FALNS5:
         wagon_train = set_cargo_FALNS5_train(time, velocities, start_coord, nb_carts=nb_wagons)
-    elif wagon == TrainType.SGNS:
-        wagon_length = 19.74
+    elif wagon == TrainType.CARGO_SGNS:
         wagon_train = set_cargo_SGNS_train(time, velocities, start_coord, nb_carts=nb_wagons)
     else:
         raise ValueError(f"Wagon {wagon} not defined")
 
-    cargo_train.cart_distances.extend([start_coord + wagon_length * (i + 1) for i in range(nb_wagons)])
+    wagon_length = wagon_train.carts[0].length
+    cargo_train.cart_distances.extend([start_coord - wagon_length * (i + 1) for i in range(nb_wagons)])
     cargo_train.carts.extend([Cart() for _ in range(nb_wagons)])
 
     for i, cart in enumerate(cargo_train.carts):
