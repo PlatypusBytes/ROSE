@@ -1,8 +1,6 @@
 from enum import Enum
 import numpy as np
-
 from rose.model.train_model import TrainModel, Cart, Bogie, Wheel
-
 
 
 class TrainType(Enum):
@@ -205,7 +203,6 @@ def set_sprinter_slt_train(time, velocities, start_coord, nb_carts=2):
 
     :return: TrainModel
     """
-
     if nb_carts < 2:
         raise ValueError("Number of carts must be at least 2 for the sprinter SLT train")
 
@@ -230,8 +227,8 @@ def set_sprinter_slt_train(time, velocities, start_coord, nb_carts=2):
         cart.length = cart_length
 
         # connect bogies to carts
-        cart.bogies =[bogies[idx], bogies[idx+1]]
-        cart.bogie_distances = [-cart_length / 2, cart_length / 2]
+        cart.bogies = [bogies[idx], bogies[idx+1]]
+        cart.bogie_distances = [cart_length / 2, -cart_length / 2]
 
         # right bogie is shared between 2 carts
         if idx == 0:
