@@ -284,7 +284,7 @@ def set_sprinter_sgm_train(time, velocities, start_coord, nb_carts=1):
         cart.mass = 46e3/2
         cart.stiffness = 2468e3
         cart.damping = 50.2e3
-        cart.length = 25.15
+        cart.length = train_length
         cart.calculate_total_n_dof()
 
         # setup bogies per cart
