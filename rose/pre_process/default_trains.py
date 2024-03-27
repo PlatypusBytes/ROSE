@@ -16,7 +16,7 @@ class TrainType(Enum):
     # RSMV = 9
 
 
-def set_train(time: np.ndarray, velocities: np.ndarray, start_coord: float, train_type: TrainType, nb_carts=1):
+def set_train(time: np.ndarray, velocities: np.ndarray, start_coord: float, train_type: TrainType, nb_carts: int=1):
     """
     Sets a default train according to the TrainType
 
@@ -105,6 +105,7 @@ def set_br189_locomotive(time, velocities, start_coord, nb_carts=1):
     :param time: all time steps
     :param velocities: velocity of the train
     :param start_coord: initial coordinate of the cart
+    :param nb_carts: number of carts (default 1)
 
     :return: TrainModel
     """
@@ -230,10 +231,10 @@ def set_sprinter_slt_train(time, velocities, start_coord, nb_carts=2):
         cart.bogies = [bogies[idx], bogies[idx+1]]
         cart.bogie_distances = [cart_length / 2, -cart_length / 2]
 
-        # right bogie is shared between 2 carts
+        # left bogie is shared between 2 carts
         if idx == 0:
             cart.distribution_factor = [1, 0.5]
-        # left bogie is shared between 2 carts
+        # right bogie is shared between 2 carts
         elif idx == len(sprinter_train.carts) - 1:
             cart.distribution_factor = [0.5, 1]
         # both bogies are shared between 2 carts
@@ -319,13 +320,12 @@ def set_icm_train(time, velocities, start_coord, nb_carts=1):
     """
 
     icm_train = TrainModel()
-
-    icm_length = 14.3
+    train_length = 27.3
 
     icm_train.time = time
     icm_train.velocities = velocities
     icm_train.carts = [Cart() for _ in range(nb_carts)]
-    icm_train.cart_distances = [start_coord - i * icm_length for i in range(nb_carts)]
+    icm_train.cart_distances = [start_coord - i * train_length for i in range(nb_carts)]
 
     for cart in icm_train.carts:
         cart.bogie_distances = [-7.7, 7.7]
@@ -333,7 +333,7 @@ def set_icm_train(time, velocities, start_coord, nb_carts=1):
         cart.mass = 34.3e3
         cart.stiffness = 10000e3
         cart.damping = 42.5e3
-        cart.length = 14.3
+        cart.length = train_length
         cart.calculate_total_n_dof()
 
         # setup bogies per cart
@@ -497,8 +497,8 @@ def set_cargo_TAPPS_train(time, velocities, start_coord, nb_carts=1):
 
     return cargo_train
 
-def build_cargo_train(time: np.ndarray, velocities: np.ndarray, start_coord: float, locomotive: TrainType,
-                      wagon: TrainType, nb_locomotives=1, nb_wagons=1):
+def build_cargo_train(time: np.ndarray, velocities: np.ndarray, start_coord: float, locomotive_type: TrainType,
+                      wagon_type: TrainType, nb_locomotives=1, nb_wagons=1):
     """
     Builds a cargo train model with locomotives and wagons
 
@@ -514,56 +514,32 @@ def build_cargo_train(time: np.ndarray, velocities: np.ndarray, start_coord: flo
     """
 
     # define locomotive
-    if locomotive == TrainType.TRAXX:
+    if locomotive_type == TrainType.TRAXX:
         cargo_train = set_traxx_locomotive(time, velocities, start_coord, nb_carts=nb_locomotives)
-    elif locomotive == TrainType.BR189:
+    elif locomotive_type == TrainType.BR189:
         cargo_train = set_br189_locomotive(time, velocities, start_coord, nb_carts=nb_locomotives)
     else:
-        raise ValueError(f"Locomotive {locomotive} not defined")
+        raise ValueError(f"Locomotive {locomotive_type} not defined")
 
     # define wagon
-    if wagon == TrainType.CARGO_TAPPS:
-        wagon_train = set_cargo_TAPPS_train(time, velocities, start_coord, nb_carts=nb_wagons)
-    elif wagon == TrainType.CARGO_FALNS5:
-        wagon_train = set_cargo_FALNS5_train(time, velocities, start_coord, nb_carts=nb_wagons)
-    elif wagon == TrainType.CARGO_SGNS:
-        wagon_train = set_cargo_SGNS_train(time, velocities, start_coord, nb_carts=nb_wagons)
+    if wagon_type == TrainType.CARGO_TAPPS:
+        wagon_train = set_cargo_TAPPS_train(time, velocities, start_coord, nb_carts=1)
+    elif wagon_type == TrainType.CARGO_FALNS5:
+        wagon_train = set_cargo_FALNS5_train(time, velocities, start_coord, nb_carts=1)
+    elif wagon_type == TrainType.CARGO_SGNS:
+        wagon_train = set_cargo_SGNS_train(time, velocities, start_coord, nb_carts=1)
     else:
-        raise ValueError(f"Wagon {wagon} not defined")
+        raise ValueError(f"Wagon {wagon_type} not defined")
 
     wagon_length = wagon_train.carts[0].length
-    cargo_train.cart_distances.extend([start_coord - wagon_length * (i + 1) for i in range(nb_wagons)])
+    cargo_train.cart_distances.extend([start_coord - cargo_train.carts[0].length - wagon_length * i for i in range(nb_wagons)])
     cargo_train.carts.extend([Cart() for _ in range(nb_wagons)])
 
-    for i, cart in enumerate(cargo_train.carts):
+    for i in range(len(cargo_train.carts)):
         if i < nb_locomotives:
             # is the locomotive => skip
             continue
-
-        # wagon props
-        cart.bogie_distances = wagon_train.carts[0].bogie_distances
-        cart.inertia = wagon_train.carts[0].inertia
-        cart.mass = wagon_train.carts[0].mass
-        cart.stiffness = wagon_train.carts[0].stiffness
-        cart.damping = wagon_train.carts[0].damping
-        cart.length = wagon_length
-        cart.calculate_total_n_dof()
-
-        # setup bogies per cart
-        cart.bogies = [Bogie() for _ in range(len(cart.bogie_distances))]
-        for bogie in cart.bogies:
-            bogie.wheel_distances = wagon_train.carts[0].bogies[0].wheel_distances
-            bogie.mass = wagon_train.carts[0].bogies[0].mass
-            bogie.inertia = wagon_train.carts[0].bogies[0].inertia
-            bogie.stiffness = wagon_train.carts[0].bogies[0].stiffness
-            bogie.damping = wagon_train.carts[0].bogies[0].damping
-            bogie.length = wagon_train.carts[0].bogies[0].length
-            bogie.calculate_total_n_dof()
-
-            # setup wheels per bogie
-            bogie.wheels = [Wheel() for _ in range(len(bogie.wheel_distances))]
-            for wheel in bogie.wheels:
-                wheel.mass = wagon_train.carts[0].bogies[0].wheels[0].mass
+        cargo_train.carts[i] = wagon_train.carts[0]
 
     return cargo_train
 

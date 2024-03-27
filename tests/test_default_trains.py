@@ -5,7 +5,7 @@ from rose.pre_process.default_trains import TrainType, set_train, build_cargo_tr
 
 TOL = 1e-6
 # Define train configuration data as a dictionary for easier management
-train_configs = {TrainType.DOUBLEDEKKER: {'cart_length': 24.1,
+TRAIN_CONFIGS = {TrainType.DOUBLEDEKKER: {'cart_length': 24.1,
                                           'bogie_distances': [-9.95, 9.95],
                                           'inertia': 64.4e3,
                                           'mass': 25e3,
@@ -50,7 +50,7 @@ train_configs = {TrainType.DOUBLEDEKKER: {'cart_length': 24.1,
                                                         },
                                 'wheel_mass': 1.5e3
                                 },
-                TrainType.ICM: {'cart_length': 14.3,
+                TrainType.ICM: {'cart_length': 27.3,
                                 'bogie_distances': [-7.7, 7.7],
                                 'inertia': 91.5e3,
                                 'mass': 34.3e3,
@@ -153,7 +153,7 @@ def test_trains():
     nb_carts = [1, 3]
 
     for n in nb_carts:
-        for train_type, config in train_configs.items():
+        for train_type, config in TRAIN_CONFIGS.items():
             if train_type == TrainType.SPRINTER_SLT and n == 1:
                 # check for error message
                 with pytest.raises(ValueError) as excinfo:
@@ -176,35 +176,35 @@ def test_build_cargo_trains():
 
     # test three locomotives + one wagon
     cargo_train = build_cargo_train(time, velocity, start_coordinate,
-                                    locomotive=TrainType.TRAXX, wagon=TrainType.CARGO_TAPPS,
+                                    locomotive_type=TrainType.TRAXX, wagon_type=TrainType.CARGO_TAPPS,
                                     nb_locomotives=3, nb_wagons=1)
 
     assert(len(cargo_train.carts) == 4)
     loc = deepcopy(cargo_train)
     loc.carts = loc.carts[:3]
     loc.cart_distances = loc.cart_distances[:3]
-    _validate_carts(loc, train_configs[TrainType.TRAXX], start_coordinate, 3)
+    _validate_carts(loc, TRAIN_CONFIGS[TrainType.TRAXX], start_coordinate, 3)
     wag = deepcopy(cargo_train)
     wag.carts =[wag.carts[-1]]
     wag.cart_distances = [wag.cart_distances[0]]
-    _validate_carts(wag, train_configs[TrainType.CARGO_TAPPS], start_coordinate, 1)
+    _validate_carts(wag, TRAIN_CONFIGS[TrainType.CARGO_TAPPS], start_coordinate, 1)
 
     # test one locomotive + three wagons
     cargo_train = build_cargo_train(time, velocity, start_coordinate,
-                                    locomotive=TrainType.BR189, wagon=TrainType.CARGO_FALNS5,
+                                    locomotive_type=TrainType.BR189, wagon_type=TrainType.CARGO_FALNS5,
                                     nb_locomotives=1, nb_wagons=3)
 
     assert(len(cargo_train.carts) == 4)
     loc = deepcopy(cargo_train)
     loc.carts = [loc.carts[0]]
     loc.cart_distances = [loc.cart_distances[0]]
-    _validate_carts(loc, train_configs[TrainType.BR189], start_coordinate, 1)
+    _validate_carts(loc, TRAIN_CONFIGS[TrainType.BR189], start_coordinate, 1)
     wag = deepcopy(cargo_train)
     wag.carts =wag.carts[1:]
     # correct distances
     aux = wag.cart_distances[1] - wag.cart_distances[0]
     wag.cart_distances = [i - aux for i in wag.cart_distances[1:]]
-    _validate_carts(wag, train_configs[TrainType.CARGO_FALNS5], start_coordinate, 3)
+    _validate_carts(wag, TRAIN_CONFIGS[TrainType.CARGO_FALNS5], start_coordinate, 3)
 
 
 def _validate_carts(train, config, start_coordinate, nb_carts):
