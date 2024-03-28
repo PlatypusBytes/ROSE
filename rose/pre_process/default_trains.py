@@ -532,7 +532,8 @@ def build_cargo_train(time: np.ndarray, velocities: np.ndarray, start_coord: flo
         raise ValueError(f"Wagon {wagon_type} not defined")
 
     wagon_length = wagon_train.carts[0].length
-    cargo_train.cart_distances.extend([start_coord - cargo_train.carts[0].length - wagon_length * i for i in range(nb_wagons)])
+    cargo_train.cart_distances.extend([start_coord - cargo_train.carts[0].length / 2 - wagon_length / 2 - wagon_length * i for i in range(nb_wagons)])
+
     cargo_train.carts.extend([Cart() for _ in range(nb_wagons)])
 
     for i in range(len(cargo_train.carts)):
