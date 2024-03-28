@@ -8,7 +8,7 @@ from scipy import sparse
 import math
 
 # typing
-from scipy.sparse.base import spmatrix
+from scipy.sparse import spmatrix
 from typing import List
 
 INTERSECTION_TOLERANCE = 1e-6

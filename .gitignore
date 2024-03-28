@@ -3,6 +3,7 @@ venv/*
 build/*
 *egg-info/*
 .vscode/*
+.tox/*
 __pycache__/*
 .coverage
 docs/build/*
