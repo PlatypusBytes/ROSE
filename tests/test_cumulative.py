@@ -174,9 +174,9 @@ class TestLiSelig(unittest.TestCase):
         total_time = [5, 10]
         reload_s = False
 
-        model = LiSelig([self.soil1], np.zeros(self.nb_nodes).astype(int), 0.25, 3.5)
+        model = LiSelig([self.soil1], np.zeros(self.nb_nodes).astype(int), 0.25, 3.5, t_ini=1)
         sett = AccumulationModel(accumulation_model=model, steps=self.steps)
-        start_time = 1
+        start_time = 0
         for t in total_time:
             sett.read_traffic(self.traininfo, start_time=start_time, end_time=t)
             sett.calculate_settlement(idx=self.idx, reload=reload_s)
