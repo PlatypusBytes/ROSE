@@ -70,11 +70,15 @@ reload_s, reload_v = False, False
 
 
 # varandas model
-varandas = Varandas()
-set_varandas = AccumulationModel(accumulation_model=varandas)
+start_time = 0
+reload_v = False
+model = Varandas()
+set_varandas = AccumulationModel(accumulation_model=model)
+
 # sellig model
-sellig = LiSelig([soil1, soil2], doubledekker["soil_ID"], 0.25, 3.5, t_ini=50)
+sellig = LiSelig([soil1, soil2], doubledekker["soil_ID"], sleeper_width, sleeper_length, t_ini=50)
 set_sellig = AccumulationModel(accumulation_model=sellig)
+
 
 start_time = 0
 for t in total_time:
@@ -83,10 +87,11 @@ for t in total_time:
     set_sellig.write_results(os.path.join(output_folder, f"./LiSelig_time_{t}.pickle"))
     reload_s = True
 
-    set_varandas.read_traffic(train_info, start_time=start_time, end_time=t)
+    set_varandas.read_traffic(train_info, t, start_time=start_time)
     set_varandas.calculate_settlement(idx=idx, reload=reload_v)
     set_varandas.write_results(os.path.join(output_folder, f"./Varandas_time_{t}.pickle"))
     reload_v = True
+    start_time = t
 
 with open(os.path.join(output_folder, f"LiSelig_time_15.pickle"), "rb") as f:
     sellig = pickle.load(f)
@@ -97,10 +102,13 @@ with open(os.path.join(output_folder, f"Varandas_time_15.pickle"), "rb") as f:
 fig, ax = plt.subplots(1, 2, figsize=(10, 6))
 ax[0].plot(sellig["time"], sellig["displacement"][166], label="LiSelig")
 ax[0].plot(varandas["time"], varandas["displacement"][166], label="Varandas")
+ax[0].plot(varandas["time"], np.array(sellig["displacement"][166]) +
+           np.array(varandas["displacement"][166]), label="Total")
 
 ax[1].plot(sellig["time"], sellig["displacement"][500], label="LiSelig")
 ax[1].plot(varandas["time"], varandas["displacement"][500], label="Varandas")
-
+ax[1].plot(varandas["time"], np.array(sellig["displacement"][500]) +
+           np.array(varandas["displacement"][166]), label="Total")
 
 ax[0].grid()
 ax[0].set_xlabel("Time [days]")
