@@ -2,8 +2,8 @@ import os
 import json
 import pickle
 import numpy as np
-from copy import deepcopy
-from rose.model.accumulation_model import Varandas, LiSelig
+import matplotlib.pyplot as plt
+from rose.model.accumulation_model import Varandas, LiSelig, AccumulationModel
 
 base_path = "./results_TZ"
 output_folder = "./results_TZ/passengers"
@@ -58,25 +58,58 @@ train_info = {"dubbeldekker": {"forces": np.array(doubledekker['vertical_force_s
 sleeper_width = 0.25
 sleeper_length = 3.5
 
-with open(r"../data_proc/SOS.json", "r") as f:
+with open(r"./run_rose/soil_layers.json", "r") as f:
     dat = json.load(f)
 
-soil1 = dat["Segment 1077"]["scenario 2"]  # stiff
-soil2 = dat["Segment 1079"]["scenario 4"]  # soft
+soil1 = dat["soil1"]  # stiff
+soil2 = dat["soil2"]  # soft
 soil2["soil_layers"]["top_level"][0] = 0
 
 steps = 10
 reload_s, reload_v = False, False
-for t in total_time:
-    sellig = LiSelig(t_ini=50, steps=steps, reload=reload_s)
-    sellig.read_traffic(train_info, t)
-    sellig.read_SoS([soil1, soil2], doubledekker["soil_ID"])  # stiff to soft
-    sellig.calculate(sleeper_width, sleeper_length, idx=idx)
-    sellig.dump(os.path.join(output_folder, f"./LiSelig_time_{t}.pickle"))
-    reload_s = deepcopy(sellig)
 
-    sett = Varandas(steps=steps, reload=reload_v)
-    sett.read_traffic(train_info, t)
-    sett.settlement(idx=idx)
-    sett.dump(os.path.join(output_folder, f"./Varandas_time_{t}.pickle"))
-    reload_v = deepcopy(sett)
+
+# varandas model
+varandas = Varandas()
+set_varandas = AccumulationModel(accumulation_model=varandas)
+# sellig model
+sellig = LiSelig([soil1, soil2], doubledekker["soil_ID"], 0.25, 3.5, t_ini=50)
+set_sellig = AccumulationModel(accumulation_model=sellig)
+
+start_time = 0
+for t in total_time:
+    set_sellig.read_traffic(train_info, start_time=start_time, end_time=t)
+    set_sellig.calculate_settlement(idx=idx, reload=reload_s)
+    set_sellig.write_results(os.path.join(output_folder, f"./LiSelig_time_{t}.pickle"))
+    reload_s = True
+
+    set_varandas.read_traffic(train_info, start_time=start_time, end_time=t)
+    set_varandas.calculate_settlement(idx=idx, reload=reload_v)
+    set_varandas.write_results(os.path.join(output_folder, f"./Varandas_time_{t}.pickle"))
+    reload_v = True
+
+with open(os.path.join(output_folder, f"LiSelig_time_15.pickle"), "rb") as f:
+    sellig = pickle.load(f)
+
+with open(os.path.join(output_folder, f"Varandas_time_15.pickle"), "rb") as f:
+    varandas = pickle.load(f)
+
+fig, ax = plt.subplots(1, 2, figsize=(10, 6))
+ax[0].plot(sellig["time"], sellig["displacement"][166], label="LiSelig")
+ax[0].plot(varandas["time"], varandas["displacement"][166], label="Varandas")
+
+ax[1].plot(sellig["time"], sellig["displacement"][500], label="LiSelig")
+ax[1].plot(varandas["time"], varandas["displacement"][500], label="Varandas")
+
+
+ax[0].grid()
+ax[0].set_xlabel("Time [days]")
+ax[0].set_ylabel("Settlement Nobe 333 [m]")
+ax[0].legend()
+
+ax[1].grid()
+ax[1].set_xlabel("Time [days]")
+ax[1].set_ylabel("Settlement Node 666 [m]")
+ax[1].legend()
+
+plt.show()
