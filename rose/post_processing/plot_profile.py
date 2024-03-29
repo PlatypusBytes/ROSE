@@ -1,8 +1,9 @@
 import os
-import matplotlib.pylab as plt
-import numpy as np
-
 import json
+from typing import List
+import numpy as np
+import matplotlib.pylab as plt
+
 
 # settings for the plot
 color = ["k", "b", "r"]
@@ -30,13 +31,13 @@ def compute_cumulative_distance(coords):
 
     return distance
 
-def weighted_avg_and_std(values: np.ndarray, weights: np.ndarray) -> [np.ndarray, np.ndarray]:
+def weighted_avg_and_std(values: np.ndarray, weights: np.ndarray) -> List[np.ndarray]:
     """
     Return the weighted average and standard deviation.
 
-    @param values: data values
-    @param weights: weights of the data values
-    @return: mean, standard deviation
+    :param values: data values
+    :param weights: weights of the data values
+    :return: mean, standard deviation
     """
 
     average = np.average(values, weights=weights)
@@ -57,17 +58,17 @@ def plot_profile(data_list: list, time: float, data_type: list,
                  output_file: str = "./result.png", are_coords_inverted: bool = True) -> None:
     """
 
-    @param label:
-    @param data_list:
-    @param time:
-    @param data_type:
-    @param fct:
-    @param xlabel:
-    @param ylabel:
-    @param xlim:
-    @param ylim:
-    @param output_file:
-    @return:
+    :param label:
+    :param data_list:
+    :param time:
+    :param data_type:
+    :param fct:
+    :param xlabel:
+    :param ylabel:
+    :param xlim:
+    :param ylim:
+    :param output_file:
+    :return:
     """
 
     # check if folder exists if not create
