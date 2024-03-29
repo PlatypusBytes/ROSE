@@ -1,6 +1,6 @@
 # unit test for cumulative
 import unittest
-from rose.model.accumulation_model_new import AccumulationModel, Varandas, LiSelig
+from rose.model.accumulation_model import AccumulationModel, Varandas, LiSelig
 import numpy as np
 import os
 import pickle
@@ -41,7 +41,7 @@ class TestVarandas(unittest.TestCase):
         with open(os.path.join(TEST_PATH, "./test_data/varandas_1.pickle"), "rb") as f:
             data = pickle.load(f)
 
-        res = compare_dics(sett.results, data.__dict__)
+        res = compare_dics(sett.results, data)
         self.assertTrue(res)
 
     def test_settlement_2(self):
@@ -62,7 +62,7 @@ class TestVarandas(unittest.TestCase):
         with open(os.path.join(TEST_PATH, "./test_data/varandas_2.pickle"), "rb") as f:
             data = pickle.load(f)
 
-        res = compare_dics(sett.results, data.__dict__)
+        res = compare_dics(sett.results, data)
         self.assertTrue(res)
 
     def test_settlement_3(self):
@@ -83,7 +83,7 @@ class TestVarandas(unittest.TestCase):
             with open(os.path.join(TEST_PATH, f"./test_data/varandas_3_{int(t)}.pickle"), "rb") as f:
                 data = pickle.load(f)
 
-            res = compare_dics(sett.results, data.__dict__)
+            res = compare_dics(sett.results, data)
             self.assertTrue(res)
 
     def tearDown(self):
