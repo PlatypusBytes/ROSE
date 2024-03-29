@@ -209,7 +209,7 @@ class Varandas:
 
 class LiSelig:
     def __init__(self, soil_sos: List[dict], soil_idx: List[int], width_stress: float, lenght_stress: float,
-                 last_layer_depth: int = -20):
+                 t_ini: int = 0, last_layer_depth: int = -20):
         r"""
         Accumulation model for soil layer. Based on Li and Selig :cite:`Li_Selig_1996`.
         Implementation based on Punetha et al. :cite:`Punetha_2020`.
@@ -219,6 +219,7 @@ class LiSelig:
         :param soil_idx: ID of each node for soil SoS
         :param width_stress: width of the stress distribution
         :param lenght_stress: length of the stress distribution
+        :param t_ini: (optional, default 0) initial time from construction in years
         :param last_layer_depth: (optional, default -20) last layer depth
         """
         # soil classes according to Li & Selig
@@ -251,6 +252,7 @@ class LiSelig:
         self.force_scl_fct = 1000  # N -> kN
         self.width_stress = width_stress
         self.length_stress = lenght_stress
+        self.t_construction = t_ini
         self.reload = False
 
         self.__read_SoS(soil_sos, soil_idx)
@@ -367,8 +369,11 @@ class LiSelig:
         """
         Calculate the settlement
 
+        :param train: train information object
+        :param nb_nodes: number of nodes
         :param idx: (optional, default None) node to compute the calculations. \
                     if None computes the calculations for all nodes
+        :param reload: (optional, default False) reload last stage
         """
         # in case of reloading read the previous stage
         if reload:
@@ -396,16 +401,14 @@ class LiSelig:
         # strain
         self.displacement = np.zeros((len(self.nodes), len(train.cumulative_time)))
 
-        t_ini = train.start_time
-
         for k, val in enumerate(self.nodes):
             # id soil for the node
             id_s = self.soil_id[val]
             for t in range(train.number_trains):
                 # N = np.linspace(1 + t_ini, self.number_cycles[t], len(self.cumulative_nb_cycles))
                 # new version from David
-                N = np.linspace(1 + np.sum(train.nb_cycles_day) * 365 * t_ini,
-                                np.sum(train.nb_cycles_day) * 365 * t_ini +
+                N = np.linspace(1 + np.sum(train.nb_cycles_day) * 365 * self.t_construction,
+                                np.sum(train.nb_cycles_day) * 365 * self.t_construction +
                                 train.number_cycles[t],
                                 len(train.cumulative_time))
 
