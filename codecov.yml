@@ -2,9 +2,3 @@ ignore:
   - "tests"
   - "rose/postprocessing"
   - "rose/optimisation"
-
-coverage:
-  status:
-    patch:
-      default:
-        target: 20%
