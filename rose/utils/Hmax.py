@@ -20,10 +20,10 @@ class HrsmMax:
         Computes the H rms and H max according to description of Level Accoustics report
 
 
-        @param signal: signal to be processed
-        @param dx: sampling frequency
-        @param convert_m2mm: (optional: default True) converts the signal from m to mm
-        @rtype: object
+        :param signal: signal to be processed
+        :param dx: sampling frequency
+        :param convert_m2mm: (optional: default True) converts the signal from m to mm
+        :return: object
         """
 
         self.signal = signal  # signal
@@ -89,9 +89,9 @@ class HrsmMax:
     def effective_values(self, n: int = 4, tau: int = 2, order: int = 3):
         """
 
-        @param n:(optional, default = 4) number of time constants
-        @param tau: (optional, default = 2) time constant
-        @param order: (optional, default = 3) Butterworth filter order
+        :param n:(optional, default = 4) number of time constants
+        :param tau: (optional, default = 2) time constant
+        :param order: (optional, default = 3) Butterworth filter order
         """
         fout = 1 / (1 - np.exp(-n))
 

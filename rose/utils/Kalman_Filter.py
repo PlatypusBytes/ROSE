@@ -7,11 +7,11 @@ class KalmanFilter:
         """
         Kalman filter: Two dimensional (e.g. displacement, velocity)
 
-        @param initial_conditions:
-        @param control_variable:
-        @param process_variance:
-        @param delta_t:
-        @param independent:
+        :param initial_conditions:
+        :param control_variable:
+        :param process_variance:
+        :param delta_t:
+        :param independent:
         """
         self.x = initial_conditions  # state matrix
         self.P = []  # process covariance matrix

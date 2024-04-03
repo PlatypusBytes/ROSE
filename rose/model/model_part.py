@@ -38,9 +38,8 @@ class Material:
         """
         Shear modulus of the material [N/m2]
 
-        ..math
-            G = E/(2*(1+\nu))
-        :return:
+        .. math::
+            G = E/(2  \\cdot (1+\\nu))
         """
         return self.youngs_modulus / (2 * (1 + self.poisson_ratio))
 
@@ -482,6 +481,7 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
     :class:`~rose.model.model_part.ElementModelPart`. This class can be used as an euler beam, if a timoshenko factor of
     0 is used.
 
+
     :Attributes:
 
         - :self.material:           material of the timoshenko beam
@@ -799,8 +799,7 @@ class TimoshenkoBeamElementModelPart(ElementModelPart):
         """
         |Sets y shape functions of the Timoshenko beam element
 
-        |B.S.Gan, An Isogeometric Approach to Beam Structures, Chapter 3
-        DOI10.1007/978-3-319-56493-7_3
+        Based on :cite:`Gan_2018` (Chapter 3)
 
         :param x: local coordinate of the element [m]
         :return:

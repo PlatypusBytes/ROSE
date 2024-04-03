@@ -71,9 +71,9 @@ Tutorials
 In ROSE several tutorials are available in the form of Jupyter notebooks.
 The tutorials are available in the following links:
 
-* Tutorial 1 - `How to setup and run the ROSE model <../../tutorials/rose_demo.ipynb>`_
-* Tutorial 2 - `How to compute the rail strain with the ROSE model <../../tutorials/calculate_strain.ipynb>`_
-* Tutorial 3 - `How to perform the model optimisation in the ROSE model <../../tutorials/rose_optimisation.ipynb>`_.
+* Tutorial 1 - `How to setup and run the ROSE model <https://github.com/PlatypusBytes/ROSE/blob/main/tutorials/rose_demo.ipynb>`_
+* Tutorial 2 - `How to compute the rail strain with the ROSE model <https://github.com/PlatypusBytes/ROSE/blob/main//tutorials/calculate_strain.ipynb>`_
+* Tutorial 3 - `How to perform the model optimisation in the ROSE model <https://github.com/PlatypusBytes/ROSE/blob/main/tutorials/rose_optimisation.ipynb>`_.
 
 
 Contributing
@@ -97,3 +97,8 @@ The :doc:`authors`.
 Package documentation
 =====================
 The :doc:`rose` documentation.
+
+References
+==========
+:doc:`bibliography` in ROSE.
+

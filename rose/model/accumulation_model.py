@@ -1,4 +1,5 @@
 import sys
+from typing import Union
 import numpy as np
 from scipy.integrate import trapz
 import os
@@ -10,10 +11,10 @@ def train_info(data: object, trains: dict, time_days: int) -> object:
     """
     Read train info and parse it to data structure
 
-    @param data: object
-    @param trains: trains dictionary containing information
-    @param time_days: time of analysis in days
-    @return: train data structure
+    :param data: object
+    :param trains: trains dictionary containing information
+    :param time_days: time of analysis in days
+    :return: train data structure
     """
     nb_nodes = []
     # determine number of loading cycles
@@ -89,7 +90,7 @@ class Results:
         """
         Writes results to json file
 
-        @param output_file: filename of the results
+        :param output_file: filename of the results
         """
 
         # check if path to output file exists. if not creates
@@ -127,19 +128,19 @@ class BaseModel:
 
 class Varandas(BaseModel, Results):
     def __init__(self, alpha: float = 0.6, beta: float = 0.82, gamma: float = 10, N0: float = 1e6, F0: float = 50,
-                 steps: int = 1, reload: (bool, object) = False):
+                 steps: int = 1, reload: Union[bool, object] = False):
         """
-        Initialisation of the accumulation model of Varandas :cite:`varandas_2014`
+        Initialisation of the accumulation model of Varandas :cite:`varandas_2014`.
 
         Parameters
         ----------
-        @param alpha: (optional, default 0.6) dependency of settlement with loading amplitude
-        @param beta: (optional, default 0.82) controls progression of settlement with number of load cycles
-        @param gamma: (optional, default 10) accumulated settlement in reference test (with F0, N0)
-        @param N0: (optional, default 1e6) reference number of cycles
-        @param F0: (optional, default 50) reference load amplitude
-        @param steps: (optional, default 1) step interval to save results
-        @param reload: (optional, default False) reload last stage
+        :param alpha: (optional, default 0.6) dependency of settlement with loading amplitude
+        :param beta: (optional, default 0.82) controls progression of settlement with number of load cycles
+        :param gamma: (optional, default 10) accumulated settlement in reference test (with F0, N0)
+        :param N0: (optional, default 1e6) reference number of cycles
+        :param F0: (optional, default 50) reference load amplitude
+        :param steps: (optional, default 1) step interval to save results
+        :param reload: (optional, default False) reload last stage
         """
         #ToDo: improve load distribution accross time
         super().__init__()
@@ -183,8 +184,8 @@ class Varandas(BaseModel, Results):
 
         Parameters
         ----------
-        @param trains: Dictionary with train information
-        @param time_days: Time in days of the analysis
+        :param trains: Dictionary with train information
+        :param time_days: Time in days of the analysis
         """
         # read train info
         train_info(self, trains, time_days)
@@ -202,19 +203,20 @@ class Varandas(BaseModel, Results):
         where :math:`u_{p, n}` is:
 
         .. math::
-            u_{p, n} = \frac{\gamma}{M_{\alpha \beta}} \int_{0}^{\bar{F_{n}}} F^{\alpha} \left( \frac{1}{h(F) + 1} \right)^{\beta} dF
+            u_{p, n} = \\frac{\\gamma}{M_{\\alpha \\beta}} \\int_{0}^{\\bar{F_{n}}} F^{\\alpha} \\left( \\frac{1}{h(F) + 1} \\right)^{\\beta} dF
 
-        and :math:`M_{\alpha\beta}`:
+
+        and :math:`M_{\\alpha\\beta}`:
 
         .. math::
-            M_{\alpha\beta} = \frac{F_{0}^{\alpha + 1}}{\alpha + 1} \sum_{n=1}^{N_{0}} \left(\frac{1}{n}\right)^{\beta}
+            M_{\\alpha\\beta} = \\frac{F_{0}^{\\alpha + 1}}{\\alpha + 1} \\sum_{n=1}^{N_{0}} \\left(\\frac{1}{n}\\right)^{\\beta}
 
         :math:`h(F)` corresponds to the load histogram.
 
 
         Parameters
         ----------
-        @param idx: (optional, default None) node to compute the calculations.
+        :param idx: (optional, default None) node to compute the calculations.
                     if None computes the calculations for all nodes
         """
 
@@ -296,16 +298,17 @@ class Varandas(BaseModel, Results):
 
 
 class LiSelig(BaseModel, Results):
-    def __init__(self, t_ini: int = 0, last_layer_depth: int = -20, steps: int = 1, reload: (bool, object) = False):
+    def __init__(self, t_ini: int = 0, last_layer_depth: int = -20, steps: int = 1,
+                 reload: Union[bool, object] = False):
         r"""
         Accumulation model for soil layer. Based on Li and Selig :cite:`Li_Selig_1996`.
         Implementation based on Punetha et al. :cite:`Punetha_2020`.
         The model has been improved with :cite:`Charoenwong_2022`.
 
-        @param t_ini: (optional, default 0) initial time
-        @param last_layer_depth: (optional, default -20) last layer depth
-        @param steps: (optional, default 1) step interval to save results
-        @param reload: (optional, default False) reload last stage
+        :param t_ini: (optional, default 0) initial time
+        :param last_layer_depth: (optional, default -20) last layer depth
+        :param steps: (optional, default 1) step interval to save results
+        :param reload: (optional, default False) reload last stage
         """
         super().__init__()
         # soil classes according to Li & Selig
@@ -349,8 +352,8 @@ class LiSelig(BaseModel, Results):
         """
         Reads the train traffic information
 
-        @param trains: Dictionary with train information
-        @param time_days: Time in days of the analysis
+        :param trains: Dictionary with train information
+        :param time_days: Time in days of the analysis
         """
         # read train info
         train_info(self, trains, time_days)
@@ -360,8 +363,8 @@ class LiSelig(BaseModel, Results):
         """
         Parses data from SOS json file into the structure for the Li & Selig model.
 
-        @param soil_sos: SOS dictionary
-        @param soil_id: ID of each node
+        :param soil_sos: SOS dictionary
+        :param soil_id: ID of each node
         """
 
         self.nb_soils = len(soil_sos)
@@ -432,11 +435,11 @@ class LiSelig(BaseModel, Results):
 
     def dev_stress(self, width: float, length: float):
         """
-        Computes deviatoric stress based on analytical solution from Flamant (see Verruijt 2018 pg 231-232).
+        Computes deviatoric stress based on analytical solution from Flamant (see :cite:`Verruijt_2018` pg. 231-232).
         ToDo: This can be improved for a layered soil.
 
-        @param width: width of the strip load
-        @param length: length of the stress distribution
+        :param width: width of the strip load
+        :param length: length of the stress distribution
         """
 
         for i in range(self.nb_soils):
@@ -468,9 +471,9 @@ class LiSelig(BaseModel, Results):
         """
         Calculate the settlement
 
-        @param width: width of the stress distribution
-        @param length: length of the stress distribution
-        @param idx: (optional, default None) node to compute the calculations.
+        :param width: width of the stress distribution
+        :param length: length of the stress distribution
+        :param idx: (optional, default None) node to compute the calculations. \
                     if None computes the calculations for all nodes
         """
 
@@ -520,7 +523,7 @@ class LiSelig(BaseModel, Results):
             self.displacement[k, :] = self.displacement[k, :] - self.displacement[k, 0]
             if self.reload:
                 self.displacement[k, :] = self.displacement[k, :] + np.array(self.previous_stage)[k, -1]
-        
+
         pbar.close()
         self.create_results()
         if self.reload:

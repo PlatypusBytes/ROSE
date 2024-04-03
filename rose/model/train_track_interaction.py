@@ -76,7 +76,7 @@ class CoupledTrainTrack(GlobalSystem):
         Finds track elements and degree of freedom indices in the global system which are in contact with each wheel on
         each time step.
 
-        # todo currently track global indices are the y disp index and z-rot index, make this more general such that
+        # ToDo currently track global indices are the y disp index and z-rot index, make this more general such that \
            it works for an inclined track
         :return:
         """

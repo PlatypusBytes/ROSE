@@ -10,15 +10,16 @@ class WheelFlat:
    :Attributes:
        - :self.irregularities:     np array of the irregularities at each position
    """
-    def __init__(self, x: np.ndarray, wheel_diameter: float, flatness_length: float, start_position=None, seed=99):
+    def __init__(self, x: np.ndarray, wheel_diameter: float, flatness_length: float, start_position=None, seed=14):
         """
-        Creates an array with a wheel flat. where every circumference of the wheel, the wheel is indented
+        Creates an array with a wheel flat. where every circumference of the wheel, the wheel is indented.
+        Adapted from :cite:`Uzzal_2013`.
 
         :param x: position of the node [m]
         :param wheel_diameter: diameter of the wheel [m]
         :param flatness_length: total flat length of the wheel [m]
         :param start_position: optional starting position of where a wheel flat is known
-        :param seed: (default 99) seed for random generator
+        :param seed: (default 14) seed for random generator
         """
 
         # random generator
@@ -64,7 +65,7 @@ class WheelFlat:
 
 class RailIrregularities:
     """
-    Class containing rail unevenness following :cite: `zhang_2001`.
+    Class containing rail unevenness following :cite:`zhang_2001`.
 
     :Attributes:
         - :self.Av:                 Vertical track irregularity parameter
@@ -75,19 +76,19 @@ class RailIrregularities:
     def __init__(self, x: np.ndarray,
                  f_min: float = 2, f_max: float = 500, N: int = 2000, Av: float = 0.00002095, omega_c: float = 0.8242, seed=99):
         """
-        Creates rail unevenness following :cite: `zhang_2001`.
+        Creates rail unevenness following :cite:`zhang_2001`.
 
-        A summary of default values can be found in : cite: `Podworna_2015`.
+        A summary of default values can be found in :cite:`Podworna_2015`.
 
         Parameters
         ----------
-        @param x: position of the node
-        @param f_min: (default 2 Hz) minimum frequency for the PSD of the unevenness
-        @param f_max: (default 500 Hz) maximum frequency for the PSD of the unevenness
-        @param N: (default 2000) number of frequency increments
-        @param Av: (default 0.00002095 m2 rad/m) vertical track irregularity parameters
-        @param omega_c: (default 0.8242 rad/m) critical wave number
-        @param seed: (default 99) seed for random generator
+        :param x: position of the node
+        :param f_min: (default 2 Hz) minimum frequency for the PSD of the unevenness
+        :param f_max: (default 500 Hz) maximum frequency for the PSD of the unevenness
+        :param N: (default 2000) number of frequency increments
+        :param Av: (default 0.00002095 m2 rad/m) vertical track irregularity parameters
+        :param omega_c: (default 0.8242 rad/m) critical wave number
+        :param seed: (default 99) seed for random generator
         """
 
         # default parameters

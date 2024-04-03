@@ -15,11 +15,17 @@ release = '1'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 extensions = ['sphinx.ext.autodoc',
               'sphinx_rtd_theme',
+              'sphinxcontrib.bibtex',
               'sphinx.ext.intersphinx']
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
+# bibtex file
+bibtex_bibfiles = ['refs.bib']
+
+# to add __init__ documentation to the build
+autoclass_content = 'both'
 
 
 # -- Options for HTML output -------------------------------------------------
