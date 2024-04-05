@@ -1,4 +1,5 @@
 from enum import Enum
+from copy import deepcopy
 import numpy as np
 from rose.model.train_model import TrainModel, Cart, Bogie, Wheel
 
@@ -540,7 +541,7 @@ def build_cargo_train(time: np.ndarray, velocities: np.ndarray, start_coord: flo
         if i < nb_locomotives:
             # is the locomotive => skip
             continue
-        cargo_train.carts[i] = wagon_train.carts[0]
+        cargo_train.carts[i] = deepcopy(wagon_train.carts[0])
 
     return cargo_train
 
