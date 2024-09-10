@@ -1,9 +1,11 @@
-from typing import Union, List
-import numpy as np
-from scipy.integrate import trapz
 import os
 import pickle
+from typing import Union, List
+from abc import ABC, abstractmethod
+import numpy as np
+from scipy.integrate import trapz
 from tqdm import tqdm
+
 
 class ReadTrainInfo:
     """
@@ -64,7 +66,19 @@ class ReadTrainInfo:
         self.index_cumulative_distributed = np.array(self.index_cumulative_distributed).astype(int)
 
 
-class Varandas:
+class AccumulationModel(ABC):
+    """
+    Abstract class for accumulation models
+    """
+    @abstractmethod
+    def settlement():
+        """
+        Abstract method to compute the cumulative settlement
+        """
+        raise Exception("It is not allowed to call the AccumulationModel abstract method")
+
+
+class Varandas(AccumulationModel):
     def __init__(self, alpha: float = 0.6, beta: float = 0.82, gamma: float = 10, N0: float = 1e6, F0: float = 50):
         """
         Initialisation of the accumulation model of Varandas :cite:`varandas_2014`.
@@ -207,7 +221,7 @@ class Varandas:
             self.displacement = self.displacement + np.expand_dims(previous_displacement, axis=1)
 
 
-class LiSelig:
+class LiSelig(AccumulationModel):
     def __init__(self, soil_sos: List[dict], soil_idx: List[int], width_stress: float, lenght_stress: float,
                  t_ini: int = 0, last_layer_depth: int = -20):
         r"""

@@ -24,9 +24,8 @@ with open(os.path.join(base_path, f"DOUBLEDEKKER.pickle"), "rb") as f:
 #     BR189 = pickle.load(f)
 
 
-total_time = [5, 10, 15]  # days
-# total_time = [365]  # days
-idx = range(500-333, 500+333)  # indexes to collect data
+total_time = [10, 25]  # days
+idx = range(500-100, 500+100)  # indexes to collect data
 
 # train info
 train_info = {"dubbeldekker": {"forces": np.array(doubledekker['vertical_force_soil']),
@@ -70,8 +69,8 @@ reload_s, reload_v = False, False
 
 
 # varandas model
-start_time = 0
-reload_v = False
+# start_time = 0
+# reload_v = False
 model = Varandas()
 set_varandas = AccumulationModel(accumulation_model=model)
 
@@ -93,31 +92,31 @@ for t in total_time:
     reload_v = True
     start_time = t
 
-with open(os.path.join(output_folder, f"LiSelig_time_15.pickle"), "rb") as f:
+with open(os.path.join(output_folder, f"LiSelig_time_25.pickle"), "rb") as f:
     sellig = pickle.load(f)
 
-with open(os.path.join(output_folder, f"Varandas_time_15.pickle"), "rb") as f:
+with open(os.path.join(output_folder, f"Varandas_time_25.pickle"), "rb") as f:
     varandas = pickle.load(f)
 
-fig, ax = plt.subplots(1, 2, figsize=(10, 6))
-ax[0].plot(sellig["time"], sellig["displacement"][166], label="LiSelig")
-ax[0].plot(varandas["time"], varandas["displacement"][166], label="Varandas")
-ax[0].plot(varandas["time"], np.array(sellig["displacement"][166]) +
-           np.array(varandas["displacement"][166]), label="Total")
+fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+ax[0].plot(sellig["time"], sellig["displacement"][50], label="LiSelig")
+ax[0].plot(varandas["time"], varandas["displacement"][50], label="Varandas")
+ax[0].plot(varandas["time"], np.array(sellig["displacement"][50]) +
+           np.array(varandas["displacement"][50]), label="Total")
 
-ax[1].plot(sellig["time"], sellig["displacement"][500], label="LiSelig")
-ax[1].plot(varandas["time"], varandas["displacement"][500], label="Varandas")
-ax[1].plot(varandas["time"], np.array(sellig["displacement"][500]) +
-           np.array(varandas["displacement"][166]), label="Total")
+ax[1].plot(sellig["time"], np.array(sellig["displacement"][150])*40, label="LiSelig")
+ax[1].plot(varandas["time"], varandas["displacement"][150], label="Varandas")
+ax[1].plot(varandas["time"], np.array(sellig["displacement"][150])*40 +
+           np.array(varandas["displacement"][150]), label="Total")
 
 ax[0].grid()
 ax[0].set_xlabel("Time [days]")
-ax[0].set_ylabel("Settlement Nobe 333 [m]")
+ax[0].set_ylabel("Settlement [m]")
 ax[0].legend()
 
 ax[1].grid()
 ax[1].set_xlabel("Time [days]")
-ax[1].set_ylabel("Settlement Node 666 [m]")
+ax[1].set_ylabel("Settlement [m]")
 ax[1].legend()
 
 plt.show()
