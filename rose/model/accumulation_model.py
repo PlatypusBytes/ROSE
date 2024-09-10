@@ -1,134 +1,85 @@
-import sys
-from typing import Union
-import numpy as np
-from scipy.integrate import trapz
 import os
 import pickle
+from typing import Union, List
+from abc import ABC, abstractmethod
+import numpy as np
+from scipy.integrate import trapz
 from tqdm import tqdm
 
 
-def train_info(data: object, trains: dict, time_days: int) -> object:
+class ReadTrainInfo:
     """
     Read train info and parse it to data structure
-
-    :param data: object
-    :param trains: trains dictionary containing information
-    :param time_days: time of analysis in days
-    :return: train data structure
     """
-    nb_nodes = []
-    # determine number of loading cycles
-    for t in trains:
-        data.trains.append(t)
-        # compute number of cycles
-        aux = trains[t]["nb-per-hour"] * trains[t]["nb-hours"] * trains[t]["nb-axles"]
-        # number axles a day
-        data.nb_cycles_day.append(aux)
-        # number cycles of train
-        data.number_cycles.append(aux * (time_days - data.start_time))
-        # force for train t
-        data.force.append(trains[t]["forces"])
-        # nb of nodes
-        nb_nodes.append(len(trains[t]["forces"]))
-
-    # number of trains
-    data.number_trains = len(data.trains)
-    # define cumulative time
-    data.cumulative_time = np.linspace(data.start_time, time_days, int(np.max(data.number_cycles) / data.steps))
-    # define cumulative nb cycles
-    data.cumulative_nb_cycles = np.linspace(data.start_time, int(np.max(data.number_cycles)) - 1, int(np.max(data.number_cycles)))
-    # index to save results
-    data.steps_index = np.linspace(0, int(np.max(data.number_cycles)) - 1, int(np.max(data.number_cycles) / data.steps)).astype(int)
-
-    # index for distributed loading
-    for nb in data.number_cycles:
-        data.index_cumulative_distributed.append(np.linspace(0, nb - 1, int(np.max(data.number_cycles))) * (np.max(data.number_cycles) / data.steps))
-    data.index_cumulative_distributed = np.array(data.index_cumulative_distributed).astype(int)
-
-    # check if number of nodes is the same for all the trains
-    if all(nb_nodes[0] == x for x in nb_nodes):
-        data.nb_nodes = nb_nodes[0]
-    else:
-        sys.exit("Error: number of nodes is not the same for the different trains")
-    return data
-
-
-class Results:
-    r"""
-    Base class for the results
-    """
-    def __init__(self):
-        self.time = []
-        self.displacement = []
-        self.nodes = []
-
-    def create_results(self):
+    def __init__(self, trains: dict, start_time: int, end_time: int, steps: int = 1):
         """
-        Creates the results dictionary
+        Initialise the train information
+
+        :param trains: trains dictionary containing traffic information
+        :param start_time: start time of analysis in days
+        :param end_time: time of analysis in days
+        :param steps: step interval to save results
         """
-        # collect displacements
-        aux = []
-        for i, _ in enumerate(self.nodes):
-            # if reloading => append previous results
-            if self.reload:
-                aux.append(np.hstack([self.reload.displacement[i], self.displacement[i].tolist()]).tolist())
-            else:
-                aux.append(self.displacement[i].tolist())
-
-        # if reloading => append results
-        if self.reload:
-            time = np.hstack([self.reload.cumulative_time, self.cumulative_time])
-        else:
-            time = self.cumulative_time
-
-        # create results struct
-        self.results.nodes = list(self.nodes)
-        self.results.time = time.tolist()
-        self.results.displacement = aux
-
-    def dump(self, output_file: str):
-        """
-        Writes results to json file
-
-        :param output_file: filename of the results
-        """
-
-        # check if path to output file exists. if not creates
-        if not os.path.isdir(os.path.split(output_file)[0]):
-            os.makedirs(os.path.split(output_file)[0])
-
-        # dump dict
-        with open(output_file, "wb") as f:
-            pickle.dump(self.results, f)
-
-
-class BaseModel:
-    r"""
-    Base variables for the accumulation models
-    """
-    def __init__(self):
-        self.trains = []
-        self.number_trains = []  # number of trains
-        self.trains = []  # name of train types
-        self.number_cycles = []  # number of total loading cycles
-        self.nb_cycles_day = []  # number of loading cycles / day
+        self.trains_info = trains
+        self.start_time = start_time
+        self.end_time = end_time
+        self.steps = steps
+        self.trains_name = []
+        self.nb_cycles_day = []
+        self.number_cycles = []
         self.force = []
+        self.number_trains = []
         self.cumulative_time = []
         self.cumulative_nb_cycles = []
-        self.index_cumulative_distributed = []
-        self.nodes = []
-        self.results = Results()
-        self.steps = []
         self.steps_index = []
-        self.start_time = 0
-        self.end_time = []
-        self.previous_stage = []
-        self.displacement = []
+        self.index_cumulative_distributed = []
+        self.__train_info()
+
+    def __train_info(self):
+        """
+        Read train info and parse it to data structure
+        """
+        # determine number of loading cycles
+        for t in self.trains_info:
+            self.trains_name.append(t)
+            # compute number of cycles
+            aux = self.trains_info[t]["nb-per-hour"] * self.trains_info[t]["nb-hours"] * self.trains_info[t]["nb-axles"]
+            # number axles a day
+            self.nb_cycles_day.append(aux)
+            # number cycles of train
+            self.number_cycles.append(aux * (self.end_time - self.start_time))
+            # force for train t
+            self.force.append(self.trains_info[t]["forces"])
+
+        # number of trains
+        self.number_trains = len(self.trains_name)
+        # define cumulative time
+        self.cumulative_time = np.linspace(self.start_time, self.end_time, int(np.max(self.number_cycles) / self.steps))
+        # define cumulative nb cycles
+        self.cumulative_nb_cycles = np.linspace(self.start_time, int(np.max(self.number_cycles)) - 1, int(np.max(self.number_cycles)))
+        # index to save results
+        self.steps_index = np.linspace(0, int(np.max(self.number_cycles)) - 1, int(np.max(self.number_cycles) / self.steps)).astype(int)
+
+        # index for distributed loading
+        for nb in self.number_cycles:
+            self.index_cumulative_distributed.append(np.linspace(0, nb - 1, int(np.max(self.number_cycles))) * (np.max(self.number_cycles) / self.steps))
+        self.index_cumulative_distributed = np.array(self.index_cumulative_distributed).astype(int)
 
 
-class Varandas(BaseModel, Results):
-    def __init__(self, alpha: float = 0.6, beta: float = 0.82, gamma: float = 10, N0: float = 1e6, F0: float = 50,
-                 steps: int = 1, reload: Union[bool, object] = False):
+class AccumulationModel(ABC):
+    """
+    Abstract class for accumulation models
+    """
+    @abstractmethod
+    def settlement():
+        """
+        Abstract method to compute the cumulative settlement
+        """
+        raise Exception("It is not allowed to call the AccumulationModel abstract method")
+
+
+class Varandas(AccumulationModel):
+    def __init__(self, alpha: float = 0.6, beta: float = 0.82, gamma: float = 10, N0: float = 1e6, F0: float = 50):
         """
         Initialisation of the accumulation model of Varandas :cite:`varandas_2014`.
 
@@ -139,11 +90,8 @@ class Varandas(BaseModel, Results):
         :param gamma: (optional, default 10) accumulated settlement in reference test (with F0, N0)
         :param N0: (optional, default 1e6) reference number of cycles
         :param F0: (optional, default 50) reference load amplitude
-        :param steps: (optional, default 1) step interval to save results
-        :param reload: (optional, default False) reload last stage
         """
         #ToDo: improve load distribution accross time
-        super().__init__()
 
         # material parameters
         self.alpha = alpha
@@ -152,10 +100,6 @@ class Varandas(BaseModel, Results):
         # model parameters
         self.N0 = N0
         self.F0 = F0
-        # step to save results
-        self.steps = steps
-        # reload previous step
-        self.reload = reload
 
         # M alpha beta
         summation = [(1 / n) ** self.beta for n in range(1, int(self.N0))]
@@ -173,25 +117,8 @@ class Varandas(BaseModel, Results):
         self.force_scl_fct = 1000  # N -> kN
         self.disp_scl_fct = 1000  # mm -> m
 
-        # update variables in case of reloading
-        if self.reload:
-            self.start_time = reload.end_time
-            self.previous_stage = reload
 
-    def read_traffic(self, trains: dict, time_days: int):
-        """
-        Reads the train traffic information
-
-        Parameters
-        ----------
-        :param trains: Dictionary with train information
-        :param time_days: Time in days of the analysis
-        """
-        # read train info
-        train_info(self, trains, time_days)
-        self.end_time = time_days
-
-    def settlement(self, idx: list = None):
+    def settlement(self, train: ReadTrainInfo, nb_nodes: int, idx: list = None, reload=False):
         """
         Computes cumulative settlement following the methodology proposed by Varandas :cite:`varandas_2014`.
 
@@ -216,51 +143,55 @@ class Varandas(BaseModel, Results):
 
         Parameters
         ----------
-        :param idx: (optional, default None) node to compute the calculations.
+        :param train: train information object
+        :param nb_nodes: number of nodes
+        :param idx: (optional, default None) node to compute the calculations. \
                     if None computes the calculations for all nodes
         """
 
+        # in case of reloading read the previous stage
+        if reload:
+            previous_displacement = self.displacement[:, -1]
+
         # if index is None compute for all nodes
         if not idx:
-            idx = range(int(self.nb_nodes))
+            idx = range(int(nb_nodes))
 
         # assign nodes
-        self.nodes = idx
+        self.nodes = list(idx)
 
         # cumulative displacement
-        self.displacement = np.zeros((int(len(idx)), int(np.max(self.number_cycles) / self.steps)))
+        self.displacement = np.zeros((int(len(idx)), int(np.max(train.number_cycles) / train.steps)))
         # displacement due to cycle n
-        disp = np.zeros((int(len(idx)), int(np.max(self.number_cycles) / self.steps)))
+        disp = np.zeros((int(len(idx)), int(np.max(train.number_cycles) / train.steps)))
 
         # compute maximum force
-        for j in range(self.number_trains):
+        force_max = []
+        for j in range(train.number_trains):
             # histogram.extend(self.number_cycles[j] * [np.max(np.abs(self.force[j]), axis=1) / self.force_scl_fct])
-            self.force_max.append(np.max(np.abs(self.force[j]), axis=1)[idx] / self.force_scl_fct)
-        self.force_max = np.array(self.force_max)
+            force_max.append(np.max(np.abs(train.force[j]), axis=1)[idx] / self.force_scl_fct)
+        self.force_max = np.array(force_max)
         # Vector F for integration
         F = np.linspace(0, np.max(self.force_max, axis=0), self.nb_int_step)
 
         print("Running Varandas model")
         # progress bar
-        pbar = tqdm(
-            total=len(self.cumulative_nb_cycles),
-            unit_scale=True,
-            unit="steps",
-        )
+        pbar = tqdm(total=len(train.cumulative_nb_cycles), unit_scale=True, unit="steps")
 
         # initialise variables
-        self.h_f = np.zeros(len(self.nodes))
-        max_val_force = np.zeros((len(self.nodes), self.number_trains)).T
-        # in case of reloading
-        if self.reload:
-            self.h_f = self.previous_stage.h_f
-            max_val_force = self.previous_stage.max_val_force
+        if not reload:
+            self.h_f = np.zeros(len(self.nodes))
+            max_val_force = np.zeros((len(self.nodes), train.number_trains)).T
+        else:
+            # in case of reloading
+            # self.h_f = self.h_f
+            max_val_force = self.max_val_force
 
         i = 0
         aux = np.zeros(len(self.nodes))
-        for n, nb_cyc in enumerate(self.cumulative_nb_cycles):
-            for tr in range(self.number_trains):
-                if nb_cyc <= self.number_cycles[tr]:
+        for n, nb_cyc in enumerate(train.cumulative_nb_cycles):
+            for tr in range(train.number_trains):
+                if nb_cyc <= train.number_cycles[tr]:
                     self.h_f[self.force_max[tr, :] <= max_val_force[tr, :]] += 1
                     max_val_force[tr, self.force_max[tr, :] > max_val_force[tr, :]] = self.force_max[tr, self.force_max[tr, :] > max_val_force[tr, :]]
 
@@ -270,7 +201,7 @@ class Varandas(BaseModel, Results):
 
                     aux += self.gamma / self.M_alpha_beta * val
 
-            if n in self.steps_index:
+            if n in train.steps_index:
                 # compute displacement on cycle N
                 disp[:, i] = aux
                 aux = np.zeros(len(self.nodes))
@@ -286,31 +217,25 @@ class Varandas(BaseModel, Results):
         # compute displacements
         self.displacement = np.cumsum(disp, axis=1) / self.disp_scl_fct
         # in case of reloading
-        if self.reload:
-            self.displacement = self.displacement +\
-                                (np.ones((self.displacement.shape[1], 1)) * np.array(self.previous_stage.displacement)[:, -1]).T
-
-        # create results dic
-        self.create_results()
-        if self.reload:
-            self.displacement = self.results.displacement
-            self.cumulative_time = self.results.time
+        if reload:
+            self.displacement = self.displacement + np.expand_dims(previous_displacement, axis=1)
 
 
-class LiSelig(BaseModel, Results):
-    def __init__(self, t_ini: int = 0, last_layer_depth: int = -20, steps: int = 1,
-                 reload: Union[bool, object] = False):
+class LiSelig(AccumulationModel):
+    def __init__(self, soil_sos: List[dict], soil_idx: List[int], width_stress: float, lenght_stress: float,
+                 t_ini: int = 0, last_layer_depth: int = -20):
         r"""
         Accumulation model for soil layer. Based on Li and Selig :cite:`Li_Selig_1996`.
         Implementation based on Punetha et al. :cite:`Punetha_2020`.
         The model has been improved with :cite:`Charoenwong_2022`.
 
-        :param t_ini: (optional, default 0) initial time
+        :param soil_sos: SoS dictionary
+        :param soil_idx: ID of each node for soil SoS
+        :param width_stress: width of the stress distribution
+        :param lenght_stress: length of the stress distribution
+        :param t_ini: (optional, default 0) initial time from construction in years
         :param last_layer_depth: (optional, default -20) last layer depth
-        :param steps: (optional, default 1) step interval to save results
-        :param reload: (optional, default False) reload last stage
         """
-        super().__init__()
         # soil classes according to Li & Selig
         self.other = ["a", "ht"]
         self.sand = ["zg", "zm", "zf"]
@@ -318,7 +243,6 @@ class LiSelig(BaseModel, Results):
         self.silt_plas = ["z&h", "zk", "k&s", "z&k"]
         self.clay_low = ["kz", "k", "sd"]
         self.clay_high = ["ko", "k&v", "vk", "v", "o&z"]
-        self.reload = reload
 
         # variables
         self.name = []  # layer name
@@ -340,26 +264,15 @@ class LiSelig(BaseModel, Results):
         self.sigma_v0 = []  # Initial effective vertical stress
         self.sigma_deviatoric = []  # Deviatoric stress
         self.force_scl_fct = 1000  # N -> kN
-        self.t_ini = t_ini
-        self.steps = steps
+        self.width_stress = width_stress
+        self.length_stress = lenght_stress
+        self.t_construction = t_ini
+        self.reload = False
 
-        # update variables in case of reloading
-        if self.reload:
-            self.start_time = reload.end_time
-            self.previous_stage = reload.displacement
+        self.__read_SoS(soil_sos, soil_idx)
 
-    def read_traffic(self, trains: dict, time_days: int):
-        """
-        Reads the train traffic information
 
-        :param trains: Dictionary with train information
-        :param time_days: Time in days of the analysis
-        """
-        # read train info
-        train_info(self, trains, time_days)
-        self.end_time = time_days
-
-    def read_SoS(self, soil_sos: dict, soil_id: list):
+    def __read_SoS(self, soil_sos: dict, soil_id: list):
         """
         Parses data from SOS json file into the structure for the Li & Selig model.
 
@@ -376,7 +289,7 @@ class LiSelig(BaseModel, Results):
             self.cohesion.append(np.array(soil_sos[s]['soil_layers']["cohesion"]))  # cohesion
             self.z_coord.append(np.array(soil_sos[s]['soil_layers']['top_level']))  # layer thickness
 
-    def initial_stress(self):
+    def __initial_stress(self):
         """
         Computes initial vertical effective stress at the middle of the layer
         """
@@ -387,7 +300,7 @@ class LiSelig(BaseModel, Results):
             self.z_middle.append(np.abs((self.z_coord[i] - self.z_coord[i][0])) + self.thickness[i] / 2)
             self.sigma_v0.append(self.gamma[i] * self.z_middle[i])
 
-    def classify(self):
+    def __classify(self):
         """
         Parameterise soil layers for the Li and Selig model following the SOS name convention.
         """
@@ -421,34 +334,33 @@ class LiSelig(BaseModel, Results):
                     b.append(0)
                     m.append(0)
                 else:
-                    sys.exit(f"ERROR: Soil layer {name} not defined.")
+                    raise ValueError(f"ERROR: Soil layer {name} not defined.")
             self.a.append(a)
             self.b.append(b)
             self.m.append(m)
 
-    def strength(self):
+    def __strength(self):
         """
         Computes shear strength resistance, assuming MC failure
         """
         for i in range(self.nb_soils):
             self.sigma_s.append(self.sigma_v0[i] * np.tan(self.phi[i]) + self.cohesion[i])
 
-    def dev_stress(self, width: float, length: float):
+    def __dev_stress(self, force_list: np.array):
         """
         Computes deviatoric stress based on analytical solution from Flamant (see :cite:`Verruijt_2018` pg. 231-232).
         ToDo: This can be improved for a layered soil.
 
-        :param width: width of the strip load
-        :param length: length of the stress distribution
+        :param force_list: list of forces
         """
 
         for i in range(self.nb_soils):
-            self.sigma_deviatoric.append(np.zeros((len(self.nodes), len(self.z_middle[i]), len(self.force))))
+            self.sigma_deviatoric.append(np.zeros((len(self.nodes), len(self.z_middle[i]), len(force_list))))
 
-        for f, force in enumerate(self.force):
+        for f, force in enumerate(force_list):
             # Flamant's approximation
-            stress = np.max(np.abs(force), axis=1) / (length * width) / self.force_scl_fct
-            a = width / 2
+            stress = np.max(np.abs(force), axis=1) / (self.length_stress * self.width_stress) / self.force_scl_fct
+            a = self.width_stress / 2
             x = np.linspace(-10 * a, 10 * a, 100)
 
             # for each layer
@@ -467,52 +379,52 @@ class LiSelig(BaseModel, Results):
                     sigma_2 = (stress_xx + stress_zz) / 2 - np.sqrt(((stress_xx - stress_zz) / 2)**2 + stress_xz**2)
                     self.sigma_deviatoric[id_soil][k, i, f] = np.max((sigma_1 - sigma_2)/2)
 
-    def calculate(self, width: float, length: float, idx: list = None):
+    def settlement(self, train: ReadTrainInfo, nb_nodes: int, idx: list = None, reload=False):
         """
         Calculate the settlement
 
-        :param width: width of the stress distribution
-        :param length: length of the stress distribution
+        :param train: train information object
+        :param nb_nodes: number of nodes
         :param idx: (optional, default None) node to compute the calculations. \
                     if None computes the calculations for all nodes
+        :param reload: (optional, default False) reload last stage
         """
+        # in case of reloading read the previous stage
+        if reload:
+            previous_displacement = self.displacement[:, -1]
 
         # if index is None compute for all nodes
         if not idx:
-            idx = range(int(self.nb_nodes))
+            idx = range(int(nb_nodes))
 
         # assign nodes
-        self.nodes = idx
+        self.nodes = list(idx)
 
         # progress bar
         print("Running Li & Selig model")
-        pbar = tqdm(
-            total=len(self.nodes),
-            unit_scale=True,
-            unit="steps",
-        )
+        pbar = tqdm(total=len(self.nodes), unit_scale=True, unit="steps")
 
         # parameterise settlement model
-        self.classify()
+        self.__classify()
         # compute initial vertical stress
-        self.initial_stress()
+        self.__initial_stress()
         # compute strength
-        self.strength()
+        self.__strength()
         # deviatoric stress
-        self.dev_stress(width, length)
+        self.__dev_stress(train.force)
         # strain
-        self.displacement = np.zeros((len(self.nodes), len(self.cumulative_time)))
+        self.displacement = np.zeros((len(self.nodes), len(train.cumulative_time)))
 
         for k, val in enumerate(self.nodes):
             # id soil for the node
             id_s = self.soil_id[val]
-            for t in range(len(self.trains)):
-                # N = np.linspace(1 + self.t_ini, self.number_cycles[t], len(self.cumulative_nb_cycles))
+            for t in range(train.number_trains):
+                # N = np.linspace(1 + t_ini, self.number_cycles[t], len(self.cumulative_nb_cycles))
                 # new version from David
-                N = np.linspace(1 + np.sum(self.nb_cycles_day) * 365 * self.t_ini,
-                                np.sum(self.nb_cycles_day) * 365 * self.t_ini +
-                                self.number_cycles[t],
-                                len(self.cumulative_time))
+                N = np.linspace(1 + np.sum(train.nb_cycles_day) * 365 * self.t_construction,
+                                np.sum(train.nb_cycles_day) * 365 * self.t_construction +
+                                train.number_cycles[t],
+                                len(train.cumulative_time))
 
                 for i in range(len(self.thickness[id_s])):
                     # # basic model
@@ -525,7 +437,118 @@ class LiSelig(BaseModel, Results):
                 self.displacement[k, :] = self.displacement[k, :] + np.array(self.previous_stage)[k, -1]
 
         pbar.close()
-        self.create_results()
+        # in case of reloading
+        if reload:
+            self.displacement = self.displacement + np.expand_dims(previous_displacement, axis=1)
+
+
+class AccumulationModel:
+    r"""
+    Accumulation model
+
+    Computation of the cumulative settlement. Currently the following models are supported:
+    - Varandas :cite:`varandas_2014`
+    - Li & Selig :cite:`Li_Selig_1996`
+
+    """
+    def __init__(self, accumulation_model: Union[Varandas, LiSelig], steps: int = 1):
+        """
+        Initialisation of the accumulation model
+
+        :param accumulation_model: Accumulation model
+        :param steps: step interval to save results
+        """
+
+        self.trains = []
+        self.nb_nodes = []
+        self.previous_stage = []
+        self.displacement = []
+        self.end_time = 0
+        self.steps = steps
+        self.results = {}
+        self.reload = False
+        self.previous_stage_results = {}
+
+        self.accumulation_model = accumulation_model
+
+    def read_traffic(self, trains: dict, end_time: int, start_time: int = 0):
+        """
+        Reads the train traffic information
+
+        :param trains: Dictionary with train information
+        :param end_time: Time in days of the analysis
+        :param start_time: (optional, default 0) start time of analysis in days
+        """
+
+        nb_nodes = []
+        # determine number of nodes
+        for t in trains:
+            nb_nodes.append(len(trains[t]["forces"]))
+
+        # check if number of nodes is the same for all the trains
+        if len(set(nb_nodes)) == 1:
+            self.nb_nodes = nb_nodes[0]
+        else:
+            raise ValueError("Error: number of nodes is not the same for the different trains")
+
+        # read train info
+        self.trains = ReadTrainInfo(trains, start_time, end_time, steps=self.steps)
+
+    def calculate_settlement(self, idx: list = None, reload: bool = False):
+        """
+        Computes the cumulative settlement
+
+        :param idx: (optional, default None) node to compute the calculations.
+        :param reload: (optional, default False) reload last stage
+        """
+
+        self.reload = reload
+        # run the accumulation model
+        self.accumulation_model.settlement(self.trains, self.nb_nodes, idx, reload=self.reload)
+
+        # create results
+        self.__create_results()
+
+        # assign results to previous stage
+        self.previous_stage_results = {"time": self.results["time"], "displacement": self.results["displacement"]}
+
+    def write_results(self, file_name: str):
+        """
+        Writes results to binary pickle file
+
+        :param file_name: filename of the results
+        """
+
+        # check if path to output file exists. if not creates
+        if not os.path.isdir(os.path.split(file_name)[0]):
+            os.makedirs(os.path.split(file_name)[0])
+
+        # dump dict
+        with open(file_name, "wb") as f:
+            pickle.dump(self.results, f)
+
+
+    def __create_results(self):
+        """
+        Creates the results dictionary
+        """
+        # collect displacements
+        aux = []
+        for i, _ in enumerate(self.accumulation_model.nodes):
+            # if reloading => append previous results
+            if self.reload:
+                aux.append(np.hstack([self.previous_stage_results["displacement"][i], self.accumulation_model.displacement[i].tolist()]).tolist())
+            else:
+                aux.append(self.accumulation_model.displacement[i].tolist())
+
+        # if reloading => append results
         if self.reload:
-            self.displacement = self.results.displacement
-            self.cumulative_time = self.results.time
+            time = np.hstack([self.previous_stage_results["time"], self.trains.cumulative_time])
+        else:
+            time = self.trains.cumulative_time
+
+        # create results struct
+        self.results["nodes"] = self.accumulation_model.nodes
+        self.results["time"] = time.tolist()
+        self.results["displacement"] = aux
+
