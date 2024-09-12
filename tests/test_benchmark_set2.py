@@ -7,6 +7,7 @@ from rose.model.model_part import Material, Section, RodElementModelPart
 from rose.post_processing.plot_utils import *
 from rose.model.train_model import *
 from rose.model.train_track_interaction import *
+from rose.model.train_track_interaction_perfect_contact import CoupledTrainTrackPerfectContact
 
 from solvers.newmark_solver import NewmarkExplicit, NewmarkImplicitForce
 from solvers.zhai_solver import ZhaiSolver
@@ -1012,6 +1013,203 @@ class TestBenchmarkSet2:
         coupled_model.solver = solver
         coupled_model.solver.load_func = coupled_model.update_force_vector
         coupled_model.velocities = train.velocities
+
+        # calculate
+        coupled_model.main()
+
+        # get results
+        u_beam = coupled_model.solver.u[:, int(2 + (3 * n_nodes - 3) / 2 - 3)]
+        u_vehicle = coupled_model.solver.u[:, -2]
+
+        if RENEW_BENCHMARKS:
+            # calculate analytical solution
+            ss = TwoDofVehicle()
+            ss.vehicle(mass_bogie, mass_wheel, velocity, prim_stiffness, prim_damping)
+            ss.beam(E, I, rho, A, 50)
+            ss.compute()
+
+            # retrieve results from file
+            with open(os.path.join(TEST_PATH, 'test_data', filename_expected)) as f:
+                res_numerical2 = json.load(f)
+
+            # plot numerical and analytical solution
+            fig = plt.figure()
+            gs = fig.add_gridspec(2, 2)
+            ax = fig.add_subplot(gs[0, 0])
+            ax.plot(ss.time, ss.displacement[:, 0], color='b', label="beam")
+            ax.plot(ss.time, ss.displacement[:, 1], color='r', label="vehicle")
+            ax.plot(coupled_model.time, -coupled_model.solver.u[:, int(2 + (3 * n_nodes - 3) / 2 - 3)], color='b',
+                    linestyle='dashed', label="beam_num_new")
+            ax.plot(np.array(res_numerical2["time"]), -np.array(res_numerical2["u_beam"]), color='b',
+                    linestyle='dotted', label="beam_num_old")
+            ax.plot(coupled_model.time, -coupled_model.solver.u[:, -2], color='r', linestyle='dashed',
+                    label="vehicle_num_new")
+            ax.plot(np.array(res_numerical2["time"]), -np.array(res_numerical2["u_vehicle"]), color='r', linestyle='dotted',
+                    label="vehicle_num_old")
+            ax.set_xlabel("Time [s]")
+            ax.set_ylabel("Vertical displacement [m]")
+            ax.grid()
+            ax.legend()
+            plt.show()
+
+            # create dictionary for results
+            result = {"time": coupled_model.time.tolist(),
+                      "u_beam": u_beam.tolist(),
+                      "u_vehicle": u_vehicle.tolist()}
+
+            # dump results
+            with open(os.path.join(TEST_PATH, 'test_data', filename_expected),
+                      "w") as f:
+                json.dump(result, f, indent=2)
+
+        # retrieve results from file
+        with open(os.path.join(TEST_PATH, 'test_data', filename_expected)) as f:
+            res_numerical = json.load(f)
+
+        # get expected displacement
+        expected_u_beam = np.array(res_numerical['u_beam'])
+        expected_u_vehicle = np.array(res_numerical['u_vehicle'])
+
+        # assert
+        np.testing.assert_array_almost_equal(expected_u_beam, u_beam)
+        np.testing.assert_array_almost_equal(expected_u_vehicle, u_vehicle)
+
+
+    @pytest.mark.parametrize("solver, n_timesteps, filename_expected",
+                                [(NewmarkExplicit(), 2000, "train_on_beam_newmark.json"),
+                                 (ZhaiSolver(), 20000, "train_on_beam_zhai.json")
+                                 ])
+    def test_perfect_contact_train_on_beam(self, solver, n_timesteps, filename_expected):
+        """
+        Tests a moving vehicle on a simply supported beam. Where the vehicle consists of a wheel which
+        is in contact with the beam and a mass which is connected to the wheel with a spring and damper
+
+        Based on Biggs "Introduction do Structural Dynamics", pp pg 322
+
+        :param solver: solver class
+        :param n_timesteps:  number of time steps
+        :param filename_expected: filename of expected results
+        :return:
+        """
+
+        # set up number of nodes for a 50m beam
+        fact = 5
+        length_beam = 25 / fact
+        n_nodes = 2 * fact + 1
+
+        # Setup parameters euler beam
+        time = np.linspace(0, 1.8, n_timesteps)
+        E = 2.87e9
+        nu = 0.2
+        I = 2.9
+        rho = 2303
+        A = 1
+
+        damping_ratio = 0.0
+        omega1 = 2
+        omega2 = 5000
+
+        # set up geometry beam
+        beam_nodes = [Node(i * length_beam, 0, 0) for i in range(n_nodes)]
+        beam_elements = [Element([beam_nodes[i], beam_nodes[i + 1]]) for i in range(n_nodes - 1)]
+
+        mesh = Mesh()
+        mesh.add_unique_nodes_to_mesh(beam_nodes)
+        mesh.add_unique_elements_to_mesh(beam_elements)
+
+        material = Material()
+        material.youngs_modulus = E  # Pa
+        material.poisson_ratio = nu
+        material.density = rho
+
+        section = Section()
+        section.area = A
+        section.sec_moment_of_inertia = I
+        section.shear_factor = 0
+
+        beam = TimoshenkoBeamElementModelPart()
+        beam.nodes = beam_nodes
+        beam.elements = beam_elements
+
+        beam.material = material
+        beam.section = section
+        beam.length_element = length_beam
+        beam.damping_ratio = damping_ratio
+        beam.radial_frequency_one = omega1
+        beam.radial_frequency_two = omega2
+
+        foundation1 = ConstraintModelPart(x_disp_dof=False, y_disp_dof=False, z_rot_dof=True)
+        foundation1.nodes = [beam_nodes[0]]
+        foundation2 = ConstraintModelPart(x_disp_dof=True, y_disp_dof=False, z_rot_dof=True)
+        foundation2.nodes = [beam_nodes[-1]]
+
+        # set up track
+        track = GlobalSystem()
+        track.mesh = mesh
+        track.time = time
+
+        model_parts = [beam, foundation1, foundation2]
+        track.model_parts = model_parts
+
+        # Setup parameters train
+        mass_wheel = 5750
+        mass_bogie = 3000
+        mass_cart = 0
+        inertia_cart = 0
+        inertia_bogie = 0
+        prim_stiffness = 1595e5
+        sec_stiffness = 0
+        prim_damping = 1000
+        sec_damping = 0
+
+        velocity = 100 / 3.6
+
+        # setup geometry train
+        wheel = Wheel()
+        wheel.mass = mass_wheel
+
+        bogie = Bogie()
+        bogie.wheels = [wheel]
+        bogie.wheel_distances =[0]
+        bogie.mass = mass_bogie
+        bogie.intertia = inertia_bogie
+        bogie.stiffness = prim_stiffness
+        bogie.damping = prim_damping
+        bogie.length = 0
+        bogie.calculate_total_n_dof()
+
+        cart = Cart()
+        cart.bogies = [bogie]
+        cart.bogie_distances = [0]
+        cart.inertia = inertia_cart
+        cart.mass = mass_cart
+        cart.stiffness = sec_stiffness
+        cart.damping = sec_damping
+        cart.length = 0
+        cart.calculate_total_n_dof()
+
+        train = TrainModel()
+        train.carts=[cart]
+        train.time = time
+
+        train.velocities = np.ones(len(train.time)) * velocity
+        train.cart_distances = [0]
+
+
+        # setup coupled train and track model
+        coupled_model = CoupledTrainTrackPerfectContact()
+
+        coupled_model.train = train
+        coupled_model.track = track
+        coupled_model.rail = beam
+
+        coupled_model.time = time
+
+        coupled_model.solver = solver
+        coupled_model.solver.load_func = coupled_model.update_force_vector
+        coupled_model.velocities = train.velocities
+
+        #q:
 
         # calculate
         coupled_model.main()

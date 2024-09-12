@@ -599,6 +599,8 @@ class TrainModel(GlobalSystem):
         self.contact_dofs: List = None
         self.nodes = None
 
+
+
         self.__bogies = None
         self.__wheels = None
 
@@ -855,6 +857,8 @@ class TrainModel(GlobalSystem):
         self.set_global_stiffness_matrix()
         self.initialize_force_vector()
 
+        self.apply_dirichlet_boundary_conditions()
+
         # remove obsolete indices from global matrices
         self.trim_global_matrices()
 
@@ -1001,6 +1005,36 @@ class TrainModel(GlobalSystem):
         self.solver.u[0, mask] = ini_solver.u[1, :]
         self.solver.u[0, wheel_dofs] = wheel_displacements
 
+    def apply_dirichlet_boundary_conditions(self):
+        """
+        Apply Dirichlet boundary conditions to the system
+
+        :param K: Global stiffness matrix
+        :param C: Global damping matrix
+        :param M: Global mass matrix
+        :param F: Global force vector
+        :param dirichlet_dofs: degrees of freedom indices of the imposed displacement
+        :param dirichlet_values: imposed displacement per DOF
+        :return:
+        """
+
+        # Apply Dirichlet boundary conditions
+        utils.apply_dirichlet_boundary_condition(self.global_stiffness_matrix, self.global_damping_matrix,
+                                                 self.global_mass_matrix, self.global_force_vector, self.contact_dofs)
+
+
+    def set_dirichlet_values(self,t, dirichlet_values):
+        """
+        Set Dirichlet values of the train
+
+        :param dirichlet_values: imposed displacement per DOF
+        :return:
+        """
+
+        # set Dirichlet values
+        self.solver.u[t, self.contact_dofs] = dirichlet_values
+
+
     def update(self, start_time_id, end_time_id):
         """
         Updates solver
@@ -1010,6 +1044,9 @@ class TrainModel(GlobalSystem):
         :return:
         """
         self.solver.update(start_time_id)
+
+    def calculate_time_step(self, start_time_id):
+        self.solver.
 
     def main(self):
         """

@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pylab as plt
-# from SignalProcessing import signal_tools
 
 
 class WheelFlat:

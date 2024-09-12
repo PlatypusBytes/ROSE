@@ -402,3 +402,39 @@ def generate_rail_irregularities(wheels: List, time, **kwargs):
 
     return irregularities_at_wheels
 
+
+def apply_dirichlet_boundary_condition(K,C,M,F, dirichlet_dofs):
+    """
+    Apply dirichlet boundary conditions to the global matrices
+
+    :param K: stiffness matrix
+    :param C: damping matrix
+    :param M: mass matrix
+    :param F: force vector
+    :param dirichlet_dofs: degrees of freedom to be fixed
+    :return:
+    """
+
+
+    k_values = K[dirichlet_dofs, dirichlet_dofs].copy()
+    c_values = C[dirichlet_dofs, dirichlet_dofs].copy()
+    m_values = M[dirichlet_dofs, dirichlet_dofs].copy()
+
+    # apply dirichlet boundary conditions to the global matrices, i.e. set the non diagonal values at the dirichlet dofs
+    # to zero
+    for i, dof in enumerate(dirichlet_dofs):
+        K[dof, :] = 0
+        K[:, dof] = 0
+        K[dof, dof] = k_values[i]
+        C[dof, :] = 0
+        C[:, dof] = 0
+        C[dof, dof] = c_values[i]
+        M[dof, :] = 0
+        M[:, dof] = 0
+        M[dof, dof] = m_values[i]
+        F[dof] = 0
+
+    return K, C, M, F
+
+
+
