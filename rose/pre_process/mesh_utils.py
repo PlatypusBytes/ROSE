@@ -316,8 +316,12 @@ def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes:
 
     global_mesh = Mesh()
 
-    # Get the element length from the first track
-    element_length = tracks[0]["rail"].length_element if tracks else sleeper_distance
+    # Get element length from each track - we'll use the first track's element length
+    # as the standard element length
+    if tracks:
+        element_length = tracks[0]["rail"].length_element
+    else:
+        element_length = sleeper_distance
 
     # loop over each mesh
     for idx, mesh in enumerate(meshes):
@@ -326,7 +330,7 @@ def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes:
             last_node = max(meshes[idx - 1].nodes, key=lambda item: item.coordinates[0])
 
             # Position the next segment exactly one element_length away
-            # This ensures the connecting element will have the same length as other elements
+            # This ensures the connecting element will have the same length as the first track's elements
             for node in mesh.nodes:
                 node.coordinates[0] += last_node.coordinates[0] + element_length
 
@@ -339,10 +343,16 @@ def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes:
         # add soil model parts to list
         soil_model_parts.append(track["soil"])
         if idx > 0:
-            # combine rail elements in one model part
+            # When connecting track segments, we need to ensure all elements including the
+            # connecting element have the same length to avoid rail validation issues
+            # Create a connecting element between the last node of previous track and first node of current track
             connecting_element = Element([tracks[idx-1]["rail"].nodes[-1],
                                           track["rail"].nodes[0]])
 
+            # Set length_element to the standard element length for all tracks
+            track["rail"].length_element = element_length
+
+            # Combine the rail model parts
             track["rail"].elements = tracks[idx-1]["rail"].elements + [connecting_element] + track["rail"].elements
             track["rail"].nodes = tracks[idx-1]["rail"].nodes + track["rail"].nodes
             global_mesh.add_unique_elements_to_mesh([connecting_element])
