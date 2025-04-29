@@ -4,6 +4,8 @@ from typing import Union, List
 from abc import ABC, abstractmethod
 import numpy as np
 from scipy.integrate import trapz
+from scipy.interpolate import interp1d
+from scipy.signal import find_peaks
 from tqdm import tqdm
 
 
@@ -66,7 +68,7 @@ class ReadTrainInfo:
         self.index_cumulative_distributed = np.array(self.index_cumulative_distributed).astype(int)
 
 
-class AccumulationModel(ABC):
+class AccumulationModel_abc(ABC):
     """
     Abstract class for accumulation models
     """
@@ -78,7 +80,184 @@ class AccumulationModel(ABC):
         raise Exception("It is not allowed to call the AccumulationModel abstract method")
 
 
-class Varandas(AccumulationModel):
+class Nasrollahi(AccumulationModel_abc):
+    def __init__(self, alpha_k: float, beta_k: float, gamma: float, F0: float=1000,
+                 threshold_force_inf: float=90e3, threshold_force_zero: float=35e3, nb_load_cycles: float=1e5,
+                 nb_samples_peak: int=15):
+        """
+        Initialisation of the accumulation model of Nasrollahi et al. :cite:`Nasrollahi_2023`.
+
+        Parameters
+        ----------
+        :param alpha_k: (optional, default 0.6) dependency of settlement with loading amplitude
+        :param beta_k: (optional, default 0.82) controls progression of settlement with number of load cycles
+        :param gamma: (optional, default 10) accumulated settlement in reference test (with F0, N0)
+        :param F0: (optional, default 50) reference load amplitude
+        :param threshold_force_inf: (optional, default 90e3) threshold force for infinite settlement
+        :param threshold_force_zero: (optional, default 35e3) threshold force for zero settlement
+        :param nb_load_cycles: (optional, default 10**5) number of load cycles for extrapolation
+        :param nb_samples_peak: (optional, default 15) number of samples for peak detection
+        """
+
+        self.alpha_k = alpha_k
+        self.beta_k = beta_k
+        self.gamma = gamma
+        self.F0 = F0
+        self.threshold_force_inf = threshold_force_inf
+        self.threshold_force_zero = threshold_force_zero
+        self.threshold_force = []
+        self.nb_load_cycles = nb_load_cycles
+        self.max_allowed_displacement_iter = 0.2 / 1000
+        self.nb_samples_peak = nb_samples_peak
+        self.previous_displacement = None
+
+
+    def settlement(self, train: ReadTrainInfo, nb_nodes: int, idx: list = None, reload=False):
+        """
+        Computes cumulative settlement following the methodology proposed by Nasrollahi :cite:`Nasrollahi_2023`.
+
+        The settlement :math:`S` of sleeper :math:`N` follows:
+
+        .. math::
+            S_{N} = \sum_{n=1}^{N} u_{p, n}
+
+        where :math:`u_{p, n}` is:
+
+        .. math::
+            u_{p, n} = \\sum_{k=1}^{K} \\alpha_{k} \\left( \\frac{F_{k, n}}{F_{0}} \\right)^{\\beta_{k}}
+
+        where :math:`K` is the number of load cycles.
+
+        Parameters
+        ----------
+        :param train: train information object
+        :param nb_nodes: number of nodes
+        :param idx: (optional, default None) node to compute the calculations. \
+                    if None computes the calculations for all nodes
+        """
+
+        # in case of reloading read the previous stage
+        if reload:
+            previous_displacement = np.copy(self.previous_displacement)
+            total_previous_displacement = np.copy(self.displacement[:, -1])
+            nb_cycles = self.total_nb_cycles
+        else:
+            self.threshold_force = np.ones((len(idx), train.number_trains)) * self.threshold_force_zero
+            nb_cycles = 0
+
+
+        # if index is None compute for all nodes
+        if not idx:
+            idx = range(int(nb_nodes))
+
+        # assign nodes
+        self.nodes = list(idx)
+
+        # cumulative displacement
+        self.displacement = np.zeros((int(len(idx)), int(np.max(train.number_cycles) / train.steps)))
+
+        print("Running Kourosh model")
+        # progress bar
+        pbar = tqdm(total=sum(train.number_cycles), unit_scale=True, unit="steps")
+
+        perform_update = False
+
+        # compute maximum force per wheel
+        for j in range(train.number_trains):
+            # compute number of iterations
+            iterate = True
+            # nb_cycles = 0
+
+            max_force = np.max(np.abs(train.force[j]), axis=1)
+            peaks = [find_peaks(np.abs(train.force[j][i, :]), height=0.8 * max_force[i], distance=self.nb_samples_peak) for i in idx]
+            peak_forces = [p[1]["peak_heights"] for p in peaks]
+            peak_forces = np.array(peak_forces)
+
+            if reload:
+                displacement = [previous_displacement]
+            else:
+                displacement = [np.zeros(len(idx))]
+
+            cycle_number = [0]
+            while iterate:
+                # incremental displacement per wheel
+                incremental = np.zeros(len(idx))
+                # Macauly brackets
+                aux = np.maximum(peak_forces - self.threshold_force[:, j][:, np.newaxis], 0)
+                # compute incremental displacement
+                incremental = np.sum(self.alpha_k * (aux / self.F0) ** self.beta_k, axis=1) / 1000
+
+                # check if displacement is below the maximum allowed
+                maximum_incremental = np.max(incremental)
+                # if maximum_incremental == 0:
+                #     return
+
+                if any(incremental > self.max_allowed_displacement_iter):
+                    perform_update = True
+
+                incremental[incremental > self.max_allowed_displacement_iter] = self.max_allowed_displacement_iter
+
+                update_nb_cycles = int(np.ceil(self.max_allowed_displacement_iter * self.nb_load_cycles / maximum_incremental))
+                nb_cycles += update_nb_cycles
+
+                # update threshold force
+                self._update_threshold_force(displacement[-1] + incremental, j)
+
+                if perform_update:
+                    #ToDo # re-run dynamic train-track model
+                    run_model = True
+                    # iterate = False
+
+
+
+                if nb_cycles >= self.nb_load_cycles:
+                    #ToDo # re-run dynamic train-track model
+                    run_model = True
+                    iterate = False
+                    nb_cycles = self.nb_load_cycles
+
+                cycle_number.append(nb_cycles)
+                displacement.append(displacement[-1] + incremental)
+                pbar.update(update_nb_cycles)
+
+            self.previous_displacement = displacement[-1]
+
+
+            pbar.close()
+
+            self.total_nb_cycles = nb_cycles
+
+            # interpolate displacement for the number of cycles
+            disp = np.zeros((len(idx), int(max(train.number_cycles) / train.steps)))
+            # Convert the list of displacements to a properly shaped array for vectorized interpolation
+            displacement_array = np.array(displacement)
+            # Create a single interpolation function for all nodes at once (axis=0 interpolates along the first dimension)
+            f = interp1d(cycle_number, displacement_array, axis=0)
+            # Apply the interpolation function to get values for all nodes at each time step
+            disp = f(np.linspace(0, train.number_cycles[j], int(max(train.number_cycles) / train.steps))).T
+
+            # QUESTIONS:
+            # * what happens when the number of load cycles is smaller than 10**5? Do you interpolate?
+            # *
+
+
+            # add displacement from train
+            self.displacement = self.displacement + disp
+        if reload:
+            self.displacement = self.displacement + np.expand_dims(total_previous_displacement, axis=1)
+
+
+    def _update_threshold_force(self, displacement: np.ndarray, idx: int):
+        """
+        Update threshold force
+
+        :param displacement: displacement vector
+        """
+        self.threshold_force[:, idx] = self.threshold_force_inf - (self.threshold_force_inf - self.threshold_force_zero) *\
+                                       np.exp(-self.gamma * displacement * 1000)
+
+
+class Varandas(AccumulationModel_abc):
     def __init__(self, alpha: float = 0.6, beta: float = 0.82, gamma: float = 10, N0: float = 1e6, F0: float = 50):
         """
         Initialisation of the accumulation model of Varandas :cite:`varandas_2014`.
@@ -175,9 +354,6 @@ class Varandas(AccumulationModel):
         F = np.linspace(0, np.max(self.force_max, axis=0), self.nb_int_step)
 
         print("Running Varandas model")
-        # progress bar
-        pbar = tqdm(total=len(train.cumulative_nb_cycles), unit_scale=True, unit="steps")
-
         # initialise variables
         if not reload:
             self.h_f = np.zeros(len(self.nodes))
@@ -189,7 +365,7 @@ class Varandas(AccumulationModel):
 
         i = 0
         aux = np.zeros(len(self.nodes))
-        for n, nb_cyc in enumerate(train.cumulative_nb_cycles):
+        for n, nb_cyc in enumerate(tqdm(train.cumulative_nb_cycles)):
             for tr in range(train.number_trains):
                 if nb_cyc <= train.number_cycles[tr]:
                     self.h_f[self.force_max[tr, :] <= max_val_force[tr, :]] += 1
@@ -206,11 +382,6 @@ class Varandas(AccumulationModel):
                 disp[:, i] = aux
                 aux = np.zeros(len(self.nodes))
                 i += 1
-            # update progress bar
-            pbar.update(1)
-
-        # close progress bar
-        pbar.close()
 
         # maximum force
         self.max_val_force = max_val_force
@@ -221,7 +392,7 @@ class Varandas(AccumulationModel):
             self.displacement = self.displacement + np.expand_dims(previous_displacement, axis=1)
 
 
-class LiSelig(AccumulationModel):
+class LiSelig(AccumulationModel_abc):
     def __init__(self, soil_sos: List[dict], soil_idx: List[int], width_stress: float, lenght_stress: float,
                  t_ini: int = 0, last_layer_depth: int = -20):
         r"""
@@ -267,8 +438,7 @@ class LiSelig(AccumulationModel):
         self.width_stress = width_stress
         self.length_stress = lenght_stress
         self.t_construction = t_ini
-        self.reload = False
-
+        self.n_ini = 0
         self.__read_SoS(soil_sos, soil_idx)
 
 
@@ -392,6 +562,8 @@ class LiSelig(AccumulationModel):
         # in case of reloading read the previous stage
         if reload:
             previous_displacement = self.displacement[:, -1]
+        else:
+            self.n_ini = np.zeros((len(idx), train.number_trains)).tolist()
 
         # if index is None compute for all nodes
         if not idx:
@@ -402,7 +574,6 @@ class LiSelig(AccumulationModel):
 
         # progress bar
         print("Running Li & Selig model")
-        pbar = tqdm(total=len(self.nodes), unit_scale=True, unit="steps")
 
         # parameterise settlement model
         self.__classify()
@@ -415,32 +586,32 @@ class LiSelig(AccumulationModel):
         # strain
         self.displacement = np.zeros((len(self.nodes), len(train.cumulative_time)))
 
-        for k, val in enumerate(self.nodes):
+        n_ini = []
+        for k, val in enumerate(tqdm(self.nodes)):
             # id soil for the node
             id_s = self.soil_id[val]
+            aux = []
             for t in range(train.number_trains):
                 # N = np.linspace(1 + t_ini, self.number_cycles[t], len(self.cumulative_nb_cycles))
                 # new version from David
-                N = np.linspace(1 + np.sum(train.nb_cycles_day) * 365 * self.t_construction,
+                N = np.linspace(1 + np.sum(train.nb_cycles_day) * 365 * self.t_construction + self.n_ini[k][t],
                                 np.sum(train.nb_cycles_day) * 365 * self.t_construction +
-                                train.number_cycles[t],
+                                train.number_cycles[t] + self.n_ini[k][t],
                                 len(train.cumulative_time))
-
+                aux.append(N[-1])
                 for i in range(len(self.thickness[id_s])):
                     # # basic model
                     # strain = self.a[id_s][i] * (self.sigma_deviatoric[id_s][k, i, t] / self.sigma_s[id_s][i]) ** self.m[id_s][i] * N ** self.b[id_s][i]
                     strain = self.a[id_s][i] * (self.sigma_deviatoric[id_s][k, i, t] / self.sigma_s[id_s][i]) ** self.m[id_s][i] * N ** self.b[id_s][i]
                     self.displacement[k, :] = self.displacement[k, :] + strain * self.thickness[id_s][i]
-            pbar.update()
-            self.displacement[k, :] = self.displacement[k, :] - self.displacement[k, 0]
-            if self.reload:
-                self.displacement[k, :] = self.displacement[k, :] + np.array(self.previous_stage)[k, -1]
 
-        pbar.close()
+            self.displacement[k, :] = self.displacement[k, :] - self.displacement[k, 0]
+            n_ini.append(aux)
+
+        self.n_ini = n_ini
         # in case of reloading
         if reload:
             self.displacement = self.displacement + np.expand_dims(previous_displacement, axis=1)
-
 
 class AccumulationModel:
     r"""
@@ -449,9 +620,10 @@ class AccumulationModel:
     Computation of the cumulative settlement. Currently the following models are supported:
     - Varandas :cite:`varandas_2014`
     - Li & Selig :cite:`Li_Selig_1996`
+    - Nasrollahi: :cite:`Nasrollahi_2023`
 
     """
-    def __init__(self, accumulation_model: Union[Varandas, LiSelig], steps: int = 1):
+    def __init__(self, accumulation_model: Union[Varandas, LiSelig, Nasrollahi], steps: int = 1):
         """
         Initialisation of the accumulation model
 

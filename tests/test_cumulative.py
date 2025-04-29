@@ -1,6 +1,6 @@
 # unit test for cumulative
 import unittest
-from rose.model.accumulation_model import AccumulationModel, Varandas, LiSelig
+from rose.model.accumulation_model import AccumulationModel, Varandas, LiSelig, Nasrollahi
 import numpy as np
 import os
 import pickle
@@ -89,6 +89,87 @@ class TestVarandas(unittest.TestCase):
     def tearDown(self):
         # delete json file
         os.remove(os.path.join(TEST_PATH, "./example.pickle"))
+
+
+class TestNasrollahi(unittest.TestCase):
+    def setUp(self):
+        self.time = 8
+        self.steps = 200
+        self.idx = range(250 - 60, 250 + 60)
+
+        # load transition zones results for all trains
+        with open(os.path.join(TEST_PATH, "test_data", f"DOUBLEDEKKER.pickle"), "rb") as f:
+            doubledekker = pickle.load(f)
+
+        self.traininfo = {"dubbeldekker": {"forces": np.array(doubledekker['vertical_force_soil']),
+                                           "nb-per-hour": 6,
+                                           "nb-hours": 16,
+                                           "nb-axles": 16},
+                          "sprinter": {"forces": np.array(doubledekker['vertical_force_soil']) / 2,
+                                       "nb-per-hour": 6,
+                                       "nb-hours": 16,
+                                       "nb-axles": 8},
+                          }
+
+    def test_settlement_1(self):
+        model = Nasrollahi(0.02, 2.8, 0.11)
+        sett = AccumulationModel(accumulation_model=model, steps=self.steps)
+        sett.read_traffic(self.traininfo, self.time)
+        sett.calculate_settlement(idx=self.idx)
+        sett.write_results(os.path.join(TEST_PATH, "./example.pickle"))
+
+        # compare with existing file
+        with open(os.path.join(TEST_PATH, "./test_data/nasrollahi_1.pickle"), "rb") as f:
+            data = pickle.load(f)
+
+        res = compare_dics(sett.results, data)
+        self.assertTrue(res)
+
+    def test_settlement_2(self):
+
+        traininfo = {"dubbeldekker": {"forces": self.traininfo["dubbeldekker"]["forces"],
+                                      "nb-per-hour": 6,
+                                      "nb-hours": 16,
+                                      "nb-axles": 16},
+                     }
+
+        model = Nasrollahi(0.02, 2.8, 0.11)
+        sett = AccumulationModel(accumulation_model=model, steps=self.steps)
+        sett.read_traffic(traininfo, self.time)
+        sett.calculate_settlement(idx=self.idx)
+        sett.write_results(os.path.join(TEST_PATH, "./example.pickle"))
+
+        # compare with existing file
+        with open(os.path.join(TEST_PATH, "./test_data/nasrollahi_2.pickle"), "rb") as f:
+            data = pickle.load(f)
+
+        res = compare_dics(sett.results, data)
+        self.assertTrue(res)
+
+    # def test_settlement_3(self):
+    #     total_time = [5, 10]  # days
+    #     start_time = 0
+    #     reload_v = False
+    #     model = Nasrollahi(0.02, 2.8, 0.11)
+    #     sett = AccumulationModel(accumulation_model=model, steps=self.steps)
+
+    #     for t in total_time:
+    #         sett.read_traffic(self.traininfo, t, start_time=start_time)
+    #         sett.calculate_settlement(idx=self.idx, reload=reload_v)
+    #         sett.write_results(os.path.join(TEST_PATH, "./example.pickle"))
+    #         reload_v = True
+    #         start_time = t
+
+    #         # compare with existing file
+    #         with open(os.path.join(TEST_PATH, f"./test_data/nasrollahi_3_{int(t)}.pickle"), "rb") as f:
+    #             data = pickle.load(f)
+
+    #         res = compare_dics(sett.results, data)
+    #         self.assertTrue(res)
+
+    # def tearDown(self):
+    #     # delete json file
+    #     os.remove(os.path.join(TEST_PATH, "./example.pickle"))
 
 
 class TestLiSelig(unittest.TestCase):
