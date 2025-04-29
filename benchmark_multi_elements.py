@@ -1,25 +1,25 @@
 import os
 import pickle
-import scipy
-# import ROSE packages
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Import ROSE packages
 from rose.model.model_part import Material, Section
 from rose.model.train_model import *
 from rose.model.train_track_interaction import *
 from rose.pre_process.default_trains import TrainType, set_train
 import solvers.newmark_solver as solver_c
 
-
-def geometry(nb_sleeper, fact=1, n_elements_per_sleeper=1):
+def geometry(nb_sleeper, n_elements_per_sleeper=1, fact=1):
     # Set geometry parameters
     geometry = {}
     geometry["n_segments"] = len(nb_sleeper)  # number of segments
     geometry["n_sleepers"] = [int(n / fact) for n in nb_sleeper]  # number of sleepers per segment
     geometry["sleeper_distance"] = 0.6 * fact  # distance between sleepers, equal for each segment
-    geometry["depth_soil"] = [1] * len(nb_sleeper) # depth of the soil [m] per segment
+    geometry["depth_soil"] = [1] * len(nb_sleeper)  # depth of the soil [m] per segment
     geometry["n_elements_per_sleeper"] = n_elements_per_sleeper  # number of elements between sleepers
 
     return geometry
-
 
 def materials():
     material = {}
@@ -50,18 +50,16 @@ def materials():
 
     return material
 
-
 def time_integration(running_time, time_step):
     time = {}
     # set time parameters in two stages
-    time["tot_ini_time"] = 0.0001  # total initalisation time  [s]
-    time["n_t_ini"] = 5  # number of time steps initialisation time  [-]
+    time["tot_ini_time"] = 0.0001  # total initialization time [s]
+    time["n_t_ini"] = 5  # number of time steps initialization time [-]
 
-    time["tot_calc_time"] = running_time  # total time during calculation phase   [s]
+    time["tot_calc_time"] = running_time  # total time during calculation phase [s]
     time["n_t_calc"] = int(running_time / time_step)  # number of time steps during calculation phase [-]
 
     return time
-
 
 def soil_parameters(sleeper_distance, stiffness, damping):
     # Set soil parameters of each segment
@@ -70,9 +68,9 @@ def soil_parameters(sleeper_distance, stiffness, damping):
 
     return soil
 
-
-def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity, use_irregularities,
-                 output_interval):
+def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity,
+                use_irregularities, output_interval):
+    # Code adapted from demo.py
     # choose solver
     solver = solver_c.NewmarkImplicitForce()
     solver.output_interval = output_interval
@@ -82,10 +80,12 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
     # loop over number of segments
     for idx in range(geometry["n_segments"]):
         # set geometry of one segment
-        element_model_parts, mesh = create_horizontal_track(geometry["n_sleepers"][idx],
-                                                            geometry["sleeper_distance"],
-                                                            geometry["depth_soil"][idx],
-                                                            geometry["n_elements_per_sleeper"])
+        element_model_parts, mesh = create_horizontal_track(
+            geometry["n_sleepers"][idx],
+            geometry["sleeper_distance"],
+            geometry["depth_soil"][idx],
+            geometry["n_elements_per_sleeper"]
+        )
         # add segment model parts and mesh to list
         all_element_model_parts.append(element_model_parts)
         all_meshes.append(mesh)
@@ -95,14 +95,19 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
         combine_horizontal_tracks(all_element_model_parts, all_meshes, geometry["sleeper_distance"])
 
     # Fixate the bottom boundary
-    bottom_boundaries = [add_no_displacement_boundary_to_bottom(soil_model_part)["bottom_boundary"] for soil_model_part
-                         in soil_model_parts]
+    bottom_boundaries = [
+        add_no_displacement_boundary_to_bottom(soil_model_part)["bottom_boundary"]
+        for soil_model_part in soil_model_parts
+    ]
 
-    # set initialisation time
+    # set initialization time
     initialisation_time = np.linspace(0, time_int["tot_ini_time"], time_int["n_t_ini"])
     # set calculation time
-    calculation_time = np.linspace(initialisation_time[-1], initialisation_time[-1] + time_int["tot_calc_time"],
-                                   time_int["n_t_calc"])
+    calculation_time = np.linspace(
+        initialisation_time[-1],
+        initialisation_time[-1] + time_int["tot_calc_time"],
+        time_int["n_t_calc"]
+    )
     # Combine all time steps in an array
     time = np.concatenate((initialisation_time, calculation_time[1:]))
 
@@ -133,7 +138,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
     # set velocity of train
     velocities = np.ones(len(time)) * velocity
 
-    # prevent train from moving in initialisation phase
+    # prevent train from moving in initialization phase
     velocities[0:len(initialisation_time)] = 0
 
     # constraint rotation at the side boundaries
@@ -153,7 +158,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
     # create train
     train = set_train(time, velocities, train_start_coord, train_type)
     train.use_irregularities = use_irregularities
-    train.irregularity_parameters = {"Av": 0.00002095, "seed":4}
+    train.irregularity_parameters = {"Av": 0.00002095, "seed": 4}
     train.time = time
     train.velocities = velocities
 
@@ -178,18 +183,15 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
 
     return coupled_model
 
-
-def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir: str):
+def write_results(coupled_model: CoupledTrainTrack, output_dir: str, file_name: str):
     """
-    Writes dynamic results of a couple model
+    Writes dynamic results of a coupled model
 
     :param coupled_model: current coupled model
-    :param segment_id: id of the current segment
     :param output_dir: output directory
-    :param output_interval: interval of how many timesteps should be written in output
+    :param file_name: name of the output file
     :return:
     """
-
     # check if output folder exists
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
@@ -209,11 +211,8 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
 
     vertical_displacements_sleeper = np.array(
         [node.displacements[:, 1] for node in coupled_model.track.model_parts[2].nodes])
-    # vertical_force_sleeper = np.array(
-    #     [node.force[0::output_interval, 1] for node in coupled_model.track.model_parts[2].nodes])
-    # coords_sleeper = np.array([node.coordinates[0] for node in coupled_model.track.model_parts[2].nodes])
 
-    # collect results
+    # collect results for soil
     soil_nodes = []
     soil_elements = []
 
@@ -259,8 +258,7 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
             idx_matrix[n] = idx
             n += 1
 
-    result_track = {"name": segment_id,
-                    # "omega": omega,
+    result_track = {"name": file_name,
                     "time": coupled_model.time_out[:].tolist(),
                     "velocity": coupled_model.train.velocities[solver_output_indices].tolist(),
                     "vert_disp_rail": vertical_displacements_rail.tolist(),
@@ -270,8 +268,6 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
                     "vertical_force_rail_pad": vertical_force_rail_pad.tolist(),
                     "coords_rail_pad": coords_rail_pad.tolist(),
                     "vertical_displacements_sleeper": vertical_displacements_sleeper.tolist(),
-                    # "vertical_force_sleeper": vertical_force_sleeper.tolist(),
-                    # "coords_sleeper": coords_sleeper.tolist(),
                     "vertical_displacements_soil": vertical_displacements_soil.tolist(),
                     "vertical_force_soil": vertical_force_soil.tolist(),
                     "coords_soil": coords_soil.tolist(),
@@ -284,62 +280,180 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
                     "global_stiffness": coupled_model.track.global_stiffness_matrix,
                     "global_damping": coupled_model.track.global_damping_matrix,
                     "global_mass": coupled_model.track.global_mass_matrix,
+                    "n_elements_per_sleeper": geometry["n_elements_per_sleeper"],
                     }
-    # filename
-    file_name = f'{segment_id}.pickle'
+
     # dump pickle
-    with open(os.path.join(output_dir, file_name), "wb") as f:
+    pickle_path = os.path.join(output_dir, f'{file_name}.pickle')
+    with open(pickle_path, "wb") as f:
         pickle.dump(result_track, f)
 
-    return
+    return pickle_path
 
+def run_benchmark():
+    """Run benchmark models with different numbers of elements per sleeper"""
+    # Define parameters
+    nb_sleepers = [300]  # Reduced number for faster benchmarking
+    stiffness = [132e6]
+    damping = [30e3]
 
-def main():
-    nb_sleepers = [100, 100]
-    stiffness = [132e6, 214e7]
-    damping = [30e3, 20e3]
-    n_elements_per_sleeper = 4
+    # Define multiple element configurations to test
+    element_configs = [1, 2, 4, 8]
 
-    # starting coordinate of the middle of the train. Note that the whole train should be within the geometry at all
-    # time steps.
+    # Train parameters
+    train_type = TrainType.DOUBLEDEKKER
     train_start_coord = 20
-
-    # choose if train and track irregularities
-    use_irregularities = False
-
-    # write results every n steps
+    train_speed = 140/3.6
+    running_time = 10  # Reduced for faster benchmarking
+    time_step = 0.00025
+    use_irregularities = True
     output_time_interval = 7
-    output_dir = "./results_TZ_soft_stiff_4"
+    output_dir = "./results_element_benchmark"
 
-    # Trains
-    trains = [TrainType.DOUBLEDEKKER]#, TrainType.SPRINTER_SLT, TrainType.SPRINTER_SGM,
-            #   TrainType.CARGO_TAPPS, TrainType.TRAXX, TrainType.BR189]
+    # Store file paths for result files
+    result_files = []
 
-    train_speed = [140/3.6]#, 140/3.6, 140/3.6,
-                #    80/3.6, 80/3.6, 80/3.6]
+    # Run simulations for each element configuration
+    for n_elements in element_configs:
+        print(f"Running simulation with {n_elements} elements per sleeper...")
 
-    running_time = [2]#, 14, 14,
-                    # 23, 23, 23]
-    for i, train_type in enumerate(trains):
+        # Create geometry with specified number of elements per sleeper
+        geom = geometry(nb_sleepers, n_elements_per_sleeper=n_elements)
 
-        filename = train_type.name
-
-        # create geometry
-        geom = geometry(nb_sleepers, n_elements_per_sleeper=n_elements_per_sleeper)
-        # materials
+        # Materials remain the same for all configurations
         mat = materials()
-        # time integration
-        tim = time_integration(running_time[i], 0.00025)
-        # soil parameters
-        soil = soil_parameters(geom["sleeper_distance"], stiffness, damping)
-        # define train-track mode model
-        coupled_model = create_model(train_type, train_start_coord, geom, mat, tim, soil, train_speed[i],
-                                     use_irregularities, output_time_interval)
-        # calculate
-        coupled_model.main()
-        # write results
-        write_results(coupled_model, filename, output_dir)
 
+        # Time integration parameters
+        tim = time_integration(running_time, time_step)
+
+        # Soil parameters
+        soil = soil_parameters(geom["sleeper_distance"], stiffness, damping)
+
+        # Create the model
+        coupled_model = create_model(
+            train_type, train_start_coord, geom, mat, tim, soil,
+            train_speed, use_irregularities, output_time_interval
+        )
+
+        # Run the simulation
+        coupled_model.main()
+
+        # Save results
+        file_name = f"DOUBLEDEKKER_{n_elements}_elements"
+        result_file = write_results(coupled_model, output_dir, file_name)
+        result_files.append(result_file)
+
+        print(f"Completed simulation with {n_elements} elements per sleeper")
+
+    return result_files
+
+def compare_results(result_files):
+    """Compare and plot results from different element configurations"""
+    # Load result files
+    results = []
+    for file_path in result_files:
+        with open(file_path, "rb") as f:
+            results.append(pickle.load(f))
+
+    # Set up plots
+    plt.figure(figsize=(15, 10))
+
+    # Plot 1: Vertical rail displacements at specific node indices
+    plt.subplot(2, 2, 1)
+    for i, result in enumerate(results):
+        n_elements = result["n_elements_per_sleeper"]
+        # Select a node approximately at the same position for each model
+        # For models with multiple elements, adjust the index to get same position
+        node_idx = 50 * n_elements // results[0]["n_elements_per_sleeper"]
+        plt.plot(result["vert_disp_rail"][node_idx], label=f"{n_elements} elements")
+
+    plt.title("Vertical Rail Displacement (Node 50)")
+    plt.xlabel("Time Step")
+    plt.ylabel("Displacement [m]")
+    plt.legend()
+    plt.grid(True)
+
+    # Plot 2: Vertical rail displacements at another node
+    plt.subplot(2, 2, 2)
+    for i, result in enumerate(results):
+        n_elements = result["n_elements_per_sleeper"]
+        # Select a node approximately at the same position for each model
+        node_idx = 100 * n_elements // results[0]["n_elements_per_sleeper"]
+        plt.plot(result["vert_disp_rail"][node_idx], label=f"{n_elements} elements")
+
+    plt.title("Vertical Rail Displacement (Node 100)")
+    plt.xlabel("Time Step")
+    plt.ylabel("Displacement [m]")
+    plt.legend()
+    plt.grid(True)
+
+    # Plot 3: Soil displacements at specific indices
+    plt.subplot(2, 2, 3)
+    for i, result in enumerate(results):
+        n_elements = result["n_elements_per_sleeper"]
+        plt.plot(result["vertical_displacements_soil"][50], label=f"{n_elements} elements")
+
+    plt.title("Vertical Soil Displacement (Node 50)")
+    plt.xlabel("Time Step")
+    plt.ylabel("Displacement [m]")
+    plt.legend()
+    plt.grid(True)
+
+    # Plot 4: Rail displacement profiles at specific time
+    plt.subplot(2, 2, 4)
+    time_idx = 500  # Choose a relevant time index
+    for i, result in enumerate(results):
+        n_elements = result["n_elements_per_sleeper"]
+        # Extract displacement at the specified time for all nodes
+        disp_profile = [disp[time_idx] for disp in result["vert_disp_rail"]]
+        # Plot against spatial coordinates
+        plt.plot(result["coords_rail"], disp_profile, label=f"{n_elements} elements")
+
+    plt.title(f"Rail Displacement Profile (Time Step {time_idx})")
+    plt.xlabel("Position [m]")
+    plt.ylabel("Displacement [m]")
+    plt.legend()
+    plt.grid(True)
+
+    # Adjust layout and save figure
+    plt.tight_layout()
+    plt.savefig(os.path.join(os.path.dirname(result_files[0]), "element_size_comparison.png"))
+    plt.show()
+
+    # Quantitative comparison: Calculate differences between models
+    base_result = results[0]  # 1 element per sleeper as baseline
+
+    print("Quantitative comparison with baseline (1 element per sleeper):")
+    for i, result in enumerate(results[1:], 1):
+        n_elements = result["n_elements_per_sleeper"]
+
+        # Compare at equivalent positions
+        node_idx_base = 50
+        node_idx_multi = 50 * n_elements
+
+        # Extract displacements at these nodes
+        disp_base = base_result["vert_disp_rail"][node_idx_base]
+        disp_multi = result["vert_disp_rail"][node_idx_multi]
+
+        # Calculate maximum absolute difference and relative error
+        max_diff = np.max(np.abs(np.array(disp_base) - np.array(disp_multi)))
+        max_rel_error = max_diff / np.max(np.abs(disp_base)) * 100
+
+        print(f"{n_elements} elements per sleeper:")
+        print(f"  Max absolute difference: {max_diff:.6e} m")
+        print(f"  Max relative error: {max_rel_error:.2f}%")
+
+        # Check if results are within acceptable tolerance (e.g., 1%)
+        if max_rel_error < 1.0:
+            print(f"  Results within 1% tolerance: YES")
+        else:
+            print(f"  Results within 1% tolerance: NO")
+
+        print()
 
 if __name__ == "__main__":
-    main()
+    # Run benchmark simulations
+    result_files = run_benchmark()
+
+    # Compare results
+    compare_results(result_files)
