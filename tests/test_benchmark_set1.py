@@ -7,7 +7,7 @@ from rose.model.boundary_conditions import MovingPointLoad
 from rose.pre_process.mesh_utils import *
 from rose.post_processing.plot_utils import *
 
-from SignalProcessing.signal_tools import Signal
+from SignalProcessingTools.signal_tools import Signal
 
 from solvers.newmark_solver import NewmarkExplicit
 
