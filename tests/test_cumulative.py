@@ -114,7 +114,11 @@ class TestNasrollahi(unittest.TestCase):
     def test_settlement_1(self):
         model = Nasrollahi(0.02, 2.8, 0.11)
         sett = AccumulationModel(accumulation_model=model, steps=self.steps)
-        sett.read_traffic(self.traininfo, self.time)
+
+        # only 1 train type
+        traininfo = {"dubbeldekker": self.traininfo["dubbeldekker"]}
+
+        sett.read_traffic(traininfo, self.time)
         sett.calculate_settlement(idx=self.idx)
         sett.write_results(os.path.join(TEST_PATH, "./example.pickle"))
 
@@ -146,30 +150,33 @@ class TestNasrollahi(unittest.TestCase):
         res = compare_dics(sett.results, data)
         self.assertTrue(res)
 
-    # def test_settlement_3(self):
-    #     total_time = [5, 10]  # days
-    #     start_time = 0
-    #     reload_v = False
-    #     model = Nasrollahi(0.02, 2.8, 0.11)
-    #     sett = AccumulationModel(accumulation_model=model, steps=self.steps)
+    def test_settlement_3(self):
+        total_time = [5, 10]  # days
+        start_time = 0
+        reload_v = False
+        model = Nasrollahi(0.02, 2.8, 0.11)
+        sett = AccumulationModel(accumulation_model=model, steps=self.steps)
 
-    #     for t in total_time:
-    #         sett.read_traffic(self.traininfo, t, start_time=start_time)
-    #         sett.calculate_settlement(idx=self.idx, reload=reload_v)
-    #         sett.write_results(os.path.join(TEST_PATH, "./example.pickle"))
-    #         reload_v = True
-    #         start_time = t
+        # only 1 train type
+        traininfo = {"dubbeldekker": self.traininfo["dubbeldekker"]}
 
-    #         # compare with existing file
-    #         with open(os.path.join(TEST_PATH, f"./test_data/nasrollahi_3_{int(t)}.pickle"), "rb") as f:
-    #             data = pickle.load(f)
+        for t in total_time:
+            sett.read_traffic(traininfo, t, start_time=start_time)
+            sett.calculate_settlement(idx=self.idx, reload=reload_v)
+            sett.write_results(os.path.join(TEST_PATH, f"./example.pickle"))
+            reload_v = True
+            start_time = t
 
-    #         res = compare_dics(sett.results, data)
-    #         self.assertTrue(res)
+            # compare with existing file
+            with open(os.path.join(TEST_PATH, f"./test_data/nasrollahi_3_{int(t)}.pickle"), "rb") as f:
+                data = pickle.load(f)
 
-    # def tearDown(self):
-    #     # delete json file
-    #     os.remove(os.path.join(TEST_PATH, "./example.pickle"))
+            res = compare_dics(sett.results, data)
+            self.assertTrue(res)
+
+    def tearDown(self):
+        # delete json file
+        os.remove(os.path.join(TEST_PATH, "./example.pickle"))
 
 
 class TestLiSelig(unittest.TestCase):
