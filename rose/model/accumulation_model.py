@@ -135,6 +135,9 @@ class Nasrollahi(AccumulationModel_abc):
                     if None computes the calculations for all nodes
         """
 
+        if train.number_trains > 1:
+            raise ValueError("Error: The model Nasrollahi is not implemented for more than one train.")
+
         # in case of reloading read the previous stage
         if reload:
             previous_displacement = np.copy(self.previous_displacement)
