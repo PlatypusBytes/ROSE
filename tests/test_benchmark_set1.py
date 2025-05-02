@@ -7,7 +7,7 @@ from rose.model.boundary_conditions import MovingPointLoad
 from rose.pre_process.mesh_utils import *
 from rose.post_processing.plot_utils import *
 
-from SignalProcessingTools.signal_tools import Signal
+from SignalProcessingTools.time_signal import TimeSignalProcessing
 
 from solvers.newmark_solver import NewmarkExplicit
 
@@ -224,12 +224,12 @@ class TestBenchmarkSet1:
         vertical_displacements = np.array([node.displacements[:,1] for node in beam_nodes])
 
         # process signal of numerical and analytical solution
-        signal_num = Signal(time,vertical_displacements[int((n_beams-1)/2), :],int(1 / time[1]))
-        signal_num.fft(2**14, half_representation=True)
+        signal_num = TimeSignalProcessing(time,vertical_displacements[int((n_beams-1)/2), :],int(1 / time[1]))
+        signal_num.fft(nb_points=2**14, half_representation=True)
         amplitude_num = signal_num.amplitude
 
-        signal_analyt = Signal(time, beam_analytical.u[int((n_beams-1)/2), :], int(1 / time[1]))
-        signal_analyt.fft(2**14, half_representation=True)
+        signal_analyt = TimeSignalProcessing(time, beam_analytical.u[int((n_beams-1)/2), :], int(1 / time[1]))
+        signal_analyt.fft(nb_points=2**14, half_representation=True)
         amplitude_signal_analyt = signal_analyt.amplitude
 
         # assert if signal amplitudes are approximately equal at eigen frequency
@@ -411,13 +411,13 @@ class TestBenchmarkSet1:
         # get numerical frequencies and amplitudes
         vert_velocities = np.array([node.velocities[:, 1] for node in rod_nodes])
 
-        signal_num = Signal(time,vert_velocities[-1, :],int(1 / time[1]))
-        signal_num.fft(2**14, half_representation=True)
+        signal_num = TimeSignalProcessing(time,vert_velocities[-1, :],int(1 / time[1]))
+        signal_num.fft(nb_points=2**14, half_representation=True)
         amplitude_num = signal_num.amplitude
         freq_num = signal_num.frequency
 
-        signal_analyt = Signal(time, pulse_load.v[-1, :], int(1 / time[1]))
-        signal_analyt.fft(2**14, half_representation=True)
+        signal_analyt = TimeSignalProcessing(time, pulse_load.v[-1, :], int(1 / time[1]))
+        signal_analyt.fft(nb_points=2**14, half_representation=True)
         amplitude_ana = signal_analyt.amplitude
 
         # Check if first eigen frequency is as expected

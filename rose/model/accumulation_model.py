@@ -3,7 +3,7 @@ import pickle
 from typing import Union, List
 from abc import ABC, abstractmethod
 import numpy as np
-from scipy.integrate import trapz
+from scipy.integrate import trapezoid as trapz
 from scipy.interpolate import interp1d
 from scipy.signal import find_peaks
 from tqdm import tqdm

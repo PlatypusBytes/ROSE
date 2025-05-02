@@ -109,7 +109,7 @@ class GlobalSystem:
         """
 
         # use nodes as reference if model part does not contain elements
-        if model_part.elements:
+        if len(model_part.elements) > 0:
             node_references = None
         else:
             node_references = model_part.nodes
@@ -151,7 +151,7 @@ class GlobalSystem:
         """
 
         # gets number of nodes per element if element exist, else nnodes = 1
-        if model_part.elements:
+        if len(model_part.elements) > 0:
             n_nodes_element = len(model_part.elements[0].nodes)
         else:
             n_nodes_element = 1
