@@ -9,5 +9,5 @@ nbmake==1.5.3
 sphinx==7.2.6
 sphinx-rtd-theme==2.0.0
 sphinxcontrib-bibtex==2.6.2
+SignalProcessingTools==1.2.1
 solvers@git+https://github.com/PlatypusBytes/solvers/
-SignalProcessing@git+https://github.com/PlatypusBytes/SignalProcessing.git
