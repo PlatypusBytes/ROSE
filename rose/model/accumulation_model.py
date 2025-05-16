@@ -109,6 +109,7 @@ class Nasrollahi(AccumulationModel_abc):
         self.max_allowed_displacement_iter = 0.2 / 1000
         self.nb_samples_peak = nb_samples_peak
         self.previous_displacement = None
+        self.total_nb_cycles = []
 
 
     def settlement(self, train: ReadTrainInfo, nb_nodes: int, idx: list = None, reload=False):
@@ -135,14 +136,14 @@ class Nasrollahi(AccumulationModel_abc):
                     if None computes the calculations for all nodes
         """
 
-        if train.number_trains > 1:
-            raise ValueError("Error: The model Nasrollahi is not implemented for more than one train.")
+        # if train.number_trains > 1:
+        #     raise ValueError("Error: The model Nasrollahi is not implemented for more than one train.")
 
         # in case of reloading read the previous stage
         if reload:
             previous_displacement = np.copy(self.previous_displacement)
-            nb_cycles = self.total_nb_cycles
-            ini_nb_cycles = self.total_nb_cycles
+            nb_cycles = np.max(self.total_nb_cycles)
+            ini_nb_cycles = np.max(self.total_nb_cycles)
         else:
             self.threshold_force = np.ones((len(idx), train.number_trains)) * self.threshold_force_zero
             nb_cycles = 0
@@ -175,8 +176,10 @@ class Nasrollahi(AccumulationModel_abc):
 
             if reload:
                 displacement = [previous_displacement]
+                nb_cycles = self.total_nb_cycles[j]
             else:
                 displacement = [np.zeros(len(idx))]
+                nb_cycles = 0
 
             cycle_number = [nb_cycles]
             while iterate:
@@ -196,6 +199,8 @@ class Nasrollahi(AccumulationModel_abc):
 
                 incremental[incremental > self.max_allowed_displacement_iter] = self.max_allowed_displacement_iter
 
+                if maximum_incremental == 0:
+                    maximum_incremental = 1e-12
                 # perform  interpolation of number of cycles
                 update_nb_cycles = int(np.ceil(self.max_allowed_displacement_iter * self.reference_nb_load_cycles / maximum_incremental))
                 nb_cycles += update_nb_cycles
@@ -214,7 +219,7 @@ class Nasrollahi(AccumulationModel_abc):
                         iterate = False
                 # check if the number of cycles is below the maximum allowed
                 elif nb_cycles >= self.reference_nb_load_cycles:
-                    # Kourosh: trim the displacement to the self.nb_load_cycles
+                    # trim the displacement to the self.nb_load_cycles
                     incremental = incremental * self.reference_nb_load_cycles / nb_cycles
                     nb_cycles = self.reference_nb_load_cycles + ini_nb_cycles
                     update_nb_cycles = self.reference_nb_load_cycles - cycle_number[-1]  # to update progress bar
@@ -222,7 +227,7 @@ class Nasrollahi(AccumulationModel_abc):
                     perform_update = False
                 # check if the number of cycles is below the number of cycles of the train
                 elif nb_cycles >= train.number_cycles[j]:
-                    # Kourosh: trim the displacement to the self.nb_load_cycles
+                    # trim the displacement to the self.nb_load_cycles
                     incremental = incremental * train.number_cycles[j] / nb_cycles
                     nb_cycles = train.number_cycles[j] + ini_nb_cycles
                     update_nb_cycles = train.number_cycles[j] - cycle_number[-1]  # to update progress bar
@@ -241,11 +246,9 @@ class Nasrollahi(AccumulationModel_abc):
                 displacement.append(displacement[-1] + incremental)
                 pbar.update(update_nb_cycles)
 
-            self.previous_displacement = displacement[-1]
-
             pbar.close()
 
-            self.total_nb_cycles = nb_cycles
+            self.total_nb_cycles.append(nb_cycles)
 
             # interpolate displacement for the number of cycles
             disp = np.zeros((len(idx), int(max(train.number_cycles) / train.steps)))
@@ -258,6 +261,10 @@ class Nasrollahi(AccumulationModel_abc):
 
             # add displacement to previous
             self.displacement = self.displacement + disp
+
+            previous_displacement = np.zeros(len(idx))
+
+        self.previous_displacement = self.displacement[:, -1]
 
     def _update_threshold_force(self, displacement: np.ndarray, idx: int):
         """
