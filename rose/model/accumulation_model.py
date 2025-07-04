@@ -3,7 +3,7 @@ import pickle
 from typing import Union, List
 from abc import ABC, abstractmethod
 import numpy as np
-from scipy.integrate import trapz
+from scipy.integrate import trapezoid
 from tqdm import tqdm
 
 
@@ -197,7 +197,7 @@ class Varandas(AccumulationModel):
 
                     # compute integral: trapezoidal rule
                     integral = F ** self.alpha * (1 / (self.h_f + 1)) ** self.beta
-                    val = trapz(integral, F, axis=0)
+                    val = trapezoid(integral, F, axis=0)
 
                     aux += self.gamma / self.M_alpha_beta * val
 
