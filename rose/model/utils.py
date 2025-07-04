@@ -317,7 +317,7 @@ def add_aux_matrix_to_global(
 
     global_matrix = global_matrix.toarray()
 
-    if elements:
+    if len(elements) > 0:
         original_aux_matrix = copy.copy(aux_matrix)
         for element in elements:
 
