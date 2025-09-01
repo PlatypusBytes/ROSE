@@ -291,7 +291,6 @@ class Varandas(AccumulationModel_abc):
         :param N0: (optional, default 1e6) reference number of cycles
         :param F0: (optional, default 50) reference load amplitude
         """
-        #ToDo: improve load distribution accross time
 
         # material parameters
         self.alpha = alpha
@@ -424,6 +423,76 @@ class Varandas(AccumulationModel_abc):
         if reload:
             self.displacement = self.displacement + np.expand_dims(previous_displacement, axis=1)
 
+class Sato(AccumulationModel_abc):
+    def __init__(self, alpha: float, beta: float, gamma: float):
+        r"""
+        Initialisation of the accumulation model of Sato :cite:`Sato_1997`.
+
+        Parameters
+        ----------
+        :param alpha: model parameter
+        :param beta: model parameter
+        :param gamma: model parameter
+        """
+
+        self.alpha = alpha
+        self.beta = beta
+        self.gamma = gamma
+        self.displacement = None
+        self.nb_previous_cycles = None
+
+
+    def settlement(self,  train: ReadTrainInfo, nb_nodes: int, idx: list = None, reload=False):
+        r"""
+        Computes cumulative settlement following the methodology proposed by Sato :cite:`Sato_1997`.
+
+        The settlement :math:`S` of sleeper :math:`N` follows:
+
+        .. math::
+            S_{N} = \gamma * (1 - np.exp( - \alpha * N)) + \beta * N
+
+
+        where :math:`N` is the number of load cycles and :math:`\gamma`, :math:`\alpha`, and
+        :math:`\beta` are model parameters.
+
+        Parameters
+        ----------
+        :param train: The train information object.
+        :param idx: (optional, default None) node to compute the calculations. \
+                    if None computes the calculations for all nodes
+        :param reload: (optional, default False) whether to reload the model.
+        """
+
+        # if index is None compute for all nodes
+        if not idx:
+            idx = range(int(nb_nodes))
+
+        # assign nodes
+        self.nodes = list(idx)
+
+        # in case of reloading read the previous stage
+        ini_val = 0
+        if reload:
+            ini_val = self.nb_previous_cycles
+
+        # auxiliar displacement
+        displacement = np.zeros(int(np.sum(train.number_cycles)))
+
+        print("Running Sato model")
+        pbar = tqdm(total=np.sum(train.number_cycles), unit_scale=True, unit="steps")
+
+        # sato model does not distinguish between train types. All cycles are the same
+        for nb_cyc in range(np.sum(train.number_cycles)):
+            displacement[nb_cyc] = self.gamma * (1 - np.exp(-self.alpha * (nb_cyc + ini_val))) + self.beta * (nb_cyc + ini_val)
+            pbar.update(1)
+        pbar.close()
+
+        # resample
+        index = np.linspace(0, np.sum(train.number_cycles)-1, int(np.max(train.number_cycles)), dtype=int)[train.steps_index]
+        self.displacement = np.tile(displacement[index], (len(idx), 1))
+
+        # for reloading
+        self.nb_previous_cycles = int(np.sum(train.number_cycles))
 
 class LiSelig(AccumulationModel_abc):
     def __init__(self, soil_sos: List[dict], soil_idx: List[int], width_stress: float, lenght_stress: float,
@@ -654,9 +723,10 @@ class AccumulationModel:
     - Varandas :cite:`varandas_2014`
     - Li & Selig :cite:`Li_Selig_1996`
     - Nasrollahi: :cite:`Nasrollahi_2023`
+    - Sato: :cite:`Sato_1997`
 
     """
-    def __init__(self, accumulation_model: Union[Varandas, LiSelig, Nasrollahi], steps: int = 1):
+    def __init__(self, accumulation_model: Union[Varandas, LiSelig, Nasrollahi, Sato], steps: int = 1):
         """
         Initialisation of the accumulation model
 
@@ -756,4 +826,3 @@ class AccumulationModel:
         self.results["nodes"] = self.accumulation_model.nodes
         self.results["time"] = time.tolist()
         self.results["displacement"] = aux
-
