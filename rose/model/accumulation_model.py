@@ -138,8 +138,8 @@ class Nasrollahi(AccumulationModel_abc):
         :param reload: (optional, default False) whether to reload the model
         """
 
-        # if train.number_trains > 1:
-        #     raise ValueError("Error: The model Nasrollahi is not implemented for more than one train.")
+        if train.number_trains > 1:
+            raise ValueError("Error: The model Nasrollahi is not implemented for more than one train.")
 
         # in case of reloading read the previous stage
         if reload:
