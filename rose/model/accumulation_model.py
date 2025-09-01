@@ -73,7 +73,7 @@ class AccumulationModel_abc(ABC):
     Abstract class for accumulation models
     """
     @abstractmethod
-    def settlement():
+    def settlement(self, trains, nb_nodes, idx, reload):
         """
         Abstract method to compute the cumulative settlement
         """
@@ -110,6 +110,7 @@ class Nasrollahi(AccumulationModel_abc):
         self.nb_samples_peak = nb_samples_peak
         self.previous_displacement = None
         self.total_nb_cycles = []
+        self.displacement = None
 
 
     def settlement(self, train: ReadTrainInfo, nb_nodes: int, idx: list = None, reload=False):
@@ -134,6 +135,7 @@ class Nasrollahi(AccumulationModel_abc):
         :param nb_nodes: number of nodes
         :param idx: (optional, default None) node to compute the calculations. \
                     if None computes the calculations for all nodes
+        :param reload: (optional, default False) whether to reload the model
         """
 
         # if train.number_trains > 1:
@@ -314,6 +316,7 @@ class Varandas(AccumulationModel_abc):
         self.nb_int_step = 100  # number of integration steps
         self.force_scl_fct = 1000  # N -> kN
         self.disp_scl_fct = 1000  # mm -> m
+        self.displacement = None
 
 
     def settlement(self, train: ReadTrainInfo, nb_nodes: int, idx: list = None, reload=False):
@@ -345,6 +348,7 @@ class Varandas(AccumulationModel_abc):
         :param nb_nodes: number of nodes
         :param idx: (optional, default None) node to compute the calculations. \
                     if None computes the calculations for all nodes
+        :param reload: (optional, default False) whether to reload the model
         """
 
         # in case of reloading read the previous stage
@@ -379,28 +383,38 @@ class Varandas(AccumulationModel_abc):
             max_val_force = np.zeros((len(self.nodes), train.number_trains)).T
         else:
             # in case of reloading
-            # self.h_f = self.h_f
             max_val_force = self.max_val_force
 
-        i = 0
-        aux = np.zeros(len(self.nodes))
-        for n, nb_cyc in enumerate(tqdm(train.cumulative_nb_cycles)):
-            for tr in range(train.number_trains):
-                if nb_cyc <= train.number_cycles[tr]:
-                    self.h_f[self.force_max[tr, :] <= max_val_force[tr, :]] += 1
-                    max_val_force[tr, self.force_max[tr, :] > max_val_force[tr, :]] = self.force_max[tr, self.force_max[tr, :] > max_val_force[tr, :]]
+        pbar = tqdm(total=np.sum(train.number_cycles), unit_scale=True, unit="steps")
+        # for each train
+        for tr in range(train.number_trains):
+            i = 0
+            aux = np.zeros(len(self.nodes))
+            # compute the displacement for each cycle for each train
+            for nb_cyc in range(train.number_cycles[tr]):
+                self.h_f[self.force_max[tr, :] <= max_val_force[tr, :]] += 1
+                max_val_force[tr, self.force_max[tr, :] > max_val_force[tr, :]] = self.force_max[tr, self.force_max[tr, :] > max_val_force[tr, :]]
 
-                    # compute integral: trapezoidal rule
-                    integral = F ** self.alpha * (1 / (self.h_f + 1)) ** self.beta
-                    val = trapz(integral, F, axis=0)
+                # compute integral: trapezoidal rule
+                integral = F ** self.alpha * (1 / (self.h_f + 1)) ** self.beta
+                val = trapz(integral, F, axis=0)
 
-                    aux += self.gamma / self.M_alpha_beta * val
+                aux += self.gamma / self.M_alpha_beta * val
 
-            if n in train.steps_index:
-                # compute displacement on cycle N
-                disp[:, i] = aux
-                aux = np.zeros(len(self.nodes))
-                i += 1
+                pbar.update(1)
+                if nb_cyc in train.steps_index:
+                    # for the train that have less load cycles distribute them evenly
+                    if train.number_cycles[tr] == np.max(train.number_cycles):
+                        index = i
+                    else:
+                        index = np.linspace(0, np.max(train.number_cycles), train.number_cycles[tr], dtype=int)[i]
+
+                    # compute displacement on cycle N
+                    disp[:, index] += aux
+                    aux = np.zeros(len(self.nodes))
+                    i += 1
+
+        pbar.close()
 
         # maximum force
         self.max_val_force = max_val_force
@@ -459,7 +473,7 @@ class LiSelig(AccumulationModel_abc):
         self.t_construction = t_ini
         self.n_ini = 0
         self.__read_SoS(soil_sos, soil_idx)
-
+        self.displacement = None
 
     def __read_SoS(self, soil_sos: dict, soil_id: list):
         """
