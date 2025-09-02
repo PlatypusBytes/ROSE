@@ -112,7 +112,6 @@ class Nasrollahi(AccumulationModel_abc):
         self.total_nb_cycles = []
         self.displacement = None
 
-
     def settlement(self, train: ReadTrainInfo, nb_nodes: int, idx: list = None, reload=False):
         """
         Computes cumulative settlement following the methodology proposed by Nasrollahi :cite:`Nasrollahi_2023`.
@@ -316,7 +315,6 @@ class Varandas(AccumulationModel_abc):
         self.force_scl_fct = 1000  # N -> kN
         self.disp_scl_fct = 1000  # mm -> m
         self.displacement = None
-
 
     def settlement(self, train: ReadTrainInfo, nb_nodes: int, idx: list = None, reload=False):
         """

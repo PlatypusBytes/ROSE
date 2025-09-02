@@ -12,6 +12,7 @@ with open(os.path.join(base_path, f"erju.pickle"), "rb") as f:
     doubledekker = pickle.load(f)
 
 
+
 total_time = [50, 365]  # days
 idx = range(100-25, 100+25)  # indexes to collect data
 
