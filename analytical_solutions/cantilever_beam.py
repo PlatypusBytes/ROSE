@@ -100,7 +100,7 @@ class PulseLoadNoDamping:
               (np.cos(self.a * self.length) + np.cosh(self.a * self.length)) / (np.sin(self.a * self.length) + np.sinh(self.a * self.length)) * \
               (np.sin(self.a * x) - np.sinh(self.a * x))
 
-        return self.mass * trapz(aux ** 2, x)
+        return self.mass * trapezoid(aux ** 2, x)
 
     def compute(self):
         """
