@@ -79,6 +79,75 @@ class AccumulationModel_abc(ABC):
         """
         raise Exception("It is not allowed to call the AccumulationModel abstract method")
 
+class Shenton(AccumulationModel_abc):
+    def __init__(self, k1: float, k2: float):
+        r"""
+        Initialisation of the accumulation model of Shenton :cite:`Shenton_1985`.
+
+        Parameters
+        ----------
+        :param k1: model parameter
+        :param k2: model parameter
+        """
+        self.k1 = k1
+        self.k2 = k2
+        self.nodes = None
+        self.displacement = None
+        self.nb_previous_cycles = 0
+
+    def settlement(self, train: ReadTrainInfo, nb_nodes: int, idx: list = None, reload: bool = False):
+        r"""
+        Computes cumulative settlement following the methodology proposed by Shenton :cite:`Shenton_1985`.
+
+        The settlement :math:`S` of sleeper :math:`N` follows:
+
+        .. math::
+            S_{N} = k1 * N^{0.2} 1 + k2 * N
+
+
+        where :math:`N` is the number of load cycles and :math:`k1` and :math:`k2` are model parameters.
+
+        Parameters
+        ----------
+        :param train: The train information object.
+        :param nb_nodes: number of nodes
+        :param idx: (optional, default None) node to compute the calculations. \
+                    if None computes the calculations for all nodes
+        :param reload: (optional, default False) whether to reload the model.
+        """
+
+        # if index is None compute for all nodes
+        if not idx:
+            idx = range(int(nb_nodes))
+
+        # assign nodes
+        self.nodes = list(idx)
+
+        # in case of reloading read the previous stage
+        ini_val = 0
+        if reload:
+            ini_val = self.nb_previous_cycles
+
+        # auxiliar displacement
+        displacement = np.zeros(int(np.sum(train.number_cycles)))
+
+        print("Running Shenton model")
+        pbar = tqdm(total=np.sum(train.number_cycles), unit_scale=True, unit="steps")
+
+        # sato model does not distinguish between train types. All cycles are the same
+        for nb_cyc in range(np.sum(train.number_cycles)):
+            displacement[nb_cyc] = self.k1 * (nb_cyc + ini_val)**0.2 + self.k2 * (nb_cyc + ini_val)
+            pbar.update(1)
+        pbar.close()
+
+        # resample
+        index = np.linspace(0, np.sum(train.number_cycles) - 1, int(np.max(train.number_cycles)), dtype=int)[
+            train.steps_index]
+        self.displacement = np.tile(displacement[index], (len(idx), 1))
+
+        # for reloading
+        self.nb_previous_cycles = int(np.sum(train.number_cycles))
+
 
 class Nasrollahi(AccumulationModel_abc):
     def __init__(self, alpha_k: float, beta_k: float, gamma: float, F0: float=1000,
@@ -362,6 +431,7 @@ class Varandas(AccumulationModel_abc):
         # cumulative displacement
         self.displacement = np.zeros((int(len(idx)), int(np.max(train.number_cycles) / train.steps)))
         # displacement due to cycle n
+        # ToDo issue with size
         disp = np.zeros((int(len(idx)), int(np.max(train.number_cycles) / train.steps)))
 
         # compute maximum force
@@ -456,6 +526,7 @@ class Sato(AccumulationModel_abc):
         Parameters
         ----------
         :param train: The train information object.
+        :param nb_nodes: number of nodes
         :param idx: (optional, default None) node to compute the calculations. \
                     if None computes the calculations for all nodes
         :param reload: (optional, default False) whether to reload the model.
@@ -491,6 +562,7 @@ class Sato(AccumulationModel_abc):
 
         # for reloading
         self.nb_previous_cycles = int(np.sum(train.number_cycles))
+
 
 class LiSelig(AccumulationModel_abc):
     def __init__(self, soil_sos: List[dict], soil_idx: List[int], width_stress: float, lenght_stress: float,
