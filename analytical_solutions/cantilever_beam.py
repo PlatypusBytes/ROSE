@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import root
-from scipy.integrate import trapezoid as trapz
+from scipy.integrate import trapezoid
 import json
 
 
