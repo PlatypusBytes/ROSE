@@ -794,9 +794,9 @@ class AccumulationModel:
     - Li & Selig :cite:`Li_Selig_1996`
     - Nasrollahi: :cite:`Nasrollahi_2023`
     - Sato: :cite:`Sato_1997`
-
+    - Shenton: :cite:`Shenton_1985`
     """
-    def __init__(self, accumulation_model: Union[Varandas, LiSelig, Nasrollahi, Sato], steps: int = 1):
+    def __init__(self, accumulation_model: Union[Varandas, LiSelig, Nasrollahi, Sato, Shenton], steps: int = 1):
         """
         Initialisation of the accumulation model
 
