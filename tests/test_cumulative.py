@@ -1,6 +1,6 @@
 # unit test for cumulative
 import pytest
-from rose.model.accumulation_model import AccumulationModel, Varandas, LiSelig, Nasrollahi
+from rose.model.accumulation_model import AccumulationModel, Varandas, LiSelig, Nasrollahi, Sato, Shenton
 import numpy as np
 import os
 import pickle
@@ -181,6 +181,156 @@ class TestNasrollahi:
 
             # compare with existing file
             with open(os.path.join(TEST_PATH, f"./test_data/nasrollahi_3_{int(t)}.pickle"), "rb") as f:
+                data = pickle.load(f)
+
+            res = compare_dics(sett.results, data)
+            assert res
+
+
+class TestSato:
+    """
+    Test Sato model
+    """
+
+    def test_settlement_1(self, setup):
+        """
+        Test with all train types
+        """
+        model = Sato(1e-4, 1e-8, 0.005)
+        sett = AccumulationModel(accumulation_model=model, steps=setup["steps"])
+
+        # only 1 train type
+        traininfo = {"dubbeldekker": setup["traininfo"]["dubbeldekker"]}
+
+        sett.read_traffic(traininfo, setup["time"])
+        sett.calculate_settlement(idx=setup["idx"])
+        sett.write_results(os.path.join(TEST_PATH, "./example.pickle"))
+
+        # compare with existing file
+        with open(os.path.join(TEST_PATH, "./test_data/sato_1.pickle"), "rb") as f:
+            data = pickle.load(f)
+
+        res = compare_dics(sett.results, data)
+        assert res
+
+    def test_settlement_2(self, setup):
+        """
+        Test with only 1 train type
+        """
+
+        traininfo = {"dubbeldekker": setup["traininfo"]["dubbeldekker"]}
+
+        model = Sato(1e-4, 1e-8, 0.005)
+        sett = AccumulationModel(accumulation_model=model, steps=setup["steps"])
+        sett.read_traffic(traininfo, setup["time"])
+        sett.calculate_settlement(idx=setup["idx"])
+        sett.write_results(os.path.join(TEST_PATH, "./example.pickle"))
+
+        # compare with existing file
+        with open(os.path.join(TEST_PATH, "./test_data/sato_2.pickle"), "rb") as f:
+            data = pickle.load(f)
+
+        res = compare_dics(sett.results, data)
+        assert res
+
+    def test_settlement_3(self, setup):
+        """
+        Test with reloading results
+        """
+
+        total_time = [5, 10]  # days
+        start_time = 0
+        reload_v = False
+        model = Sato(1e-4, 1e-8, 0.005)
+        sett = AccumulationModel(accumulation_model=model, steps=setup["steps"])
+
+        # only 1 train type
+        traininfo = {"dubbeldekker": setup["traininfo"]["dubbeldekker"]}
+
+        for t in total_time:
+            sett.read_traffic(traininfo, t, start_time=start_time)
+            sett.calculate_settlement(idx=setup["idx"], reload=reload_v)
+            sett.write_results(os.path.join(TEST_PATH, f"./example.pickle"))
+            reload_v = True
+            start_time = t
+
+            # compare with existing file
+            with open(os.path.join(TEST_PATH, f"./test_data/sato_3_{int(t)}.pickle"), "rb") as f:
+                data = pickle.load(f)
+
+            res = compare_dics(sett.results, data)
+            assert res
+
+
+class TestShenton:
+    """
+    Test Shenton model
+    """
+
+    def test_settlement_1(self, setup):
+        """
+        Test with all train types
+        """
+        model = Shenton(1e-4, 1e-6)
+        sett = AccumulationModel(accumulation_model=model, steps=setup["steps"])
+
+        # only 1 train type
+        traininfo = {"dubbeldekker": setup["traininfo"]["dubbeldekker"]}
+
+        sett.read_traffic(traininfo, setup["time"])
+        sett.calculate_settlement(idx=setup["idx"])
+        sett.write_results(os.path.join(TEST_PATH, "./example.pickle"))
+
+        # compare with existing file
+        with open(os.path.join(TEST_PATH, "./test_data/shenton_1.pickle"), "rb") as f:
+            data = pickle.load(f)
+
+        res = compare_dics(sett.results, data)
+        assert res
+
+    def test_settlement_2(self, setup):
+        """
+        Test with only 1 train type
+        """
+
+        traininfo = {"dubbeldekker": setup["traininfo"]["dubbeldekker"]}
+
+        model = Shenton(1e-4, 1e-6)
+        sett = AccumulationModel(accumulation_model=model, steps=setup["steps"])
+        sett.read_traffic(traininfo, setup["time"])
+        sett.calculate_settlement(idx=setup["idx"])
+        sett.write_results(os.path.join(TEST_PATH, "./example.pickle"))
+
+        # compare with existing file
+        with open(os.path.join(TEST_PATH, "./test_data/shenton_2.pickle"), "rb") as f:
+            data = pickle.load(f)
+
+        res = compare_dics(sett.results, data)
+        assert res
+
+    def test_settlement_3(self, setup):
+        """
+        Test with reloading results
+        """
+
+        total_time = [5, 10]  # days
+        start_time = 0
+        reload_v = False
+        model = Shenton(1e-4, 1e-6)
+        sett = AccumulationModel(accumulation_model=model, steps=setup["steps"])
+
+        # only 1 train type
+        traininfo = {"dubbeldekker": setup["traininfo"]["dubbeldekker"]}
+
+        for t in total_time:
+            sett.read_traffic(traininfo, t, start_time=start_time)
+            sett.calculate_settlement(idx=setup["idx"], reload=reload_v)
+            sett.write_results(os.path.join(TEST_PATH, f"./example.pickle"))
+            reload_v = True
+            start_time = t
+
+            # compare with existing file
+            with open(os.path.join(TEST_PATH, f"./test_data/shenton_3_{int(t)}.pickle"), "rb") as f:
                 data = pickle.load(f)
 
             res = compare_dics(sett.results, data)
