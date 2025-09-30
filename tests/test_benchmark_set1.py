@@ -225,11 +225,11 @@ class TestBenchmarkSet1:
 
         # process signal of numerical and analytical solution
         signal_num = TimeSignalProcessing(time,vertical_displacements[int((n_beams-1)/2), :],int(1 / time[1]))
-        signal_num.fft(2**14, half_representation=True)
+        signal_num.fft(nb_points=2**14, half_representation=True)
         amplitude_num = signal_num.amplitude
 
         signal_analyt = TimeSignalProcessing(time, beam_analytical.u[int((n_beams-1)/2), :], int(1 / time[1]))
-        signal_analyt.fft(2**14, half_representation=True)
+        signal_analyt.fft(nb_points=2**14, half_representation=True)
         amplitude_signal_analyt = signal_analyt.amplitude
 
         # assert if signal amplitudes are approximately equal at eigen frequency
@@ -412,12 +412,12 @@ class TestBenchmarkSet1:
         vert_velocities = np.array([node.velocities[:, 1] for node in rod_nodes])
 
         signal_num = TimeSignalProcessing(time,vert_velocities[-1, :],int(1 / time[1]))
-        signal_num.fft(2**14, half_representation=True)
+        signal_num.fft(nb_points=2**14, half_representation=True)
         amplitude_num = signal_num.amplitude
         freq_num = signal_num.frequency
 
         signal_analyt = TimeSignalProcessing(time, pulse_load.v[-1, :], int(1 / time[1]))
-        signal_analyt.fft(2**14, half_representation=True)
+        signal_analyt.fft(nb_points=2**14, half_representation=True)
         amplitude_ana = signal_analyt.amplitude
 
         # Check if first eigen frequency is as expected
