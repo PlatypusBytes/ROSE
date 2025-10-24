@@ -116,6 +116,15 @@ class Node:
         self.model_parts = self.model_parts + other.model_parts
         return True
 
+    def __hash__(self):
+        """
+        Custom hash function for the node based on its coordinates.
+
+        :return:
+        """
+        rounded_coords = tuple(round(c, 9) for c in self.coordinates)
+        return hash(rounded_coords)
+
     @property
     def ndof(self):
         """
@@ -162,6 +171,15 @@ class Element:
         self.model_parts = list(set(self.model_parts + other.model_parts))
 
         return True
+
+    def __hash__(self):
+        """
+        Custom hash function for the element based on its nodes.
+
+        :return:
+        """
+        node_hashes = tuple((hash(node) for node in self.nodes))
+        return hash(node_hashes)
 
     def add_model_part(self, model_part):
         """
@@ -229,9 +247,17 @@ class Mesh:
         :param nodes: Nodes to be added to the mesh, if unique.
         :return:
         """
-        for node in nodes:
-            if node not in self.nodes:
-                self.nodes = np.append(self.nodes, [node])
+
+        self.nodes = np.array(list(dict.fromkeys(np.concatenate([self.nodes, nodes]))))
+
+    def fast_add_nodes_to_mesh(self, nodes):
+        """
+        Adds nodes to the mesh without checking for uniqueness. Use with caution.
+
+        :param nodes: Nodes to be added to the mesh.
+        :return:
+        """
+        self.nodes = np.append(self.nodes, nodes)
 
     def add_unique_elements_to_mesh(self, elements):
         """
@@ -240,6 +266,13 @@ class Mesh:
         :param elements: Elements to be added to the mesh, if unique.
         :return:
         """
-        for element in elements:
-            if element not in self.elements:
-                self.elements = np.append(self.elements, element)
+        self.elements = np.array(list(dict.fromkeys(list(self.elements) + list(elements))), dtype=object)
+
+    def fast_add_elements_to_mesh(self, elements):
+        """
+        Adds elements to the mesh without checking for uniqueness. Use with caution.
+
+        :param elements: Elements to be added to the mesh.
+        :return:
+        """
+        self.elements = np.append(self.elements, elements)
