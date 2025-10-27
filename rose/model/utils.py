@@ -228,31 +228,28 @@ def rotate_point_around_z_axis(rotation: np.ndarray, point_vector: np.ndarray):
     :return:
     """
 
+    #  rotation around z axis for single point
     if isinstance(rotation, float):
-        rot_matrix = np.zeros((3, 3))
-        rot_matrix[0, 0] = math.cos(rotation)
-        rot_matrix[1, 1] = rot_matrix[0, 0]
-        rot_matrix[0, 1] = math.sin(rotation)
-        rot_matrix[1, 0] = -rot_matrix[0, 1]
-        rot_matrix[2, 2] = 1
+
+        cos_rot = math.cos(rotation)
+        sin_rot = math.sin(rotation)
+
+        rot_matrix = np.array([[cos_rot, sin_rot, 0],
+                               [-sin_rot, cos_rot, 0],
+                               [0, 0, 1]])
 
         return rot_matrix.dot(point_vector)
 
-    # set rotation matrix
-    rot_matrix = np.zeros((len(rotation), 3, 3))
-    rot_matrix[:, 0, 0] = np.cos(rotation)
-    rot_matrix[:, 1, 1] = np.cos(rotation)
-    rot_matrix[:, 0, 1] = np.sin(rotation)
-    rot_matrix[:, 1, 0] = -rot_matrix[:, 0, 1]
-    rot_matrix[:, 2, 2] = 1
+    # rotation around z axis for multiple points
+    else:
+        cos_rot = np.cos(rotation)
+        sin_rot = np.sin(rotation)
 
-    rotated_point = np.zeros(point_vector.shape)
+        x_vector, y_vector = point_vector[:,0], point_vector[:,1]
 
-    # rotate each time step
-    for idx, (mat, point) in enumerate(zip(rot_matrix,point_vector)):
-        rotated_point[idx] = mat.dot(point)
-
-    return rotated_point
+        rotated_x = cos_rot * x_vector + sin_rot * y_vector
+        rotated_y = -sin_rot * x_vector + cos_rot * y_vector
+        return np.stack((rotated_x, rotated_y, point_vector[:,2]), axis=1)
 
 
 def rotate_force_vector(element: Element, contact_model_part, force_vector: np.array):
@@ -315,59 +312,64 @@ def add_aux_matrix_to_global(
     :return:
     """
 
-    global_matrix = global_matrix.toarray()
+    # --- 1. Initialization (BEFORE all loops) ---
+
+    matrix_shape = global_matrix.shape
+
+    # If global_matrix *already* has values, capture them.
+    # If it's empty, these will be empty.
+    global_coo = global_matrix.tocoo()
+    data = global_coo.data.tolist()
+    rows = global_coo.row.tolist()
+    cols = global_coo.col.tolist()
 
     if len(elements) > 0:
         original_aux_matrix = copy.copy(aux_matrix)
+
         for element in elements:
 
-            # rotate aux matrix
+            # Rotate aux matrix (gets the dense local element matrix)
             aux_matrix = rotate_aux_matrix(element, model_part, original_aux_matrix)
 
-            # loop over each node in modelpart element except the last node
-            for node_nr in range(len(element.nodes) - 1):
+            # Get all global DOF indices for this element in one flat list
+            global_dof_indices = []
+            for node in element.nodes:
+                global_dof_indices.extend(node.index_dof)
 
-                # add diagonal part of aux matrix to the global matrix
-                for j, id_1 in enumerate(element.nodes[node_nr].index_dof):
-                    for k, id_2 in enumerate(element.nodes[node_nr].index_dof):
-                        row_index = len(element.nodes[node_nr].index_dof) * node_nr + j
-                        col_index = len(element.nodes[node_nr].index_dof) * node_nr + k
-                        global_matrix[id_1, id_2] += aux_matrix[row_index, col_index]
+            # Loop over the local (dense) element matrix
+            for i_local, i_global in enumerate(global_dof_indices):
+                for j_local, j_global in enumerate(global_dof_indices):
 
-                for node_nr_2 in range(node_nr + 1, len(element.nodes)):
-                    # add top right part of aux matrix to the global matrix
-                    for j, id_1 in enumerate(element.nodes[node_nr].index_dof):
-                        for k, id_2 in enumerate(element.nodes[node_nr_2].index_dof):
-                            row_index = len(element.nodes[node_nr].index_dof) * node_nr + j
-                            col_index = len(element.nodes[node_nr].index_dof) * (node_nr + node_nr_2) + k
-                            global_matrix[id_1, id_2] += aux_matrix[row_index, col_index]
+                    # Get the value
+                    value = aux_matrix[i_local, j_local]
+                    # Append to the lists.
+                    if value != 0.0:
+                        data.append(value)
+                        rows.append(i_global)
+                        cols.append(j_global)
 
-                    # add bottom left part of the aux matrix to the global matrix
-                    for j, id_1 in enumerate(element.nodes[node_nr_2].index_dof):
-                        for k, id_2 in enumerate(element.nodes[node_nr].index_dof):
-                            row_index = len(element.nodes[node_nr].index_dof) * (node_nr + node_nr_2) + j
-                            col_index = len(element.nodes[node_nr].index_dof) * node_nr + k
-                            global_matrix[id_1, id_2] += aux_matrix[row_index, col_index]
-
-            # add last node of the aux matrix to the global matrix
-            for j, id_1 in enumerate(element.nodes[-1].index_dof):
-                for k, id_2 in enumerate(element.nodes[-1].index_dof):
-                    row_index = len(element.nodes[-1].index_dof) * (len(element.nodes) - 1) + j
-                    col_index = len(element.nodes[-1].index_dof) * (len(element.nodes) - 1) + k
-                    global_matrix[id_1, id_2] += aux_matrix[row_index, col_index]
-
-        global_matrix = sparse.lil_matrix(global_matrix)
-        return global_matrix
-
-    # add single nodes to the global matrix (for model parts without elements)
-    if nodes is not None:
+    # loop over nodes if there are no elements in the model part
+    elif nodes is not None:
         for node in nodes:
-            for j, id_1 in enumerate(node.index_dof):
-                for k, id_2 in enumerate(node.index_dof):
-                    global_matrix[id_1, id_2] += aux_matrix[j, k]
+            # Loop over the small aux_matrix for the node and add to sparse global matrix lists
+            for j_local, j_global in enumerate(node.index_dof):
+                for k_local, k_global in enumerate(node.index_dof):
 
-        global_matrix = sparse.lil_matrix(global_matrix)
-        return global_matrix
+                    value = aux_matrix[j_local, k_local]
+                    if value != 0.0:
+                        data.append(value)
+                        rows.append(j_global)
+                        cols.append(k_global)
+
+    # Create the COO matrix. This call sums all duplicate (row, col) entries.
+    # This is the "assembly" step, done once.
+    global_matrix_coo = sparse.coo_matrix((data, (rows, cols)), shape=matrix_shape)
+
+    # convert back to lil format
+    global_matrix = global_matrix_coo.tolil()
+
+    return global_matrix
+
 
 
 def distance_np(coordinates_array1: np.array, coordinates_array2: np.array, axis=0):
