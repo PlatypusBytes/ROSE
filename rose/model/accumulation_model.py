@@ -491,6 +491,7 @@ class Varandas(AccumulationModel_abc):
         if reload:
             self.displacement = self.displacement + np.expand_dims(previous_displacement, axis=1)
 
+
 class Sato(AccumulationModel_abc):
     def __init__(self, alpha: float, beta: float, gamma: float):
         r"""
