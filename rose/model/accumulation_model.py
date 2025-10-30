@@ -78,6 +78,52 @@ class AccumulationModel_abc(ABC):
         Abstract method to compute the cumulative settlement
         """
         raise Exception("It is not allowed to call the AccumulationModel abstract method")
+class Hettler(AccumulationModel_abc):
+    def __init__(self, k1: float, k2: float):
+        r"""
+        Initialisation of the accumulation model of Hettler :cite:`TO ADD`.
+
+        Parameters
+        ----------
+        :param s: model parameter
+        :param C: model parameter
+        """
+        self.s = s
+        self.C = C
+        self.nodes = None
+        self.displacement = None
+        self.nb_previous_cycles = 0
+
+    def settlement(self, train: ReadTrainInfo, nb_nodes: int, idx: list = None, reload: bool = False):
+        r"""
+        Computes cumulative settlement following the methodology proposed by Hettler :cite:`TO ADD`.
+
+        The settlement :math:`S` of sleeper :math:`N` follows:
+
+        .. math::
+            S_{N} = s * F_{eq}^1.6*(1 = C * log_{10}(N))
+
+
+        where :math:`N` is the number of load cycles, F_{eq} is the equivalent sleeper-ballast force
+         and :math:`s` and :math:`C` are model parameters.
+
+        Parameters
+        ----------
+        :param train: The train information object.
+        :param nb_nodes: number of nodes
+        :param idx: (optional, default None) node to compute the calculations. \
+                    if None computes the calculations for all nodes
+        :param reload: (optional, default False) whether to reload the model.
+        """
+
+        # if index is None compute for all nodes
+        if not idx:
+            idx = range(int(nb_nodes))
+
+        # assign nodes
+        self.nodes = list(idx)
+
+
 
 class Shenton(AccumulationModel_abc):
     def __init__(self, k1: float, k2: float):
