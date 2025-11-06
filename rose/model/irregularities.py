@@ -15,7 +15,7 @@ class RailDefect:
         """
         Creates an array with a rail defect.
 
-        :param x: position of the node [m]
+        :param x: all distances where the irregularity should be calculated [m]
         :param local_defect_geometry_coordinates: the local geometry coordinates of the defect, where the first column
                 is the local position [m] and the second column is the defect height [m]
         :param start_position: global starting position of the defect [m]
@@ -26,9 +26,12 @@ class RailDefect:
 
         defect_global_coordinates = np.array(local_defect_geometry_coordinates) + np.array([start_position, 0])
         for i in range(len(defect_global_coordinates)-1):
+            # find indices in x corresponding to the defect segment
             defect_index_start = np.where(x >= defect_global_coordinates[i,0])[0]
             defect_index_end = np.where(x <= defect_global_coordinates[i+1,0])[0]
             defect_indices = np.intersect1d(defect_index_start, defect_index_end)
+
+            # if there are indices in this segment, interpolate the defect heights
             if len(defect_indices) > 0:
                 self.irregularities[defect_indices] = np.linspace(defect_global_coordinates[i,1], defect_global_coordinates[i+1,1], len(defect_indices))
 
@@ -162,15 +165,12 @@ class RailIrregularities:
 
 
 if __name__ == "__main__":
-    distance = np.linspace(0, 50, 51)
+    distance = np.linspace(0, 50, 101)
 
     r = RailIrregularities(distance, seed=14)
-
     r_defect = RailDefect(distance, local_defect_geometry_coordinates=np.array([[0,0], [2, 0.002], [5,0]]), start_position=14)
-    #
-    irr = r.irregularities + r_defect.irregularities
-    # irr = r.irregularities
 
+    irr = r.irregularities + r_defect.irregularities
     plt.plot(distance, irr)
     plt.grid()
     plt.show()
