@@ -467,7 +467,6 @@ class TestBenchmarkSet1:
         rail_model_part = Rail()
         rail_model_part.elements = elements_track
         rail_model_part.nodes = nodes_track
-        rail_model_part.length_rail = length_beam
 
         # add hinge to rail
         hinge_model_part = Hinge()

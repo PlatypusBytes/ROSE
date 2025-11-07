@@ -128,7 +128,6 @@ def add_semi_rigid_hinge_at_x(rail_model_part, hinge_model_part, x_coordinate_hi
             hinge_rail_model_part = Rail()
             hinge_rail_model_part.elements = [element]
             hinge_rail_model_part.nodes = element.nodes
-            hinge_rail_model_part.length_rail = rail_model_part.length_rail
             hinge_rail_model_part.material = rail_model_part.material
             hinge_rail_model_part.section = rail_model_part.section
 
@@ -185,21 +184,20 @@ def create_hinge_model_part(hinge_data, rail_model_part, mesh):
     return rail_model_parts, hinge, all_mesh
 
 
-def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
+def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth, n_rail_per_sleeper=1):
     """
-    Creates mesh of an horizontal track. Where the top of the track lies at z=0; the sleeper thickness is 1.0m.
+    Creates mesh of a horizontal track. Where the top of the track lies at z=0; the sleeper thickness is 1.0m.
 
     :param n_sleepers: number of sleepers [-]
     :param sleeper_distance: distance between sleepers [m]
     :param soil_depth: depth of the soil [m]
+    :param n_rail_per_sleeper: number of rail elements per sleeper [-]
     :return: Dictionary with: rail model part, rail pad model part, sleeper model part, soil model part. Mesh
 
     """
     # define constants
     track_level = 0.0
     sleeper_thickness = 1.0
-
-    n_rail_per_sleeper = 1
 
     # initialise mesh
     mesh = Mesh()
@@ -210,7 +208,7 @@ def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     elements_track = [
         Element([nodes_track[i], nodes_track[i + 1]]) for i in range(n_sleepers * n_rail_per_sleeper - 1)
     ]
-    mesh.add_unique_elements_to_mesh(elements_track)
+    mesh.fast_add_elements_to_mesh(elements_track)
 
     # add railpad nodes and elements to mesh
     points_rail_pad = [
@@ -224,7 +222,7 @@ def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
         Element([points_rail_pad[i * 2], points_rail_pad[i * 2 + 1]])
         for i in range(n_sleepers)
     ]
-    mesh.add_unique_elements_to_mesh(elements_rail_pad)
+    mesh.fast_add_elements_to_mesh(elements_rail_pad)
 
     # add sleeper nodes to mesh
     nodes_sleeper = [points_rail_pad[i * 2 + 1] for i in range(n_sleepers)]
@@ -248,7 +246,7 @@ def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     elements_soil = [
         Element([points_soil[i * 2], points_soil[i * 2 + 1]]) for i in range(n_sleepers)
     ]
-    mesh.add_unique_elements_to_mesh(elements_soil)
+    mesh.fast_add_elements_to_mesh(elements_soil)
 
     # add no displacement boundary condition to mesh
     no_disp_boundary_condition_nodes = [
@@ -264,7 +262,6 @@ def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     rail_model_part = Rail()
     rail_model_part.elements = elements_track
     rail_model_part.nodes = nodes_track
-    rail_model_part.length_rail = sleeper_distance
     rail_model_part.length_element = sleeper_distance
     # initialise railpad model part
     rail_pad_model_part = RailPad()
@@ -292,7 +289,7 @@ def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth):
     )
 
 
-def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes: List[Mesh], sleeper_distance):
+def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes: List[Mesh], sleeper_distance: float, n_rail_per_sleeper: int=1):
     """
     Combines multiple horizontal track parts. This function takes a list of tracks and connects the track parts to a
     model. The tracks in the list need to be ordered from left to right. Coordinates of the track parts
@@ -303,6 +300,7 @@ def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes:
     :param tracks: Ordered list of dictionaries of model parts belonging to a horizontal track part
     :param meshes: list of meshes belonging to the track parts
     :param sleeper_distance: horizontal distance between sleepers
+    :param n_rail_per_sleeper: number of rail elements per sleeper
     :return:
     """
 
@@ -327,13 +325,27 @@ def combine_horizontal_tracks(tracks: List[Dict[str, ElementModelPart]], meshes:
         # add soil model parts to list
         soil_model_parts.append(track["soil"])
         if idx>0:
-            # combine rail elements in one model part
-            connecting_element = Element([tracks[idx-1]["rail"].nodes[-1],
-                                          track["rail"].nodes[0]])
 
-            track["rail"].elements = tracks[idx-1]["rail"].elements + [connecting_element] + track["rail"].elements
-            track["rail"].nodes = tracks[idx-1]["rail"].nodes + track["rail"].nodes
-            global_mesh.add_unique_elements_to_mesh([connecting_element])
+            # create nodes and elements between sleepers
+            start_coordinates = tracks[idx-1]["rail"].nodes[-1].coordinates
+            end_coordinates = track["rail"].nodes[0].coordinates
+            in_between_coordinates = np.linspace(start_coordinates, end_coordinates, n_rail_per_sleeper +1)[1:-1]
+            if len(in_between_coordinates) >0:
+                new_nodes = [Node(coord[0], coord[1], coord[2]) for coord in in_between_coordinates]
+                global_mesh.fast_add_nodes_to_mesh(new_nodes)
+                connecting_elements = [Element([tracks[idx-1]["rail"].nodes[-1], new_nodes[0]])]
+                for i in range(len(new_nodes)-1):
+                    connecting_elements.append(Element([new_nodes[i], new_nodes[i+1]]))
+                connecting_elements.append(Element([new_nodes[-1], track["rail"].nodes[0]]))
+            # no new nodes needed between sleepers (if they are directly connected)
+            else:
+                new_nodes = []
+                connecting_elements = [Element([tracks[idx-1]["rail"].nodes[-1], track["rail"].nodes[0]])]
+            global_mesh.fast_add_elements_to_mesh(connecting_elements)
+
+
+            track["rail"].elements = tracks[idx-1]["rail"].elements + connecting_elements + track["rail"].elements
+            track["rail"].nodes = tracks[idx-1]["rail"].nodes + new_nodes + track["rail"].nodes
 
             # combine sleeper elements in one model part
             track["sleeper"].nodes = tracks[idx-1]["sleeper"].nodes + track["sleeper"].nodes
