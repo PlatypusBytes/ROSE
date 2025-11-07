@@ -128,7 +128,6 @@ def add_semi_rigid_hinge_at_x(rail_model_part, hinge_model_part, x_coordinate_hi
             hinge_rail_model_part = Rail()
             hinge_rail_model_part.elements = [element]
             hinge_rail_model_part.nodes = element.nodes
-            hinge_rail_model_part.length_rail = rail_model_part.length_rail
             hinge_rail_model_part.material = rail_model_part.material
             hinge_rail_model_part.section = rail_model_part.section
 
@@ -263,7 +262,6 @@ def create_horizontal_track(n_sleepers, sleeper_distance, soil_depth, n_rail_per
     rail_model_part = Rail()
     rail_model_part.elements = elements_track
     rail_model_part.nodes = nodes_track
-    rail_model_part.length_rail = sleeper_distance
     rail_model_part.length_element = sleeper_distance
     # initialise railpad model part
     rail_pad_model_part = RailPad()

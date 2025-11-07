@@ -300,7 +300,7 @@ def add_aux_matrix_to_global(
     elements: List[Element],
     model_part,
     nodes: List[Node] = None,
-):
+) -> sparse.lil_matrix:
     """
     Adds auxiliary matrix to the global matrix
 
@@ -309,14 +309,12 @@ def add_aux_matrix_to_global(
     :param elements: list of elements in current model part
     :param model_part: current model part of which the auxiliary matrix is to be added to the global matrix
     :param nodes: list of nodes in current model part
-    :return:
+    :return: sparse global matrix with auxiliary matrix added
     """
-
-    # --- 1. Initialization (BEFORE all loops) ---
 
     matrix_shape = global_matrix.shape
 
-    # If global_matrix *already* has values, capture them.
+    # If global_matrix already has values, capture them.
     # If it's empty, these will be empty.
     global_coo = global_matrix.tocoo()
     data = global_coo.data.tolist()
@@ -362,7 +360,7 @@ def add_aux_matrix_to_global(
                         cols.append(k_global)
 
     # Create the COO matrix. This call sums all duplicate (row, col) entries.
-    # This is the "assembly" step, done once.
+    # This is the assembly step, done once.
     global_matrix_coo = sparse.coo_matrix((data, (rows, cols)), shape=matrix_shape)
 
     # convert back to lil format

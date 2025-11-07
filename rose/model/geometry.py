@@ -252,10 +252,10 @@ class Mesh:
 
     def fast_add_nodes_to_mesh(self, nodes):
         """
-        Adds nodes to the mesh without checking for uniqueness. Use with caution.
+        Adds nodes to the mesh without checking for uniqueness. Use with caution. This should only be used if it is
+        guaranteed that the nodes are unique.
 
         :param nodes: Nodes to be added to the mesh.
-        :return:
         """
         self.nodes = np.append(self.nodes, nodes)
 
@@ -270,9 +270,9 @@ class Mesh:
 
     def fast_add_elements_to_mesh(self, elements):
         """
-        Adds elements to the mesh without checking for uniqueness. Use with caution.
+        Adds elements to the mesh without checking for uniqueness. Use with caution. This should only be used if it is
+        guaranteed that the elements are unique.
 
         :param elements: Elements to be added to the mesh.
-        :return:
         """
         self.elements = np.append(self.elements, elements)

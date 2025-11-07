@@ -73,8 +73,8 @@ The tutorials are available in the following links:
 
 * Tutorial 1 - `How to setup and run the ROSE model <https://github.com/PlatypusBytes/ROSE/blob/main/tutorials/rose_demo.ipynb>`_
 * Tutorial 2 - `How to compute the rail strain with the ROSE model <https://github.com/PlatypusBytes/ROSE/blob/main//tutorials/calculate_strain.ipynb>`_
-* Tutorial 3 - `How to perform the model optimisation in the ROSE model <https://github.com/PlatypusBytes/ROSE/blob/main/tutorials/rose_optimisation.ipynb>`_.
-
+* Tutorial 3 - `How to perform the model optimisation in the ROSE model <https://github.com/PlatypusBytes/ROSE/blob/main/tutorials/rose_optimisation.ipynb>`_
+* Tutorial 4 - `How to use irregularities in the ROSE model <https://github.com/PlatypusBytes/ROSE/blob/main/tutorials/rose_irregularities.ipynb>`_.
 
 Contributing
 ============
