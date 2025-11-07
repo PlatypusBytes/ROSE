@@ -16,7 +16,7 @@ def geometry(nb_sleeper, fact=1):
     geometry["n_sleepers"] = [int(n / fact) for n in nb_sleeper]  # number of sleepers per segment
     geometry["sleeper_distance"] = 0.6 * fact  # distance between sleepers, equal for each segment
     geometry["depth_soil"] = [1] * len(nb_sleeper) # depth of the soil [m] per segment
-    geometry["n_rail_per_sleeper"] = 2  # number of rails per sleeper
+    geometry["n_rail_per_sleeper"] = 2  # number of rails between two sleepers [-]
 
     return geometry
 
