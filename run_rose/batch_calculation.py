@@ -17,6 +17,7 @@ fact = 1
 n_sleepers = [int(200/fact)]    # number of sleepers per segment
 sleeper_distance = 0.6 * fact # distance between sleepers, equal for each segment
 depth_soil = [1]      # depth of the soil [m] per segment
+n_rail_per_sleeper = 1 # number of rail elements between two sleepers [-]
 
 # Set soil parameters of each segment
 stiffness_soils = [180e6 * sleeper_distance] # will be overwritten
@@ -79,7 +80,7 @@ def set_base_model():
 
         # set geometry of one segment
         element_model_parts, mesh = create_horizontal_track(
-            n_sleepers[idx], sleeper_distance, depth_soil[idx]
+            n_sleepers[idx], sleeper_distance, depth_soil[idx], n_rail_per_sleeper
         )
         # add segment model parts and mesh to list
         all_element_model_parts.append(element_model_parts)
@@ -87,7 +88,7 @@ def set_base_model():
 
     # Setup global mesh and combine model parts of all segments
     rail_model_part, sleeper_model_part, rail_pad_model_part, soil_model_parts, all_mesh = \
-        combine_horizontal_tracks(all_element_model_parts, all_meshes, sleeper_distance)
+        combine_horizontal_tracks(all_element_model_parts, all_meshes, sleeper_distance, n_rail_per_sleeper)
 
     # Fixate the bottom boundary
     bottom_boundaries = [add_no_displacement_boundary_to_bottom(soil_model_part)["bottom_boundary"] for soil_model_part in soil_model_parts]

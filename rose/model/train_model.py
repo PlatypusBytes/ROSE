@@ -574,7 +574,7 @@ class TrainModel(GlobalSystem):
 
     :Attributes:
         - :self.carts:                      all carts which are connected to the train
-        - :self.cart_distances:             list of dinstances between the [0,0] coordinate to the middle of each cart
+        - :self.cart_distances:             list of distances between the [0,0] coordinate to the middle of each cart
         - :self.static_force_vector:        Global force vector of only the static load of the train.
         - :self.velocities:                 np array of the velocity of the train at each time step
         - :self.time:                       time discretisation

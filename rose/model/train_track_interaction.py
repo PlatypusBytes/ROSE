@@ -431,7 +431,6 @@ class CoupledTrainTrack(GlobalSystem):
         rail_nodes = list(itertools.chain.from_iterable(rail_nodes))
         rail_node_idxs = [node.index for node in rail_nodes]
         _, unique_idxs = np.unique(rail_node_idxs, return_index=True)
-        rail_nodes = list(np.array(rail_nodes)[unique_idxs])
 
         rail_elements = [part.elements for part in rail_model_parts]
         rail_elements = list(itertools.chain.from_iterable(rail_elements))

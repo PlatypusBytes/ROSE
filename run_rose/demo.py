@@ -16,6 +16,7 @@ def geometry(nb_sleeper, fact=1):
     geometry["n_sleepers"] = [int(n / fact) for n in nb_sleeper]  # number of sleepers per segment
     geometry["sleeper_distance"] = 0.6 * fact  # distance between sleepers, equal for each segment
     geometry["depth_soil"] = [1] * len(nb_sleeper) # depth of the soil [m] per segment
+    geometry["n_rail_per_sleeper"] = 2  # number of rails between two sleepers [-]
 
     return geometry
 
@@ -83,14 +84,14 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
         # set geometry of one segment
         element_model_parts, mesh = create_horizontal_track(geometry["n_sleepers"][idx],
                                                             geometry["sleeper_distance"],
-                                                            geometry["depth_soil"][idx])
+                                                            geometry["depth_soil"][idx], geometry["n_rail_per_sleeper"])
         # add segment model parts and mesh to list
         all_element_model_parts.append(element_model_parts)
         all_meshes.append(mesh)
 
     # Setup global mesh and combine model parts of all segments
     rail_model_part, sleeper_model_part, rail_pad_model_part, soil_model_parts, all_mesh = \
-        combine_horizontal_tracks(all_element_model_parts, all_meshes, geometry["sleeper_distance"])
+        combine_horizontal_tracks(all_element_model_parts, all_meshes, geometry["sleeper_distance"], geometry["n_rail_per_sleeper"])
 
     # Fixate the bottom boundary
     bottom_boundaries = [add_no_displacement_boundary_to_bottom(soil_model_part)["bottom_boundary"] for soil_model_part
@@ -151,7 +152,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
     # create train
     train = set_train(time, velocities, train_start_coord, train_type)
     train.use_irregularities = use_irregularities
-    train.irregularity_parameters = {"Av": 0.00002095, "seed":4}
+    train.irregularity_parameters = {"Av": 0.00002095, "seed":14}
     train.time = time
     train.velocities = velocities
 
