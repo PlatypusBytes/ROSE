@@ -25,7 +25,7 @@ class TestRailDefect:
 
         # add extra displacement due to position of the wheel on the slope
         wheel_radius = wheel_diameter / 2
-        extra_disp_due_to_position = - (wheel_radius / np.cos(np.arctan(0.005 / 5)) - wheel_radius)
+        extra_disp_due_to_position = -(wheel_radius / np.cos(np.arctan(0.005 / 5)) - wheel_radius)
         slope_mask = np.ones(len(x), dtype=bool)
         no_slope_indices = [0, 1, 7]
         slope_mask[no_slope_indices] = False
@@ -70,15 +70,10 @@ class TestRailDefect:
 
         # add extra displacement due to position of the wheel on the slope
         wheel_radius = wheel_diameter / 2
-        extra_disp_due_to_position = (np.cos(np.arctan(-1)) * wheel_radius - wheel_radius)
-
-        extra_disp_due_to_position = -(wheel_radius / np.cos(np.arctan(-1)) - wheel_radius)
-
+        extra_disp_due_to_position = -(wheel_radius / np.cos(np.arctan(-5/5)) - wheel_radius)
         no_slope_indices = [0, -1]
-        
         slope_mask = np.ones(len(x), dtype=bool)
         slope_mask[no_slope_indices] = False
-
         expected_irregularities[slope_mask] += extra_disp_due_to_position
 
         assert np.allclose(rail_defect.irregularities, expected_irregularities)
