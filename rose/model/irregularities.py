@@ -15,7 +15,8 @@ class RailDefect:
                  local_defect_geometry_coordinates: Sequence[Sequence[float]], start_position: float):
         """
         Creates an array with a rail defect. The irregularity is following the trajectory of the centre of the wheel
-        rolling over the rail defect defined by local_defect_geometry_coordinates.
+        rolling over the rail defect defined by local_defect_geometry_coordinates. Based on the wheel trajectory
+        description for wheel flats from :cite:`Pieringer_2014` adopted for the rail defect.
 
         :param x_track: global x coordinates of the track where the irregularity should be calculated [m]
         :param wheel_diameter: diameter of the wheel [m]
