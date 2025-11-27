@@ -64,7 +64,7 @@ class RailDefect:
         nx = -d_seg_y / lengths
         ny = d_seg_x / lengths
 
-        # Valid X range for the *Wheel Center* to touch this segment
+        # Valid X range for the Wheel Center to touch this segment
         # The contact shifts by R * normal_x
         seg_start_x = global_x_coordinates_defect[:-1] + nx * R
         seg_end_x = global_x_coordinates_defect[1:] + nx * R
