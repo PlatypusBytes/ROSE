@@ -581,8 +581,6 @@ class Sato(AccumulationModel_abc):
         if reload:
             ini_val = self.nb_previous_cycles
 
-
-
         # auxiliar displacement
         total_cycles = int(np.sum(train.number_cycles))
         print(f"Start: {train.start_time}, End: {train.end_time}, Total cycles: {total_cycles}")
