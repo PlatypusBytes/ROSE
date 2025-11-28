@@ -581,9 +581,11 @@ class Sato(AccumulationModel_abc):
         if reload:
             ini_val = self.nb_previous_cycles
 
+
+
         # auxiliar displacement
-        total_cycles = sum(train.nb_cycles_day) * (train.end_time - train.start_time)
-        print(total_cycles)
+        total_cycles = int(np.sum(train.number_cycles))
+        print(f"Start: {train.start_time}, End: {train.end_time}, Total cycles: {total_cycles}")
 
         displacement = np.zeros(total_cycles)
 
@@ -598,10 +600,12 @@ class Sato(AccumulationModel_abc):
 
         # resample
         index = np.linspace(0, np.sum(train.number_cycles)-1, int(np.max(train.number_cycles)), dtype=int)[train.steps_index]
+
         self.displacement = np.tile(displacement[index], (len(idx), 1))
 
         # for reloading
-        self.nb_previous_cycles = int(np.sum(train.number_cycles))
+        self.nb_previous_cycles = ini_val + total_cycles
+        print(f"Cumulative cycles = {self.nb_previous_cycles}")
 
 
 class LiSelig(AccumulationModel_abc):
