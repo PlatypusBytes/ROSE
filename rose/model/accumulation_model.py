@@ -596,24 +596,9 @@ class Sato(AccumulationModel_abc):
             pbar.update(1)
         pbar.close()
 
-        # # resample
-        # index = np.linspace(0, np.sum(train.number_cycles)-1, int(np.max(train.number_cycles)), dtype=int)[train.steps_index]
-        # self.displacement = np.tile(displacement[index], (len(idx), 1))
-
-        ## MODIFIED RESAMPLING
-        if total_cycles <= train.steps:
-            # fewer cycles than steps → just take the end
-            index = [total_cycles - 1]
-        else:
-            # sample every `steps` cycles
-            index = np.arange(0, total_cycles, train.steps)
-            # ensure we include the final cycle
-            if index[-1] != total_cycles - 1:
-                index = np.append(index, total_cycles - 1)
-
-        # tile displacement across nodes
+        # resample
+        index = np.linspace(0, np.sum(train.number_cycles)-1, int(np.max(train.number_cycles)), dtype=int)[train.steps_index]
         self.displacement = np.tile(displacement[index], (len(idx), 1))
-
 
         # for reloading
         self.nb_previous_cycles = int(np.sum(train.number_cycles))
