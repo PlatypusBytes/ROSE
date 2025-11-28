@@ -582,20 +582,38 @@ class Sato(AccumulationModel_abc):
             ini_val = self.nb_previous_cycles
 
         # auxiliar displacement
-        displacement = np.zeros(int(np.sum(train.number_cycles)))
+        total_cycles = sum(train.nb_cycles_day) * (train.end_time - train.start_time)
+        print(total_cycles)
+
+        displacement = np.zeros(total_cycles)
 
         print("Running Sato model")
         pbar = tqdm(total=np.sum(train.number_cycles), unit_scale=True, unit="steps")
 
         # sato model does not distinguish between train types. All cycles are the same
-        for nb_cyc in range(np.sum(train.number_cycles)):
+        for nb_cyc in range(total_cycles):
             displacement[nb_cyc] = self.gamma * (1 - np.exp(-self.alpha * (nb_cyc + ini_val))) + self.beta * (nb_cyc + ini_val)
             pbar.update(1)
         pbar.close()
 
-        # resample
-        index = np.linspace(0, np.sum(train.number_cycles)-1, int(np.max(train.number_cycles)), dtype=int)[train.steps_index]
+        # # resample
+        # index = np.linspace(0, np.sum(train.number_cycles)-1, int(np.max(train.number_cycles)), dtype=int)[train.steps_index]
+        # self.displacement = np.tile(displacement[index], (len(idx), 1))
+
+        ## MODIFIED RESAMPLING
+        if total_cycles <= train.steps:
+            # fewer cycles than steps → just take the end
+            index = [total_cycles - 1]
+        else:
+            # sample every `steps` cycles
+            index = np.arange(0, total_cycles, train.steps)
+            # ensure we include the final cycle
+            if index[-1] != total_cycles - 1:
+                index = np.append(index, total_cycles - 1)
+
+        # tile displacement across nodes
         self.displacement = np.tile(displacement[index], (len(idx), 1))
+
 
         # for reloading
         self.nb_previous_cycles = int(np.sum(train.number_cycles))
