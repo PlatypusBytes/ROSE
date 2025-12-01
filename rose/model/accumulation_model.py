@@ -133,15 +133,22 @@ class Shenton(AccumulationModel_abc):
 
         # assign nodes
         self.nodes = list(idx)
-
+        n_nodes = len(idx)
+        n_nodes = len(idx)
         # in case of reloading read the previous stage
         ini_val = 0
         if reload:
             ini_val = self.nb_previous_cycles
 
-        # displacement = np.zeros(int(np.sum(train.number_cycles)))
-        displacement = np.zeros((len(idx), int(np.max(train.number_cycles) / train.steps)))
+        total_cycles = int(np.sum(train.number_cycles))
+        print(f"Start: {train.start_time}, End: {train.end_time}, Total cycles: {total_cycles}")
 
+        n_steps = len(train.steps_index)
+        displacement = np.zeros((n_nodes, n_steps))
+
+        # displacement = np.zeros(int(np.sum(train.number_cycles)))
+        # displacement = np.zeros((len(idx), int(np.max(train.number_cycles) / train.steps)))
+        # displacement = np.zeros((len(idx), int(np.max(train.number_cycles) / train.steps)))
         # compute maximum force
         force_max = []
         for j in range(train.number_trains):
@@ -149,40 +156,28 @@ class Shenton(AccumulationModel_abc):
             force_max.append(np.max(np.abs(train.force[j]), axis=1)[idx] / self.force_scl_fct)
         self.force_max = np.array(force_max)
 
-
         print("Running Shenton model")
         pbar = tqdm(total=np.sum(train.number_cycles), unit_scale=True, unit="steps")
 
-        # for nb_cyc in range(np.sum(train.number_cycles)):
-            # print(nb_cyc)
-            # displacement[nb_cyc] = self.alpha * (nb_cyc + ini_val)**0.2 + self.beta * (nb_cyc + ini_val)
-
         # compute displacement per node
-        i =0
+        i =0 #step counter
         for n, nb_cyc in enumerate(train.cumulative_nb_cycles):
-            for nn, Q in enumerate(force_max[0]):  # node-wise
+            N = ini_val + nb_cyc
+            for node_i, Q in enumerate(force_max[0]):  # shape (n_nodes,)
                 disp_val = Q**5 * (self.alpha * (nb_cyc + ini_val)**0.2 + self.beta * (nb_cyc + ini_val))
                 if n in train.steps_index:  # only store at step intervals
-                    displacement[nn, i] = disp_val
+                    displacement[node_i, i] = disp_val
             if n in train.steps_index:
                 i += 1
 
-        # # for nb_cyc in range(np.sum(train.number_cycles)):
-        #     for nn, Q in enumerate(force_max[0]):  # loop over nodes
-        #         displacement[nn, nb_cyc] = Q ** 5 * (
-        #                     self.alpha * (nb_cyc + ini_val) ** 0.2 + self.beta * (nb_cyc + ini_val))
             pbar.update(1)
         pbar.close()
-
-        # # resample
-        # index = np.linspace(0, np.sum(train.number_cycles) - 1, int(np.max(train.number_cycles)), dtype=int)[
-        #     train.steps_index]
-        # self.displacement = np.tile(displacement[index], (len(idx), 1))
 
         self.displacement = displacement
 
         # for reloading
-        self.nb_previous_cycles = int(np.sum(train.number_cycles))
+        self.nb_previous_cycles = ini_val + total_cycles
+        print(f"Cumulative cycles = {self.nb_previous_cycles}")
 
 
 
