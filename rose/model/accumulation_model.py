@@ -80,20 +80,30 @@ class AccumulationModel_abc(ABC):
         raise Exception("It is not allowed to call the AccumulationModel abstract method")
 
 class Shenton(AccumulationModel_abc):
-    def __init__(self, k1: float, k2: float):
+    def __init__(self, alpha: float, beta: float):
         r"""
         Initialisation of the accumulation model of Shenton :cite:`Shenton_1985`.
 
         Parameters
         ----------
-        :param k1: model parameter
-        :param k2: model parameter
+        :param alpha: model parameter
+        :param beta: model parameter
         """
-        self.k1 = k1
-        self.k2 = k2
+        #model parameters
+        self.alpha = alpha
+        self.beta = beta
+
         self.nodes = None
         self.displacement = None
         self.nb_previous_cycles = 0
+
+        # variables
+        self.nb_nodes = []  # number of nodes
+        self.force_max = []  # maximum force / train
+
+        # numerical parameters
+        self.force_scl_fct = 1000  # N -> kN
+        self.disp_scl_fct = 1000  # mm -> m
 
     def settlement(self, train: ReadTrainInfo, nb_nodes: int, idx: list = None, reload: bool = False):
         r"""
@@ -102,10 +112,11 @@ class Shenton(AccumulationModel_abc):
         The settlement :math:`S` of sleeper :math:`N` follows:
 
         .. math::
-            S_{N} = k1 * N^{0.2} 1 + k2 * N
+            S_{N} = Q^5 * [ alpha * N^{0.2} 1 + beta * N ]
 
 
-        where :math:`N` is the number of load cycles and :math:`k1` and :math:`k2` are model parameters.
+        where :math:`N` is the number of load cycles, `Q` is the force on the sleeper
+        and :math:`alpha` and :math:`beta` are model parameters.
 
         Parameters
         ----------
@@ -122,31 +133,52 @@ class Shenton(AccumulationModel_abc):
 
         # assign nodes
         self.nodes = list(idx)
-
+        n_nodes = len(idx)
+        n_nodes = len(idx)
         # in case of reloading read the previous stage
         ini_val = 0
         if reload:
             ini_val = self.nb_previous_cycles
 
-        # auxiliar displacement
-        displacement = np.zeros(int(np.sum(train.number_cycles)))
+        total_cycles = int(np.sum(train.number_cycles))
+        print(f"Start: {train.start_time}, End: {train.end_time}, Total cycles: {total_cycles}")
+
+        n_steps = len(train.steps_index)
+        displacement = np.zeros((n_nodes, n_steps))
+
+        # displacement = np.zeros(int(np.sum(train.number_cycles)))
+        # displacement = np.zeros((len(idx), int(np.max(train.number_cycles) / train.steps)))
+        # displacement = np.zeros((len(idx), int(np.max(train.number_cycles) / train.steps)))
+        # compute maximum force
+        force_max = []
+        for j in range(train.number_trains):
+            # histogram.extend(self.number_cycles[j] * [np.max(np.abs(self.force[j]), axis=1) / self.force_scl_fct])
+            force_max.append(np.max(np.abs(train.force[j]), axis=1)[idx] / self.force_scl_fct)
+        self.force_max = np.array(force_max)
 
         print("Running Shenton model")
         pbar = tqdm(total=np.sum(train.number_cycles), unit_scale=True, unit="steps")
 
-        # sato model does not distinguish between train types. All cycles are the same
-        for nb_cyc in range(np.sum(train.number_cycles)):
-            displacement[nb_cyc] = self.k1 * (nb_cyc + ini_val)**0.2 + self.k2 * (nb_cyc + ini_val)
+        # compute displacement per node
+        i =0 #step counter
+        for n, nb_cyc in enumerate(train.cumulative_nb_cycles):
+            N = ini_val + nb_cyc
+            for node_i, Q in enumerate(force_max[0]):  # shape (n_nodes,)
+                disp_val = Q**5 * (self.alpha * (nb_cyc + ini_val)**0.2 + self.beta * (nb_cyc + ini_val))
+                if n in train.steps_index:  # only store at step intervals
+                    displacement[node_i, i] = disp_val
+            if n in train.steps_index:
+                i += 1
+
             pbar.update(1)
         pbar.close()
 
-        # resample
-        index = np.linspace(0, np.sum(train.number_cycles) - 1, int(np.max(train.number_cycles)), dtype=int)[
-            train.steps_index]
-        self.displacement = np.tile(displacement[index], (len(idx), 1))
+        self.displacement = displacement
 
         # for reloading
-        self.nb_previous_cycles = int(np.sum(train.number_cycles))
+        self.nb_previous_cycles = ini_val + total_cycles
+        print(f"Cumulative cycles = {self.nb_previous_cycles}")
+
 
 
 class Nasrollahi(AccumulationModel_abc):
@@ -545,23 +577,28 @@ class Sato(AccumulationModel_abc):
             ini_val = self.nb_previous_cycles
 
         # auxiliar displacement
-        displacement = np.zeros(int(np.sum(train.number_cycles)))
+        total_cycles = int(np.sum(train.number_cycles))
+        print(f"Start: {train.start_time}, End: {train.end_time}, Total cycles: {total_cycles}")
+
+        displacement = np.zeros(total_cycles)
 
         print("Running Sato model")
         pbar = tqdm(total=np.sum(train.number_cycles), unit_scale=True, unit="steps")
 
         # sato model does not distinguish between train types. All cycles are the same
-        for nb_cyc in range(np.sum(train.number_cycles)):
+        for nb_cyc in range(total_cycles):
             displacement[nb_cyc] = self.gamma * (1 - np.exp(-self.alpha * (nb_cyc + ini_val))) + self.beta * (nb_cyc + ini_val)
             pbar.update(1)
         pbar.close()
 
         # resample
         index = np.linspace(0, np.sum(train.number_cycles)-1, int(np.max(train.number_cycles)), dtype=int)[train.steps_index]
+
         self.displacement = np.tile(displacement[index], (len(idx), 1))
 
         # for reloading
-        self.nb_previous_cycles = int(np.sum(train.number_cycles))
+        self.nb_previous_cycles = ini_val + total_cycles
+        print(f"Cumulative cycles = {self.nb_previous_cycles}")
 
 
 class LiSelig(AccumulationModel_abc):
