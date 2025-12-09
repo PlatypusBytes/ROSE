@@ -626,7 +626,7 @@ class GlobalSystem:
 
     def _assign_result_to_node(self, node):
         """
-        Assigns solver results to a node. Displacents, velocities, accelerations and forces are assigned to the node.
+        Assigns solver results to a node. Displacements, velocities, accelerations and forces are assigned to the node.
 
         :param node: Node to be filled
         :return:
