@@ -3,12 +3,8 @@ from rose.model.boundary_conditions import LoadCondition
 from rose.model.geometry import Mesh
 from rose.model.exceptions import *
 
-from solvers.central_difference_solver import CentralDifferenceSolver
-from solvers.HHT_solver import HHTSolver
-from solvers.newmark_solver import NewmarkSolver
 from solvers.static_solver import StaticSolver
-from solvers.zhai_solver import ZhaiSolver
-from solvers.base_solver import Solver
+from solvers.base_solver import TimeIntegrationType
 from rose.model import utils
 
 from scipy import sparse
@@ -57,7 +53,7 @@ class GlobalSystem:
         self.global_damping_matrix: sparse = None
         self.global_force_vector: sparse = None
 
-        self.solver: Solver = None
+        self.solver: BaseSolverABC = None
         self.model_parts: List[ModelPart] = []
         self.total_n_dof: int = None
 
@@ -494,7 +490,7 @@ class GlobalSystem:
         self.update_model_parts()
 
         # update solver
-        self.solver.update(start_time_id)
+        self.solver.state.update(start_time_id)
 
     def update_time_step_rhs(self, t, **kwargs):
         """
@@ -535,26 +531,12 @@ class GlobalSystem:
 
         F = self.global_force_vector
 
-        # run_stages with Zhai solver if required
-        if isinstance(self.solver, ZhaiSolver):
+        # run_stages with the specified dynamic solver
+        if self.solver.type is TimeIntegrationType.DYNAMIC:
             self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
-
-        # run_stages with Newmark solver if required
-        elif isinstance(self.solver, NewmarkSolver):
-            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
-
-        # run_stages with Newmark solver if required
-        elif isinstance(self.solver, CentralDifferenceSolver):
-            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
-
-        # run_stages with Newmark solver if required
-        elif isinstance(self.solver, HHTSolver):
-            self.solver.calculate(M, C, K, F, start_time_id, end_time_id)
-
         # run_stages with Static solver if required
-        elif isinstance(self.solver, StaticSolver):
+        elif self.solver.type is TimeIntegrationType.STATIC:
             self.solver.calculate(K, F, start_time_id, end_time_id, F_ini=self.global_force_vector)
-
         else:
             Exception(f"solver: '{self.solver.__class__.__name__}' is not recognised")
 
@@ -616,13 +598,13 @@ class GlobalSystem:
 
         print("Finalising calculation")
 
-        self.solver.finalise()
+        # self.solver.finalise()
         self.calculate_force_in_elements()
         self.displacements_out = self.solver.u
         self.velocities_out = self.solver.v
         self.accelerations_out = self.solver.a
 
-        self.time_out = self.solver.output_time
+        self.time_out = self.solver.state.output_time
 
     def _assign_result_to_node(self, node):
         """

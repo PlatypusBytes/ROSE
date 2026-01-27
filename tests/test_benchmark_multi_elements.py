@@ -245,7 +245,7 @@ def write_results(coupled_model: CoupledTrainTrack, output_dir: str, file_name: 
         [node.displacements[:, 1] for node in coupled_model.train.nodes])
     vertical_force_train = np.array([node.force[:, 1] for node in coupled_model.train.nodes])
 
-    solver_output_indices = coupled_model.solver.output_time_indices
+    solver_output_indices = coupled_model.solver.state.output_time_indices
 
     # collect stiffness and damping of the soil
     soil_stiff = scipy.sparse.lil_matrix(coupled_model.track.global_stiffness_matrix.shape)
