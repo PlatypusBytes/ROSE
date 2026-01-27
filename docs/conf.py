@@ -7,9 +7,9 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'ROSE'
-copyright = '2024, ROSE team'
+copyright = '2025, ROSE team'
 author = 'ROSE team'
-release = '1'
+release = '0.3'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
