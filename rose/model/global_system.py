@@ -476,7 +476,7 @@ class GlobalSystem:
         self.set_stage_time_ids()
 
         self.solver.initialise(self.total_n_dof, self.time)
-        self.solver.update_rhs_at_time_step_func = self.update_time_step_rhs
+        self.solver.force.update_rhs_at_time_step_func = self.update_time_step_rhs
 
     def update(self, start_time_id, end_time_id):
         """
@@ -490,7 +490,7 @@ class GlobalSystem:
         self.update_model_parts()
 
         # update solver
-        self.solver.state.update(start_time_id)
+        self.solver.state.update_initial_conditions(start_time_id)
 
     def update_time_step_rhs(self, t, **kwargs):
         """

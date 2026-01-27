@@ -74,7 +74,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
                  use_irregularities, output_interval):
     # choose solver
     solver = solver_c.NewmarkImplicitForce()
-    solver.output_interval = output_interval
+    solver.state.output_interval = output_interval
 
     all_element_model_parts = []
     all_meshes = []
