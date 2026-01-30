@@ -4,7 +4,7 @@ from rose.model.geometry import Mesh
 from rose.model.exceptions import *
 
 from solvers.static_solver import StaticSolver
-from solvers.base_solver import TimeIntegrationType
+from solvers.base_solver import TimeIntegrationType, BaseSolverABC
 from rose.model import utils
 
 from scipy import sparse
