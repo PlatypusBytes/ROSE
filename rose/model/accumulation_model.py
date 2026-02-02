@@ -112,7 +112,7 @@ class Shenton(AccumulationModel_abc):
         The settlement :math:`S` of sleeper :math:`N` follows:
 
         .. math::
-            S_{N} = Q^5 * [ alpha * N^{0.2} 1 + beta * N ]
+            S_{N} = Q^5 * [ alpha * N^{0.2} + beta * N ]
 
 
         where :math:`N` is the number of load cycles, `Q` is the force on the sleeper
