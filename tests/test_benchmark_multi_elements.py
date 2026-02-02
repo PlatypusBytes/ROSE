@@ -9,8 +9,10 @@ from rose.model.model_part import Material, Section
 from rose.model.train_track_interaction import *
 from rose.pre_process.default_trains import TrainType, set_train
 import solvers.newmark_solver as solver_c
+from solvers.base_solver import State
 
 SHOW_RESULTS = False
+
 
 def geometry(nb_sleeper, n_elements_per_sleeper=1, fact=1):
     # Set geometry parameters
@@ -74,8 +76,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
                 use_irregularities, output_interval):
     # Code adapted from demo.py
     # choose solver
-    solver = solver_c.NewmarkImplicitForce()
-    solver.state.output_interval = output_interval
+    solver = solver_c.NewmarkImplicitForce(state=State(output_interval=output_interval))
 
     all_element_model_parts = []
     all_meshes = []
