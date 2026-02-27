@@ -95,7 +95,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
 
     # Setup global mesh and combine model parts of all segments
     rail_model_part, sleeper_model_part, rail_pad_model_part, soil_model_parts, all_mesh = \
-        combine_horizontal_tracks(all_element_model_parts, all_meshes, geometry["sleeper_distance"], geometry["n_elements_per_sleeper"])
+        combine_horizontal_tracks(all_element_model_parts, all_meshes)
 
     # Fixate the bottom boundary
     bottom_boundaries = [
