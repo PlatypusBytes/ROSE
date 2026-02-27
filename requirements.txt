@@ -10,5 +10,5 @@ nbmake==1.5.3
 Sphinx==7.2.6
 sphinx-rtd-theme==2.0.0
 sphinxcontrib-bibtex==2.6.2
-PuggleSolvers @ git+https://github.com/PlatypusBytes/solvers@structure
+PuggleSolvers==1.2.0
 SignalProcessingTools==1.2.4

@@ -598,7 +598,6 @@ class GlobalSystem:
 
         print("Finalising calculation")
 
-        # self.solver.finalise()
         self.calculate_force_in_elements()
         self.displacements_out = self.solver.u
         self.velocities_out = self.solver.v
