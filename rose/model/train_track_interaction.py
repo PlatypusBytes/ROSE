@@ -562,8 +562,8 @@ class CoupledTrainTrack(GlobalSystem):
         self.solver.initialise(self.total_n_dof, self.time)
 
         # sets functions to alter rhs at each time step and at each non linear iteration
-        self.solver.update_rhs_at_time_step_func = self.update_time_step_rhs
-        self.solver.update_rhs_at_non_linear_iteration_func = self.update_non_linear_iteration
+        self.solver.force.update_rhs_at_time_step_func = self.update_time_step_rhs
+        self.solver.force.update_rhs_at_non_linear_iteration_func = self.update_non_linear_iteration
 
     def calculate_stage(self, start_time_id, end_time_id):
         """

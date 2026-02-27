@@ -6,6 +6,7 @@ from rose.model.model_part import Material, Section
 from rose.model.train_track_interaction import *
 from rose.pre_process.default_trains import TrainType, set_train
 import solvers.newmark_solver as solver_c
+from solvers.base_solver import State
 from rose.utils import random_field as rf
 
 
@@ -74,8 +75,7 @@ def soil_parameters(sleeper_distance, stiffness, damping):
 def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity, hinge_data,
                  use_irregularities, output_interval):
     # choose solver
-    solver = solver_c.NewmarkImplicitForce()
-    solver.output_interval = output_interval
+    solver = solver_c.NewmarkImplicitForce(state=State(output_interval=output_interval))
 
     all_element_model_parts = []
     all_meshes = []
@@ -267,7 +267,7 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
         [node.displacements[:, 1] for node in coupled_model.train.nodes])
     vertical_force_train = np.array([node.force[:, 1] for node in coupled_model.train.nodes])
 
-    solver_output_indices = coupled_model.solver.output_time_indices
+    solver_output_indices = coupled_model.solver.state.output_time_indices
 
     # collect stiffness and damping of the soil
     soil_stiff = scipy.sparse.lil_matrix(coupled_model.track.global_stiffness_matrix.shape)
