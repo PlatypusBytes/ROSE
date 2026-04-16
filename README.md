@@ -1,6 +1,7 @@
 ![Tests](https://github.com/PlatypusBytes/rose/actions/workflows/workflow.yml/badge.svg)
 [![Documentation Status](https://readthedocs.org/projects/rose-model/badge/?version=latest)](https://rose-model.readthedocs.io/)
 [![codecov](https://codecov.io/gh/PlatypusBytes/rose/graph/badge.svg?token=BxXZoumoIt)](https://codecov.io/gh/PlatypusBytes/rose)
+[![DOI](https://zenodo.org/badge/695278047.svg)](https://doi.org/10.5281/zenodo.19615295)
 
 # README
 
