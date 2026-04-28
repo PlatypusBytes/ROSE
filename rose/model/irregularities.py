@@ -1,7 +1,107 @@
 import numpy as np
-import matplotlib.pylab as plt
-# from SignalProcessing import signal_tools
+import matplotlib.pyplot as plt
+from typing import Sequence
 
+
+class RailDefect:
+    """
+    Class containing a rail defect following the trajectory of the centre of the wheel rolling over the rail defect.
+
+    :Attributes:
+        - :self.irregularities:     np array of the irregularities at each position
+    """
+
+    def __init__(self, x_track: np.ndarray, wheel_diameter: float,
+                 local_defect_geometry_coordinates: Sequence[Sequence[float]], start_position: float):
+        """
+        Creates an array with a rail defect. The irregularity is following the trajectory of the centre of the wheel
+        rolling over the rail defect defined by local_defect_geometry_coordinates. Based on the wheel trajectory
+        description for wheel flats from :cite:`Pieringer_2014` adopted for the rail defect.
+
+        :param x_track: global x coordinates of the track where the irregularity should be calculated [m]
+        :param wheel_diameter: diameter of the wheel [m]
+        :param local_defect_geometry_coordinates:  the local geometry coordinates of the defect, where the first column
+                is the local position [m] and the second column is the defect height [m]
+        :param start_position: global starting position of the defect [m]
+        """
+
+        # wheel radius
+        R = wheel_diameter / 2.0
+
+        global_x_coordinates_defect = np.array([pt[0] for pt in local_defect_geometry_coordinates]) + start_position
+        global_y_coordinates_defect = np.array([pt[1] for pt in local_defect_geometry_coordinates])
+
+        # add the first and last point of the track at zero height
+        global_x_coordinates_defect = np.concatenate([[x_track[0]], global_x_coordinates_defect, [x_track[-1]]])
+        global_y_coordinates_defect = np.concatenate([[0.0], global_y_coordinates_defect, [0.0]])
+
+        self.irregularities = np.zeros_like(x_track)
+
+        # The candidate heights from vertices and segments are calculated, then the max is taken. As any point can be the
+        # contact point.
+
+        # Broadcast: (N_track_points, 1) - (1, N_vertices)
+        dx_v = x_track[:, None] - global_x_coordinates_defect[None, :]
+
+        # Valid only where the wheel center is horizontally within R of the vertex
+        valid_v = np.abs(dx_v) <= R
+
+        # Circle Equation: y = y_vert + sqrt(R^2 - dx^2) - R
+        # Initialize with -inf so invalid points don't affect the max
+        h_vertices = np.full(dx_v.shape, -np.inf)
+
+        # Compute circle arcs
+        y_broadcasted = np.broadcast_to(global_y_coordinates_defect[None, :], dx_v.shape)
+        h_vertices[valid_v] = y_broadcasted[valid_v] + np.sqrt(np.maximum(0, R ** 2 - dx_v[valid_v] ** 2)) - R
+
+        # Calculate geometric properties of segments
+        d_seg_x = np.diff(global_x_coordinates_defect)
+        d_seg_y = np.diff(global_y_coordinates_defect)
+        lengths = np.hypot(d_seg_x, d_seg_y)
+
+        # Unit normal vectors (pointing "up" relative to the line direction)
+        # If moving Left->Right, Normal is (-dy, dx) / L
+        nx = -d_seg_y / lengths
+        ny = d_seg_x / lengths
+
+        # Valid X range for the Wheel Center to touch this segment
+        # The contact shifts by R * normal_x
+        seg_start_x = global_x_coordinates_defect[:-1] + nx * R
+        seg_end_x = global_x_coordinates_defect[1:] + nx * R
+
+        # Broadcast: (N_track_points, 1) vs (1, N_segments)
+        # Check which track points fall within the valid rolling range of each segment
+        in_segment_range = (x_track[:, None] >= seg_start_x[None, :]) & (x_track[:, None] <= seg_end_x[None, :])
+
+        # Line equation for the wheel center trajectory parallel to the segment
+        # The trajectory is offset from the segment by R in the normal direction.
+        # y_traj(x) = y_seg_start + R*ny + slope * (x - x_seg_start_adjusted) - R
+
+        # Avoid division by zero for vertical walls (d_seg_x = 0)
+        # For vertical walls, the wheel cannot "roll" on top, so we can ignore/mask them.
+        slope = np.divide(d_seg_y, d_seg_x, out=np.zeros_like(d_seg_x), where=d_seg_x != 0)
+
+        # Calculate heights for segments
+        h_segments = np.full((len(x_track), len(d_seg_x)), -np.inf)
+
+        if np.any(in_segment_range):
+            # Base height at the start of the trajectory segment
+            base_y = global_y_coordinates_defect[:-1] + ny * R
+
+            # X distance from the start of the valid trajectory segment
+            dx_traj = x_track[:, None] - seg_start_x[None, :]
+
+            # Linear projection
+            # Result = (Base Height) + (Slope * dist) - R
+            seg_heights = base_y[None, :] + slope[None, :] * dx_traj - R
+
+            h_segments[in_segment_range] = seg_heights[in_segment_range]
+
+        # Combine the results from vertices and segments
+        all_candidates = np.hstack([h_vertices, h_segments])
+
+        # The wheel rides on the highest point of contact, negative irregularity means upward deviation
+        self.irregularities = -np.max(all_candidates, axis=1)
 
 class WheelFlat:
     """
@@ -132,8 +232,13 @@ class RailIrregularities:
 
 
 if __name__ == "__main__":
-    distance = np.linspace(0, 50, 50)
-    for i in range(10):
-        r = RailIrregularities(distance, seed=i)
-        plt.plot(distance, r.irregularities)
+    distance = np.linspace(0, 100, 10001)
+
+    r = RailIrregularities(distance, seed=14)
+    wheel_diameter = 0.92
+    r_defect = RailDefect(distance,wheel_diameter, local_defect_geometry_coordinates=np.array([[0,0], [2, 0.002], [5,0]]), start_position=14)
+
+    irr = r.irregularities + r_defect.irregularities
+    plt.plot(distance, irr)
+    plt.grid()
     plt.show()

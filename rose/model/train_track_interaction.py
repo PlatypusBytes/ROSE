@@ -50,6 +50,19 @@ class CoupledTrainTrack(GlobalSystem):
 
         self.y_shape_factors: np.ndarray = None
 
+
+    def get_interaction_forces_history(self) -> np.ndarray:
+        """
+        Gets interaction forces history between wheels and track. Interaction forces are the external forces acting on
+        the wheels minus the gravitational forces acting on the wheels.
+        """
+
+        external_forces_history = self.solver.F_out
+
+        wheel_masses = np.array([wheel.mass for wheel in self.train.wheels])
+        return -self.g * wheel_masses - external_forces_history[:, self.train.contact_dofs]
+
+
     def set_wheel_load_on_track(self, wheel_loads: np.ndarray, t: int) -> np.ndarray:
         """
         Sets vertical wheel load on track element which is in contact with the wheels at time t
@@ -431,7 +444,6 @@ class CoupledTrainTrack(GlobalSystem):
         rail_nodes = list(itertools.chain.from_iterable(rail_nodes))
         rail_node_idxs = [node.index for node in rail_nodes]
         _, unique_idxs = np.unique(rail_node_idxs, return_index=True)
-        rail_nodes = list(np.array(rail_nodes)[unique_idxs])
 
         rail_elements = [part.elements for part in rail_model_parts]
         rail_elements = list(itertools.chain.from_iterable(rail_elements))
@@ -550,8 +562,8 @@ class CoupledTrainTrack(GlobalSystem):
         self.solver.initialise(self.total_n_dof, self.time)
 
         # sets functions to alter rhs at each time step and at each non linear iteration
-        self.solver.update_rhs_at_time_step_func = self.update_time_step_rhs
-        self.solver.update_rhs_at_non_linear_iteration_func = self.update_non_linear_iteration
+        self.solver.force.update_rhs_at_time_step_func = self.update_time_step_rhs
+        self.solver.force.update_rhs_at_non_linear_iteration_func = self.update_non_linear_iteration
 
     def calculate_stage(self, start_time_id, end_time_id):
         """

@@ -6,9 +6,7 @@ from rose.model import utils
 from rose.model.geometry import Node, Mesh
 from rose.model.model_part import ElementModelPart
 from rose.model.global_system import GlobalSystem
-from solvers.newmark_solver import NewmarkSolver
 from solvers.static_solver import StaticSolver
-from solvers.zhai_solver import ZhaiSolver
 
 g = 9.81
 
@@ -574,7 +572,7 @@ class TrainModel(GlobalSystem):
 
     :Attributes:
         - :self.carts:                      all carts which are connected to the train
-        - :self.cart_distances:             list of dinstances between the [0,0] coordinate to the middle of each cart
+        - :self.cart_distances:             list of distances between the [0,0] coordinate to the middle of each cart
         - :self.static_force_vector:        Global force vector of only the static load of the train.
         - :self.velocities:                 np array of the velocity of the train at each time step
         - :self.time:                       time discretisation

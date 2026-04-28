@@ -7,6 +7,7 @@ from rose.model.train_model import *
 from rose.model.train_track_interaction import *
 from rose.pre_process.default_trains import TrainType, set_train
 import solvers.newmark_solver as solver_c
+from solvers.base_solver import State
 from rose.utils import random_field as rf
 
 
@@ -17,6 +18,7 @@ def geometry(nb_sleeper, fact=1):
     geometry["n_sleepers"] = [int(n / fact) for n in nb_sleeper]  # number of sleepers per segment
     geometry["sleeper_distance"] = 0.6 * fact  # distance between sleepers, equal for each segment
     geometry["depth_soil"] = [1] * len(nb_sleeper) # depth of the soil [m] per segment
+    geometry["n_rail_per_sleeper"] = 1  # number of rail elements between two sleepers [-]
 
     return geometry
 
@@ -74,8 +76,7 @@ def soil_parameters(sleeper_distance, stiffness, damping):
 def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity, use_irregularities,
                  output_interval):
     # choose solver
-    solver = solver_c.NewmarkImplicitForce()
-    solver.output_interval = output_interval
+    solver = solver_c.NewmarkImplicitForce(state=State(output_interval=output_interval))
 
     all_element_model_parts = []
     all_meshes = []
@@ -84,14 +85,16 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
         # set geometry of one segment
         element_model_parts, mesh = create_horizontal_track(geometry["n_sleepers"][idx],
                                                             geometry["sleeper_distance"],
-                                                            geometry["depth_soil"][idx])
+                                                            geometry["depth_soil"][idx],
+                                                            geometry["n_rail_per_sleeper"])
         # add segment model parts and mesh to list
         all_element_model_parts.append(element_model_parts)
         all_meshes.append(mesh)
 
     # Setup global mesh and combine model parts of all segments
     rail_model_part, sleeper_model_part, rail_pad_model_part, soil_model_parts, all_mesh = \
-        combine_horizontal_tracks(all_element_model_parts, all_meshes, geometry["sleeper_distance"])
+        combine_horizontal_tracks(all_element_model_parts, all_meshes, geometry["sleeper_distance"],
+                                  geometry["n_rail_per_sleeper"])
 
     # Fixate the bottom boundary
     bottom_boundaries = [add_no_displacement_boundary_to_bottom(soil_model_part)["bottom_boundary"] for soil_model_part
@@ -243,7 +246,7 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
         [node.displacements[:, 1] for node in coupled_model.train.nodes])
     vertical_force_train = np.array([node.force[:, 1] for node in coupled_model.train.nodes])
 
-    solver_output_indices = coupled_model.solver.output_time_indices
+    solver_output_indices = coupled_model.solver.state.output_time_indices
 
     # collect stiffness and damping of the soil
     soil_stiff = scipy.sparse.lil_matrix(coupled_model.track.global_stiffness_matrix.shape)

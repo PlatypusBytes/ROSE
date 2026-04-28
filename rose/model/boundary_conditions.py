@@ -195,6 +195,9 @@ class MovingPointLoad(LineLoadCondition):
         - :self.moving_y_force:     Numpy array of the force in y direction at each time step
         - :self.moving_z_moment:    Numpy array of the moment around the z-axis at each time step
         - :self.model_part_at_t:    Numpy array with  of the contact model part at each time step
+        - :self.__normal_force_vector:  Numpy array of the normal force vector at the nodes
+        - :self.__shear_force_vector:  Numpy array of the shear force vector at the nodes
+        - :self.__z_moment_vector:     Numpy array of the moment around z-axis vector at the nodes
 
     """
 
@@ -226,6 +229,10 @@ class MovingPointLoad(LineLoadCondition):
         self.moving_z_moment = None
 
         self.model_part_at_t = None
+
+        self.__normal_force_vector = None
+        self.__shear_force_vector = None
+        self.__z_moment_vector = None
 
     @property
     def moving_force_vector(self):
@@ -283,6 +290,10 @@ class MovingPointLoad(LineLoadCondition):
         if self.moving_z_moment is None:
             self.moving_z_moment = np.zeros(len(self.time))
 
+        self.__normal_force_vector = np.zeros(2)
+        self.__shear_force_vector = np.zeros(2)
+        self.__z_moment_vector = np.zeros(2)
+
     def set_contact_model_part_as_function_of_time(self):
         """
         Sets the contact model part as a function of time. It is assumed that the contact model parts are spatially
@@ -303,8 +314,9 @@ class MovingPointLoad(LineLoadCondition):
             for t in range(len(self.time)):
 
                 # get index of contact element at time t
-                active_element = self.active_elements[:, t]
-                active_el_idx = np.where(active_element)[0]
+                start = self.active_elements.indptr[t]
+                end = self.active_elements.indptr[t + 1]
+                active_el_idx = self.active_elements.indices[start:end][0]
 
                 # check if active element is outside current model part, if it is outside, increment contact model part
                 if active_el_idx >= current_max_idx:
@@ -351,19 +363,28 @@ class MovingPointLoad(LineLoadCondition):
         :return:
         """
 
-        # set_active_elements
-        self.active_elements = np.zeros((len(self.elements), len(self.cum_distances_force)))
+        n_elements = len(self.elements)
+        n_forces = len(self.cum_distances_force)
+        n_nodes = len(self.cum_distances_nodes)
 
-        # start searching at the initial element index
+        rows = np.empty(n_forces, dtype=int)
+        cols = np.arange(n_forces)
+
         i = self.start_element_idx
         for idx, distance in enumerate(self.cum_distances_force):
-            if i < len(self.cum_distances_nodes) - 2:
 
-                # if distance of force at current time step is past the distance of the current node, increment the node
-                if distance > self.cum_distances_nodes[i + 1]:
-                    i += 1
-            # fill active elements matrix
-            self.active_elements[i, idx] = True
+            # increment the node when current distance is past the current node
+            if i < n_nodes - 2 and distance > self.cum_distances_nodes[i + 1]:
+                i += 1
+
+            # set current node index which belongs to the row at a certain time
+            rows[idx] = i
+
+        # build sparse boolean matrix and convert to csc for faster column slicing
+        self.active_elements = sparse.coo_matrix(
+            (np.ones(n_forces, dtype=bool), (rows, cols)),
+            shape=(n_elements, n_forces)
+        ).tocsc()
 
     def filter_load_outside_range(self):
         """
@@ -463,12 +484,11 @@ class MovingPointLoad(LineLoadCondition):
 
         # add normal_load_to_nodes
         self.contact_model_part.set_normal_shape_functions(distance)
-        normal_force_vector = np.array([
-            force[0] * self.contact_model_part.normal_shape_functions[0],
-            force[0] * self.contact_model_part.normal_shape_functions[1],
-        ])
 
-        return normal_force_vector
+        self.__normal_force_vector[0] = force[0] * self.contact_model_part.normal_shape_functions[0]
+        self.__normal_force_vector[1] = force[0] * self.contact_model_part.normal_shape_functions[1]
+
+        return self.__normal_force_vector
 
     def __distribute_shear_force(self, distance, force):
         """
@@ -482,18 +502,13 @@ class MovingPointLoad(LineLoadCondition):
         self.contact_model_part.set_y_shape_functions(distance)
 
         # contribution to shear force on the nodes from shear force at at certain point within the element
-        shear_force_vector = np.array([
-            force[1] * self.contact_model_part.y_shape_functions[0],
-            force[1] * self.contact_model_part.y_shape_functions[2],
-        ])
+        self.__shear_force_vector[0] = force[1] * self.contact_model_part.y_shape_functions[0]
+        self.__shear_force_vector[1] = force[1] * self.contact_model_part.y_shape_functions[2]
 
-        # contribution to moment around z-axis on the nodes from shear force at at certain point within the element
-        z_mom_vector = np.array([
-            force[1] * self.contact_model_part.y_shape_functions[1],
-            force[1] * self.contact_model_part.y_shape_functions[3],
-        ])
+        self.__z_moment_vector[0] = force[1] * self.contact_model_part.y_shape_functions[1]
+        self.__z_moment_vector[1] = force[1] * self.contact_model_part.y_shape_functions[3]
 
-        return shear_force_vector, z_mom_vector
+        return self.__shear_force_vector, self.__z_moment_vector
 
     def __distribute_z_moment(self, distance, force):
         """
@@ -505,16 +520,13 @@ class MovingPointLoad(LineLoadCondition):
         """
 
         self.contact_model_part.set_z_rot_shape_functions(distance)
-        shear_force_vector = np.array([
-            force[2] * self.contact_model_part.z_rot_shape_functions[0],
-            force[2] * self.contact_model_part.z_rot_shape_functions[2],
-        ])
-        z_mom_vector = np.array([
-            force[2] * self.contact_model_part.z_rot_shape_functions[1],
-            force[2] * self.contact_model_part.z_rot_shape_functions[3],
-        ])
 
-        return shear_force_vector, z_mom_vector
+        self.__shear_force_vector[0] = force[2] * self.contact_model_part.z_rot_shape_functions[0]
+        self.__shear_force_vector[1] = force[2] * self.contact_model_part.z_rot_shape_functions[2]
+        self.__z_moment_vector[0] = force[2] * self.contact_model_part.z_rot_shape_functions[1]
+        self.__z_moment_vector[1] = force[2] * self.contact_model_part.z_rot_shape_functions[3]
+
+        return self.__shear_force_vector, self.__z_moment_vector
 
     def set_moving_point_load(self):
         """
@@ -572,9 +584,9 @@ class MovingPointLoad(LineLoadCondition):
         """
 
         # initialises force vectors
-        self.x_force_vector = np.zeros(len(self.nodes))
-        self.z_moment_vector = np.zeros(len(self.nodes))
-        self.y_force_vector = np.zeros(len(self.nodes))
+        self.x_force_vector.fill(0)
+        self.y_force_vector.fill(0)
+        self.z_moment_vector.fill(0)
 
         # calculate rotation for each element
         element_rot = utils.calculate_point_rotation(self.nodes[self.node_indices[t, 0]].coordinates,

@@ -77,7 +77,7 @@ class TestBoundaryConditions:
         y_force_matrix = []
         for t in range(len(time)):
             force.update_force(t)
-            y_force_matrix.append(force.y_force_vector)
+            y_force_matrix.append(force.y_force_vector.copy())
 
         y_force_matrix = np.array(y_force_matrix).T
 
@@ -178,8 +178,8 @@ class TestBoundaryConditions:
         y_force_matrix = []
         for t in range(len(time)):
             force.update_force(t)
-            x_force_matrix.append(force.x_force_vector)
-            y_force_matrix.append(force.y_force_vector)
+            x_force_matrix.append(force.x_force_vector.copy())
+            y_force_matrix.append(force.y_force_vector.copy())
 
         x_force_matrix = np.array(x_force_matrix).T
         y_force_matrix = np.array(y_force_matrix).T

@@ -31,7 +31,7 @@ The virtual environment should be installed and activated before the installatio
 To create a virtual environment with pip follow this `link <https://docs.python.org/3/library/venv.html>`_.
 To create a virtual environment with conda follow this `link <https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-with-commands>`_.
 
-Currently, ROSE supports Python 3.9, 3.10 and 3.11, therefore, you need to create the virtual environment with one of these Python versions.
+Currently, ROSE supports Python 3.11, 3.12 and 3.13, therefore, you need to create the virtual environment with one of these Python versions.
 
 Installing ROSE as a user
 
@@ -73,8 +73,8 @@ The tutorials are available in the following links:
 
 * Tutorial 1 - `How to setup and run the ROSE model <https://github.com/PlatypusBytes/ROSE/blob/main/tutorials/rose_demo.ipynb>`_
 * Tutorial 2 - `How to compute the rail strain with the ROSE model <https://github.com/PlatypusBytes/ROSE/blob/main//tutorials/calculate_strain.ipynb>`_
-* Tutorial 3 - `How to perform the model optimisation in the ROSE model <https://github.com/PlatypusBytes/ROSE/blob/main/tutorials/rose_optimisation.ipynb>`_.
-
+* Tutorial 3 - `How to perform the model optimisation in the ROSE model <https://github.com/PlatypusBytes/ROSE/blob/main/tutorials/rose_optimisation.ipynb>`_
+* Tutorial 4 - `How to use irregularities in the ROSE model <https://github.com/PlatypusBytes/ROSE/blob/main/tutorials/rose_irregularities.ipynb>`_.
 
 Contributing
 ============
