@@ -7,6 +7,7 @@ from rose.model.train_model import *
 from rose.model.train_track_interaction import *
 from rose.pre_process.default_trains import TrainType, set_train
 import solvers.newmark_solver as solver_c
+from solvers.base_solver import State
 from rose.utils import random_field as rf
 
 
@@ -75,8 +76,7 @@ def soil_parameters(sleeper_distance, stiffness, damping):
 def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, velocity, use_irregularities,
                  output_interval):
     # choose solver
-    solver = solver_c.NewmarkImplicitForce()
-    solver.output_interval = output_interval
+    solver = solver_c.NewmarkImplicitForce(state=State(output_interval=output_interval))
 
     all_element_model_parts = []
     all_meshes = []
@@ -93,8 +93,7 @@ def create_model(train_type, train_start_coord, geometry, mat, time_int, soil, v
 
     # Setup global mesh and combine model parts of all segments
     rail_model_part, sleeper_model_part, rail_pad_model_part, soil_model_parts, all_mesh = \
-        combine_horizontal_tracks(all_element_model_parts, all_meshes, geometry["sleeper_distance"],
-                                  geometry["n_rail_per_sleeper"])
+        combine_horizontal_tracks(all_element_model_parts, all_meshes)
 
     # Fixate the bottom boundary
     bottom_boundaries = [add_no_displacement_boundary_to_bottom(soil_model_part)["bottom_boundary"] for soil_model_part
@@ -246,7 +245,7 @@ def write_results(coupled_model: CoupledTrainTrack, segment_id: str, output_dir:
         [node.displacements[:, 1] for node in coupled_model.train.nodes])
     vertical_force_train = np.array([node.force[:, 1] for node in coupled_model.train.nodes])
 
-    solver_output_indices = coupled_model.solver.output_time_indices
+    solver_output_indices = coupled_model.solver.state.output_time_indices
 
     # collect stiffness and damping of the soil
     soil_stiff = scipy.sparse.lil_matrix(coupled_model.track.global_stiffness_matrix.shape)
@@ -299,7 +298,7 @@ def main():
     stiffness = [132e6, 214e7]
     damping = [30e3, 20e3]
 
-    nb_sleepers = [1] * 1000
+    nb_sleepers = [2] * 1000
     stiffness1 = rf.create_rf(stiffness[0], 0.25, 20, 0, np.linspace(0, nb_slprs[0], nb_slprs[0]) * 0.6, seed=14)
     stiffness2 = rf.create_rf(stiffness[1], 0.25, 20, 0, np.linspace(0, nb_slprs[1], nb_slprs[1]) * 0.6, seed=14)
     stiffness = np.hstack((stiffness1, stiffness2))

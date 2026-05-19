@@ -354,7 +354,7 @@ def add_aux_matrix_to_global(
                 for k_local, k_global in enumerate(node.index_dof):
 
                     value = aux_matrix[j_local, k_local]
-                    if value != 0.0:
+                    if not np.isclose(value,0.0):
                         data.append(value)
                         rows.append(j_global)
                         cols.append(k_global)

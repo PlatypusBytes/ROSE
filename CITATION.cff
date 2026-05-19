@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use ROSE, please cite it as below."
+authors:
+- family-names: Noordam
+  given-names: Aron
+  orcid: "https://orcid.org/0000-0002-2559-9465"
+- family-names: Zuada Coelho
+  given-names: Bruno
+  orcid: "https://orcid.org/0000-0002-9896-3248"
+title: ROSE
+license: BSD-3-Clause
+doi: 
+version: v0.4
+date-released: 2026-04-16
+url: "https://github.com/PlatypusBytes/ROSE"

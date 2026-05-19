@@ -558,7 +558,7 @@ class MovingPointLoad(LineLoadCondition):
                                                for node in element.nodes]) for element in unique_contact_elements])
 
         else:
-            node_indices = np.array([np.array([self.nodes.index(node, first_idx, last_idx + 1)
+            node_indices = np.array([np.array([self.nodes.index(node)
                                                for node in element.nodes]) for element in unique_contact_elements])
 
         # get node indices of contact element at every time step
