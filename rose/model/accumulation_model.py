@@ -64,7 +64,7 @@ class ReadTrainInfo:
 
         # index for distributed loading
         for nb in self.number_cycles:
-            self.index_cumulative_distributed.append(np.linspace(0, nb - 1, int(np.max(self.number_cycles))) * (np.max(self.number_cycles) / self.steps))
+            self.index_cumulative_distributed.append(np.linspace(0, nb - 1, int(np.max(self.number_cycles) / self.steps)).astype(int))
         self.index_cumulative_distributed = np.array(self.index_cumulative_distributed).astype(int)
 
 
@@ -78,6 +78,7 @@ class AccumulationModel_abc(ABC):
         Abstract method to compute the cumulative settlement
         """
         raise Exception("It is not allowed to call the AccumulationModel abstract method")
+
 
 class Shenton(AccumulationModel_abc):
     def __init__(self, alpha: float, beta: float):
@@ -497,19 +498,12 @@ class Varandas(AccumulationModel_abc):
                 # compute integral: trapezoidal rule
                 integral = F ** self.alpha * (1 / (self.h_f + 1)) ** self.beta
                 val = trapz(integral, F, axis=0)
-
                 aux += self.gamma / self.M_alpha_beta * val
 
                 pbar.update(1)
-                if nb_cyc in train.steps_index:
-                    # for the train that have less load cycles distribute them evenly
-                    if train.number_cycles[tr] == np.max(train.number_cycles):
-                        index = i
-                    else:
-                        index = np.linspace(0, np.max(train.number_cycles), train.number_cycles[tr], dtype=int)[i]
 
-                    # compute displacement on cycle N
-                    disp[:, index] += aux
+                if nb_cyc in train.index_cumulative_distributed[tr]:
+                    disp[:, i] += aux
                     aux = np.zeros(len(self.nodes))
                     i += 1
 
@@ -523,10 +517,11 @@ class Varandas(AccumulationModel_abc):
         if reload:
             self.displacement = self.displacement + np.expand_dims(previous_displacement, axis=1)
 
+
 class Sato(AccumulationModel_abc):
     def __init__(self, alpha: float, beta: float, gamma: float):
         r"""
-        Initialisation of the accumulation model of Sato :cite:`Sato_1997`.
+        Initialisation of the accumulation model of Sato :cite:`Sato_1995`.
 
         Parameters
         ----------
@@ -544,7 +539,7 @@ class Sato(AccumulationModel_abc):
 
     def settlement(self,  train: ReadTrainInfo, nb_nodes: int, idx: list = None, reload=False):
         r"""
-        Computes cumulative settlement following the methodology proposed by Sato :cite:`Sato_1997`.
+        Computes cumulative settlement following the methodology proposed by Sato :cite:`Sato_1995`.
 
         The settlement :math:`S` of sleeper :math:`N` follows:
 
@@ -830,7 +825,7 @@ class AccumulationModel:
     - Varandas :cite:`varandas_2014`
     - Li & Selig :cite:`Li_Selig_1996`
     - Nasrollahi: :cite:`Nasrollahi_2023`
-    - Sato: :cite:`Sato_1997`
+    - Sato: :cite:`Sato_1995`
     - Shenton: :cite:`Shenton_1985`
     """
     def __init__(self, accumulation_model: Union[Varandas, LiSelig, Nasrollahi, Sato, Shenton], steps: int = 1):
