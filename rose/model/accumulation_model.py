@@ -56,15 +56,15 @@ class ReadTrainInfo:
         # number of trains
         self.number_trains = len(self.trains_name)
         # define cumulative time
-        self.cumulative_time = np.linspace(self.start_time, self.end_time, int(np.max(self.number_cycles) / self.steps))
+        self.cumulative_time = np.linspace(self.start_time, self.end_time, int(np.ceil(np.max(self.number_cycles) / self.steps)))
         # define cumulative nb cycles
         self.cumulative_nb_cycles = np.linspace(self.start_time, int(np.max(self.number_cycles)) - 1, int(np.max(self.number_cycles)))
         # index to save results
-        self.steps_index = np.linspace(0, int(np.max(self.number_cycles)) - 1, int(np.max(self.number_cycles) / self.steps)).astype(int)
+        self.steps_index = np.linspace(0, int(np.max(self.number_cycles)) - 1, int(np.ceil(np.max(self.number_cycles) / self.steps))).astype(int)
 
         # index for distributed loading
         for nb in self.number_cycles:
-            self.index_cumulative_distributed.append(np.linspace(0, nb - 1, int(np.max(self.number_cycles) / self.steps)).astype(int))
+            self.index_cumulative_distributed.append(np.linspace(0, nb - 1, int(np.ceil(np.max(self.number_cycles) / self.steps))).astype(int))
         self.index_cumulative_distributed = np.array(self.index_cumulative_distributed).astype(int)
 
 
@@ -461,11 +461,8 @@ class Varandas(AccumulationModel_abc):
         # assign nodes
         self.nodes = list(idx)
 
-        # cumulative displacement
-        self.displacement = np.zeros((int(len(idx)), int(np.max(train.number_cycles) / train.steps)))
         # displacement due to cycle n
-        # ToDo issue with size
-        disp = np.zeros((int(len(idx)), int(np.max(train.number_cycles) / train.steps)))
+        disp = np.zeros((int(len(idx)), int(np.ceil(np.max(train.number_cycles) / train.steps))))
 
         # compute maximum force
         force_max = []
@@ -573,27 +570,33 @@ class Sato(AccumulationModel_abc):
 
         # auxiliar displacement
         total_cycles = int(np.sum(train.number_cycles))
-        print(f"Start: {train.start_time}, End: {train.end_time}, Total cycles: {total_cycles}")
 
+        # Because Sato does not depend on the force, we compute the displacement for one node only and
+        # at the end we distribute it to all nodes. The results are flattened over all the trains.
+        # This means that the displacement is computed over the sum of the number of cycles of all trains.
         displacement = np.zeros(total_cycles)
 
         print("Running Sato model")
         pbar = tqdm(total=np.sum(train.number_cycles), unit_scale=True, unit="steps")
 
         # sato model does not distinguish between train types. All cycles are the same
+        i = 0
         for nb_cyc in range(total_cycles):
-            displacement[nb_cyc] = self.gamma * (1 - np.exp(-self.alpha * (nb_cyc + ini_val))) + self.beta * (nb_cyc + ini_val)
+            disp = self.gamma * (1 - np.exp(-self.alpha * (nb_cyc + ini_val))) + self.beta * (nb_cyc + ini_val)
+            displacement[i] = disp
+            i += 1
             pbar.update(1)
         pbar.close()
 
-        # resample
-        index = np.linspace(0, np.sum(train.number_cycles)-1, int(np.max(train.number_cycles)), dtype=int)[train.steps_index]
+        # resample the displacement to match the maximum number of steps
+        f = interp1d(np.linspace(0, len(displacement), len(displacement)), displacement)
+        displacement_resampled = f(np.linspace(0, len(displacement), int(np.ceil(np.max(train.number_cycles) / train.steps))))
 
-        self.displacement = np.tile(displacement[index], (len(idx), 1))
+        # distribute displacement to all nodes
+        self.displacement = np.tile(displacement_resampled, (len(idx), 1))
 
         # for reloading
         self.nb_previous_cycles = ini_val + total_cycles
-        print(f"Cumulative cycles = {self.nb_previous_cycles}")
 
 
 class LiSelig(AccumulationModel_abc):
