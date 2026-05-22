@@ -134,41 +134,33 @@ class Shenton(AccumulationModel_abc):
 
         # assign nodes
         self.nodes = list(idx)
-        n_nodes = len(idx)
-        n_nodes = len(idx)
+
         # in case of reloading read the previous stage
         ini_val = 0
         if reload:
             ini_val = self.nb_previous_cycles
 
         total_cycles = int(np.sum(train.number_cycles))
-        print(f"Start: {train.start_time}, End: {train.end_time}, Total cycles: {total_cycles}")
 
         n_steps = len(train.steps_index)
-        displacement = np.zeros((n_nodes, n_steps))
+        displacement = np.zeros((len(self.nodes), n_steps))
 
-        # displacement = np.zeros(int(np.sum(train.number_cycles)))
-        # displacement = np.zeros((len(idx), int(np.max(train.number_cycles) / train.steps)))
-        # displacement = np.zeros((len(idx), int(np.max(train.number_cycles) / train.steps)))
         # compute maximum force
         force_max = []
         for j in range(train.number_trains):
-            # histogram.extend(self.number_cycles[j] * [np.max(np.abs(self.force[j]), axis=1) / self.force_scl_fct])
             force_max.append(np.max(np.abs(train.force[j]), axis=1)[idx] / self.force_scl_fct)
         self.force_max = np.array(force_max)
 
         print("Running Shenton model")
         pbar = tqdm(total=np.sum(train.number_cycles), unit_scale=True, unit="steps")
 
-        # compute displacement per node
-        i =0 #step counter
-        for n, nb_cyc in enumerate(train.cumulative_nb_cycles):
-            N = ini_val + nb_cyc
-            for node_i, Q in enumerate(force_max[0]):  # shape (n_nodes,)
+        # for each train
+        for tr in range(train.number_trains):
+            i =0
+            Q = self.force_max[tr, :]
+            for nb_cyc in train.index_cumulative_distributed[tr]:
                 disp_val = Q**5 * (self.alpha * (nb_cyc + ini_val)**0.2 + self.beta * (nb_cyc + ini_val))
-                if n in train.steps_index:  # only store at step intervals
-                    displacement[node_i, i] = disp_val
-            if n in train.steps_index:
+                displacement[:, i] += disp_val
                 i += 1
 
             pbar.update(1)

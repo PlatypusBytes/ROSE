@@ -199,10 +199,7 @@ class TestSato:
         model = Sato(1e-4, 1e-8, 0.005)
         sett = AccumulationModel(accumulation_model=model, steps=setup["steps"])
 
-        # only 1 train type
-        traininfo = {"dubbeldekker": setup["traininfo"]["dubbeldekker"]}
-
-        sett.read_traffic(traininfo, setup["time"])
+        sett.read_traffic(setup["traininfo"], setup["time"])
         sett.calculate_settlement(idx=setup["idx"])
         sett.write_results(os.path.join(TEST_PATH, "./example.pickle"))
 
@@ -244,13 +241,10 @@ class TestSato:
         model = Sato(1e-4, 1e-8, 0.005)
         sett = AccumulationModel(accumulation_model=model, steps=setup["steps"])
 
-        # only 1 train type
-        traininfo = {"dubbeldekker": setup["traininfo"]["dubbeldekker"]}
-
         for t in total_time:
-            sett.read_traffic(traininfo, t, start_time=start_time)
+            sett.read_traffic(setup["traininfo"], t, start_time=start_time)
             sett.calculate_settlement(idx=setup["idx"], reload=reload_v)
-            sett.write_results(os.path.join(TEST_PATH, f"./example.pickle"))
+            sett.write_results(os.path.join(TEST_PATH, f"./test_data/sato_3_{int(t)}.pickle"))
             reload_v = True
             start_time = t
 
@@ -271,13 +265,10 @@ class TestShenton:
         """
         Test with all train types
         """
-        model = Shenton(1e-4, 1e-6)
+        model = Shenton(1e-12, 1e-18)
         sett = AccumulationModel(accumulation_model=model, steps=setup["steps"])
 
-        # only 1 train type
-        traininfo = {"dubbeldekker": setup["traininfo"]["dubbeldekker"]}
-
-        sett.read_traffic(traininfo, setup["time"])
+        sett.read_traffic(setup["traininfo"], setup["time"])
         sett.calculate_settlement(idx=setup["idx"])
         sett.write_results(os.path.join(TEST_PATH, "./example.pickle"))
 
@@ -295,7 +286,7 @@ class TestShenton:
 
         traininfo = {"dubbeldekker": setup["traininfo"]["dubbeldekker"]}
 
-        model = Shenton(1e-4, 1e-6)
+        model = Shenton(1e-12, 1e-18)
         sett = AccumulationModel(accumulation_model=model, steps=setup["steps"])
         sett.read_traffic(traininfo, setup["time"])
         sett.calculate_settlement(idx=setup["idx"])
@@ -316,7 +307,7 @@ class TestShenton:
         total_time = [5, 10]  # days
         start_time = 0
         reload_v = False
-        model = Shenton(1e-4, 1e-6)
+        model = Shenton(1e-12, 1e-18)
         sett = AccumulationModel(accumulation_model=model, steps=setup["steps"])
 
         # only 1 train type
