@@ -177,7 +177,7 @@ class Shenton(AccumulationModel_abc):
 class Nasrollahi(AccumulationModel_abc):
     def __init__(self, alpha_k: float, beta_k: float, gamma: float, F0: float=1000,
                  threshold_force_inf: float=90e3, threshold_force_zero: float=35e3, reference_nb_load_cycles: float=1e5,
-                 nb_samples_peak: int=15):
+                 nb_samples_peak: int=10):
         """
         Initialisation of the accumulation model of Nasrollahi et al. :cite:`Nasrollahi_2023`.
 
@@ -234,14 +234,16 @@ class Nasrollahi(AccumulationModel_abc):
         if train.number_trains > 1:
             raise ValueError("Error: The model Nasrollahi is not implemented for more than one train.")
 
+        self.total_nb_cycles = np.zeros(train.number_trains)
+
         # in case of reloading read the previous stage
         if reload:
             previous_displacement = np.copy(self.previous_displacement)
-            nb_cycles = np.max(self.total_nb_cycles)
+            # nb_cycles = np.max(self.total_nb_cycles)
             ini_nb_cycles = np.max(self.total_nb_cycles)
         else:
             self.threshold_force = np.ones((len(idx), train.number_trains)) * self.threshold_force_zero
-            nb_cycles = 0
+            # nb_cycles = 0
             ini_nb_cycles = 0
 
         # if index is None compute for all nodes
@@ -252,10 +254,10 @@ class Nasrollahi(AccumulationModel_abc):
         self.nodes = list(idx)
 
         # cumulative displacement
-        self.displacement = np.zeros((int(len(idx)), int(np.max(train.number_cycles) / train.steps)))
+        self.displacement = np.zeros((int(len(idx)), int(np.ceil(np.max(train.number_cycles) / train.steps))))
 
         print("Running Kourosh model")
-        pbar = tqdm(total=sum(train.number_cycles) - nb_cycles, unit_scale=True, unit="steps")
+        pbar = tqdm(total=sum(train.number_cycles) - ini_nb_cycles, unit_scale=True, unit="steps")
 
         perform_update = False
 
@@ -277,6 +279,7 @@ class Nasrollahi(AccumulationModel_abc):
                 nb_cycles = 0
 
             cycle_number = [nb_cycles]
+            iteration_nb = 0
             while iterate:
                 # incremental displacement per wheel
                 incremental = np.zeros(len(idx))
@@ -290,78 +293,49 @@ class Nasrollahi(AccumulationModel_abc):
 
                 # check if displacement is below the maximum allowed and if dynamic analysis is needed
                 if maximum_incremental > self.max_allowed_displacement_iter:
+                    # perform scalling
+                    incremental = incremental * self.max_allowed_displacement_iter / maximum_incremental
+                    # determine number of cycles to update the model
+                    update_nb_cycles = int(np.ceil(self.max_allowed_displacement_iter / maximum_incremental * self.reference_nb_load_cycles))
+                    iteration_nb += 1
                     perform_update = True
+                else:
+                    print(iteration_nb + 1)
+                    update_nb_cycles = self.reference_nb_load_cycles
 
-                incremental[incremental > self.max_allowed_displacement_iter] = self.max_allowed_displacement_iter
-
-                if maximum_incremental == 0:
-                    maximum_incremental = 1e-12
-                # perform  interpolation of number of cycles
-                update_nb_cycles = int(np.ceil(self.max_allowed_displacement_iter * self.reference_nb_load_cycles / maximum_incremental))
+                # update number of cycles
                 nb_cycles += update_nb_cycles
+                # if the number of cycles is above the maximum allowed, trim the incremental displacement and update the number of cycles accordingly
+                if nb_cycles >= train.number_cycles[j]:
+                    nb_cycles = train.number_cycles[j]
+                    incremental = incremental * (train.number_cycles[j] - cycle_number[-1]) / update_nb_cycles
+                    iterate = False
+
+                cycle_number.append(nb_cycles)
 
                 # update threshold force
-                self._update_threshold_force(displacement[-1] + incremental, j)
+                self.__update_threshold_force(displacement[-1] + incremental, j)
 
-                # check if the number of cycles is below the maximum allowed and below the number of cycles of the train
-                if (nb_cycles >= self.reference_nb_load_cycles) and (nb_cycles >= train.number_cycles[j]):
-                    incremental = incremental * np.min([self.reference_nb_load_cycles, train.number_cycles[j]]) / nb_cycles
-                    nb_cycles = np.min([self.reference_nb_load_cycles, train.number_cycles[j]]) + ini_nb_cycles
-                    update_nb_cycles = np.min([self.reference_nb_load_cycles, train.number_cycles[j]]) - cycle_number[-1]  # to update progress bar
-                    cycle_number.append(nb_cycles)
-                    perform_update = False
-                    if train.number_cycles[j] <= self.reference_nb_load_cycles:
-                        iterate = False
-                # check if the number of cycles is below the maximum allowed
-                elif nb_cycles >= self.reference_nb_load_cycles:
-                    # trim the displacement to the self.nb_load_cycles
-                    incremental = incremental * self.reference_nb_load_cycles / nb_cycles
-                    nb_cycles = self.reference_nb_load_cycles + ini_nb_cycles
-                    update_nb_cycles = self.reference_nb_load_cycles - cycle_number[-1]  # to update progress bar
-                    cycle_number.append(nb_cycles)
-                    perform_update = False
-                # check if the number of cycles is below the number of cycles of the train
-                elif nb_cycles >= train.number_cycles[j]:
-                    # trim the displacement to the self.nb_load_cycles
-                    incremental = incremental * train.number_cycles[j] / nb_cycles
-                    nb_cycles = train.number_cycles[j] + ini_nb_cycles
-                    update_nb_cycles = train.number_cycles[j] - cycle_number[-1]  # to update progress bar
-                    cycle_number.append(nb_cycles)
-                    iterate = False
-                    perform_update = False
-
-                if perform_update:
-                    #ToDo # re-run dynamic train-track model
-                    cycle_number.append(nb_cycles)
-                    run_model = True
-                    # iterate = False
-                    # return iterate
-
-                # cycle_number.append(nb_cycles)
                 displacement.append(displacement[-1] + incremental)
                 pbar.update(update_nb_cycles)
 
-            pbar.close()
-
-            self.total_nb_cycles.append(nb_cycles)
-
             # interpolate displacement for the number of cycles
-            disp = np.zeros((len(idx), int(max(train.number_cycles) / train.steps)))
+            disp = np.zeros((len(idx), int(np.ceil(max(train.number_cycles) / train.steps))))
             # Convert the list of displacements to a properly shaped array for vectorized interpolation
             displacement_array = np.array(displacement)
             # Create a single interpolation function for all nodes at once (axis=0 interpolates along the first dimension)
             f = interp1d(cycle_number, displacement_array, axis=0)
             # Apply the interpolation function to get values for all nodes at each time step
-            disp = f(np.linspace(ini_nb_cycles, train.number_cycles[j]+ini_nb_cycles, int(max(train.number_cycles) / train.steps))).T
+            disp = f(np.linspace(ini_nb_cycles, train.number_cycles[j]+ini_nb_cycles, int(np.ceil(max(train.number_cycles) / train.steps)))).T
 
             # add displacement to previous
             self.displacement = self.displacement + disp
+            self.total_nb_cycles[j] = nb_cycles
 
-            previous_displacement = np.zeros(len(idx))
 
         self.previous_displacement = self.displacement[:, -1]
 
-    def _update_threshold_force(self, displacement: np.ndarray, idx: int):
+    def __update_threshold_force(self, displacement: np.ndarray, idx: int):
         """
         Update threshold force
 
