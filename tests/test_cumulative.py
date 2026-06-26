@@ -63,6 +63,14 @@ class TestVarandas:
         with open(os.path.join(TEST_PATH, "./test_data/varandas_1.pickle"), "rb") as f:
             data = pickle.load(f)
 
+        import matplotlib.pyplot as plt
+        plt.plot(data["time"], data["displacement"][50], label="old")
+        plt.plot(sett.results["time"], sett.results["displacement"][50], label="new")
+        plt.legend()
+        plt.grid()
+        plt.savefig("comparison1.png")
+        plt.close()
+
         res = compare_dics(sett.results, data)
         assert res
 

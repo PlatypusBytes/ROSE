@@ -104,15 +104,15 @@ with open(os.path.join(output_folder, f"Shenton_time_365.pickle"), "rb") as f:
 
 fig, ax = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
 ax[0].plot(sellig["time"], np.array(sellig["displacement"][5])*1000, label="LiSelig")
-ax[0].plot(varandas["time"], np.array(varandas["displacement"][5])*1000, label="Varandas")
-ax[0].plot(sato["time"], np.array(sato["displacement"][5])*1000, label="Sato")
-ax[0].plot(shenton["time"], np.array(shenton["displacement"][5])*1000, label="Shenton")
+# ax[0].plot(varandas["time"], np.array(varandas["displacement"][5])*1000, label="Varandas")
+# ax[0].plot(sato["time"], np.array(sato["displacement"][5])*1000, label="Sato")
+# ax[0].plot(shenton["time"], np.array(shenton["displacement"][5])*1000, label="Shenton")
 # ax[0].plot(kourosh["time"], kourosh["displacement"][5], label="Kourosh")
 
 ax[1].plot(sellig["time"], np.array(sellig["displacement"][15])*1000, label="LiSelig")
-ax[1].plot(varandas["time"], np.array(varandas["displacement"][15])*1000, label="Varandas")
-ax[1].plot(sato["time"], np.array(sato["displacement"][15])*1000, label="Sato")
-ax[1].plot(shenton["time"], np.array(shenton["displacement"][15])*1000, label="Shenton")
+# ax[1].plot(varandas["time"], np.array(varandas["displacement"][15])*1000, label="Varandas")
+# ax[1].plot(sato["time"], np.array(sato["displacement"][15])*1000, label="Sato")
+# ax[1].plot(shenton["time"], np.array(shenton["displacement"][15])*1000, label="Shenton")
 # ax[1].plot(kourosh["time"], kourosh["displacement"][15], label="Kourosh")
 
 ax[0].grid()
