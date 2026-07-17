@@ -231,6 +231,30 @@ class RailIrregularities:
         return spectral_unevenness
 
 
+class RailAccumulationSettlement:
+    def __init__(self, x: np.ndarray, coordinates_settlement: np.ndarray, settlement: np.ndarray):
+        """
+        Creates a class containing the rail settlement accumulation.
+
+        :param x: position of the node
+        :param coordinates_settlement: coordinates of the settlement
+        :param settlement: settlement values at each position
+        """
+        self.coordinates_settlement = coordinates_settlement
+        self.settlement = settlement
+        self.settlement_at_position = self.__calculate_settlement_at_position(x)
+
+    def __calculate_settlement_at_position(self, position: np.ndarray):
+        """
+        Calculates the settlement at given positions using linear interpolation.
+
+        :param position: positions where the settlement should be calculated
+        :return: settlement values at the given positions
+        """
+        return np.interp(position, self.coordinates_settlement, self.settlement)
+
+
+
 if __name__ == "__main__":
     distance = np.linspace(0, 100, 10001)
 

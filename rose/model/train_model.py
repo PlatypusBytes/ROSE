@@ -781,7 +781,6 @@ class TrainModel(GlobalSystem):
             self.irregularities_at_wheels += utils.generate_rail_irregularities(self.wheels, self.time,
                                                                                 **self.irregularity_parameters)
 
-
     def get_contact_dofs(self):
         """
         Gets the indices of the train degrees of freedom which are in contact with the surface (rail)

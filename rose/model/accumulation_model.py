@@ -1,5 +1,6 @@
 import os
 import pickle
+import copy
 from typing import Union, List
 from abc import ABC, abstractmethod
 import numpy as np
@@ -156,14 +157,13 @@ class Shenton(AccumulationModel_abc):
 
         # for each train
         for tr in range(train.number_trains):
-            i =0
             Q = self.force_max[tr, :]
-            for nb_cyc in train.index_cumulative_distributed[tr]:
-                disp_val = Q**5 * (self.alpha * (nb_cyc + ini_val)**0.2 + self.beta * (nb_cyc + ini_val))
-                displacement[:, i] += disp_val
-                i += 1
-
-            pbar.update(1)
+            # number of cycles at each saved step, vectorised over all steps and nodes
+            # (identical result to the per-cycle loop)
+            nb_cyc = train.index_cumulative_distributed[tr] + ini_val
+            disp_val = self.alpha * nb_cyc ** 0.2 + self.beta * nb_cyc
+            displacement += (Q[:, None] ** 5) * disp_val[None, :]
+            pbar.update(train.number_cycles[tr])
         pbar.close()
 
         self.displacement = displacement
@@ -346,7 +346,8 @@ class Nasrollahi(AccumulationModel_abc):
 
 
 class Varandas(AccumulationModel_abc):
-    def __init__(self, alpha: float = 0.6, beta: float = 0.82, gamma: float = 10, N0: float = 1e6, F0: float = 50):
+    def __init__(self, alpha: float = 0.6, beta: float = 0.82, gamma: float = 10, N0: float = 1e6, F0: float = 50,
+                 iterative_method: bool = False):
         """
         Initialisation of the accumulation model of Varandas :cite:`varandas_2014`.
 
@@ -357,6 +358,7 @@ class Varandas(AccumulationModel_abc):
         :param gamma: (optional, default 10) accumulated settlement in reference test (with F0, N0)
         :param N0: (optional, default 1e6) reference number of cycles
         :param F0: (optional, default 50) reference load amplitude
+        :param iterative_method: (optional, default False) whether to use iterative method
         """
 
         # material parameters
@@ -366,6 +368,7 @@ class Varandas(AccumulationModel_abc):
         # model parameters
         self.N0 = N0
         self.F0 = F0
+        self.iterative_method = iterative_method
 
         # M alpha beta
         summation = [(1 / n) ** self.beta for n in range(1, int(self.N0))]
@@ -383,6 +386,11 @@ class Varandas(AccumulationModel_abc):
         self.force_scl_fct = 1000  # N -> kN
         self.disp_scl_fct = 1000  # mm -> m
         self.displacement = None
+        self.max_allowed_displacement_iter = 0.15 / 1000  # maximum allowed displacement per iteration5
+        self.previous_number_cycles = 0  # previous number of cycles (needed for the iterative method)
+        self.converged = None  # whether the model has converged (needed for the iterative method)
+        self.iterative_displacement = None  # displacement computed with the iterative method (needed for the iterative method)
+
 
     def settlement(self, train: ReadTrainInfo, nb_nodes: int, idx: list = None, reload=False):
         """
@@ -416,13 +424,16 @@ class Varandas(AccumulationModel_abc):
         :param reload: (optional, default False) whether to reload the model
         """
 
-        # in case of reloading read the previous stage
-        if reload:
-            previous_displacement = self.displacement[:, -1]
-
         # if index is None compute for all nodes
         if not idx:
             idx = range(int(nb_nodes))
+
+        # in case of reloading read the previous stage
+        if reload:
+            previous_displacement = copy.deepcopy(self.displacement[:, -1])
+        else:
+            previous_displacement = np.zeros(len(idx))
+            self.displacement = np.zeros((int(len(idx)), int(np.ceil(np.max(train.number_cycles) / train.steps))))
 
         # assign nodes
         self.nodes = list(idx)
@@ -449,12 +460,15 @@ class Varandas(AccumulationModel_abc):
             max_val_force = self.max_val_force
 
         pbar = tqdm(total=np.sum(train.number_cycles), unit_scale=True, unit="steps")
+        # running cumulative displacement per node (equals the max of cumsum(disp, axis=1)
+        # since each increment added to disp is non-negative, so cumsum is monotonic)
+        running_disp = np.sum(disp, axis=1)
         # for each train
         for tr in range(train.number_trains):
-            i = 0
+            i = self.previous_number_cycles
             aux = np.zeros(len(self.nodes))
             # compute the displacement for each cycle for each train
-            for nb_cyc in range(train.number_cycles[tr]):
+            for nb_cyc in range(self.previous_number_cycles, train.number_cycles[tr]):
                 self.h_f[self.force_max[tr, :] <= max_val_force[tr, :]] += 1
                 max_val_force[tr, self.force_max[tr, :] > max_val_force[tr, :]] = self.force_max[tr, self.force_max[tr, :] > max_val_force[tr, :]]
 
@@ -467,18 +481,37 @@ class Varandas(AccumulationModel_abc):
 
                 if nb_cyc in train.index_cumulative_distributed[tr]:
                     disp[:, i] += aux
+                    running_disp += aux
+
+                    if self.iterative_method:
+                        if (running_disp / self.disp_scl_fct > self.max_allowed_displacement_iter).any() and nb_cyc > 1:
+                            print(f"Warning: Maximum displacement exceeded at cycle {nb_cyc} for train {tr}. Displacement: {np.max(running_disp / self.disp_scl_fct)} m")
+                            self.__update_displacement(max_val_force, disp, previous_displacement, reload)
+                            self.previous_number_cycles = nb_cyc
+                            self.converged = False
+                            self.iterative_displacement = self.displacement[:, nb_cyc]
+                            return
+
                     aux = np.zeros(len(self.nodes))
                     i += 1
 
         pbar.close()
+        self.converged = True
+        self.__update_displacement(max_val_force, disp, previous_displacement, reload)
 
+
+    def __update_displacement(self, max_val_force, disp, previous_displacement, reload):
+        """
+        Function to update the displacement and maximum force.
+
+        """
         # maximum force
         self.max_val_force = max_val_force
         # compute displacements
-        self.displacement = np.cumsum(disp, axis=1) / self.disp_scl_fct
+        self.displacement[:, self.previous_number_cycles:] = np.cumsum(disp[:, self.previous_number_cycles:], axis=1) / self.disp_scl_fct
         # in case of reloading
         if reload:
-            self.displacement = self.displacement + np.expand_dims(previous_displacement, axis=1)
+            self.displacement[:, self.previous_number_cycles:] = self.displacement[:, self.previous_number_cycles:] + np.expand_dims(previous_displacement, axis=1)
 
 
 class Sato(AccumulationModel_abc):
@@ -543,16 +576,11 @@ class Sato(AccumulationModel_abc):
         displacement = np.zeros(total_cycles)
 
         print("Running Sato model")
-        pbar = tqdm(total=np.sum(train.number_cycles), unit_scale=True, unit="steps")
 
-        # sato model does not distinguish between train types. All cycles are the same
-        i = 0
-        for nb_cyc in range(total_cycles):
-            disp = self.gamma * (1 - np.exp(-self.alpha * (nb_cyc + ini_val))) + self.beta * (nb_cyc + ini_val)
-            displacement[i] = disp
-            i += 1
-            pbar.update(1)
-        pbar.close()
+        # sato model does not distinguish between train types. All cycles are the same.
+        # vectorised over all cycles (identical result to the per-cycle loop)
+        nb_cyc = np.arange(total_cycles) + ini_val
+        displacement = self.gamma * (1 - np.exp(-self.alpha * nb_cyc)) + self.beta * nb_cyc
 
         # resample the displacement to match the maximum number of steps
         f = interp1d(np.linspace(0, len(displacement), len(displacement)), displacement)
@@ -853,10 +881,16 @@ class AccumulationModel:
         self.accumulation_model.settlement(self.trains, self.nb_nodes, idx, reload=self.reload)
 
         # create results
-        self.__create_results()
+        # only Varandas' iterative method exposes a `converged` flag; other models always converge
+        if getattr(self.accumulation_model, "converged", True):
+            # the iterative method re-runs the same period until convergence, so it must not
+            # concatenate with the previous stage; standard (multi-stage) reload must concatenate
+            if getattr(self.accumulation_model, "iterative_method", False):
+                self.reload = False
+            self.__create_results()
 
-        # assign results to previous stage
-        self.previous_stage_results = {"time": self.results["time"], "displacement": self.results["displacement"]}
+            # assign results to previous stage
+            self.previous_stage_results = {"time": self.results["time"], "displacement": self.results["displacement"]}
 
     def write_results(self, file_name: str):
         """
